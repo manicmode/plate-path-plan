@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback, useLayoutEffect } from
 import { BrowserMultiFormatReader } from '@zxing/library';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Camera, SwitchCamera, Zap, ZapOff, X, Lightbulb, Check, Info } from 'lucide-react';
+import { Camera, SwitchCamera, Zap, ZapOff, X, Lightbulb, Check, Info, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { camHardStop, camOwnerMount, camOwnerUnmount } from '@/lib/camera/guardian';
@@ -75,6 +75,16 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const [showSuccess, setShowSuccess] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
 
+  // Zoom functionality state
+  const [currentZoom, setCurrentZoom] = useState(1);
+  const [supportsZoom, setSupportsZoom] = useState(false);
+  const [maxZoom, setMaxZoom] = useState(3);
+  const [useCSSZoom, setUseCSSZoom] = useState(false);
+  const currentZoomRef = useRef(1);
+  const pinchBaseRef = useRef<number | null>(null);
+  const lastTapRef = useRef(0);
+  const activePointersRef = useRef<Map<number, PointerEvent>>(new Map());
+
   // Autoscan refs
   const inFlightRef = useRef(false);
   const rafRef = useRef<number>(0);
@@ -85,6 +95,89 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const { snapAndDecode, updateStreamRef } = useSnapAndDecode();
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
+  // Safe zoom application with fallback to CSS zoom
+  const safeZoom = useCallback(async (track: MediaStreamTrack, zoomLevel: number) => {
+    const caps: any = track.getCapabilities?.() ?? {};
+    if (caps.zoom) {
+      const clampedZoom = Math.max(caps.zoom.min ?? 1, Math.min(zoomLevel, caps.zoom.max ?? 3));
+      try {
+        await track.applyConstraints({ advanced: [{ zoom: clampedZoom } as any] });
+        currentZoomRef.current = clampedZoom;
+        setCurrentZoom(clampedZoom);
+        return true;
+      } catch (error) {
+        console.warn('Hardware zoom failed, falling back to CSS zoom:', error);
+        setUseCSSZoom(true);
+        return false;
+      }
+    } else if (videoRef.current) {
+      // CSS fallback
+      setUseCSSZoom(true);
+      const cssZoom = Math.max(1, Math.min(zoomLevel, 3));
+      currentZoomRef.current = cssZoom;
+      setCurrentZoom(cssZoom);
+      return false;
+    }
+    return false;
+  }, []);
+
+  // Gesture handlers for pinch-to-zoom
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (!videoRef.current || !trackRef.current) return;
+    
+    activePointersRef.current.set(e.pointerId, e.nativeEvent);
+    (e.target as Element).setPointerCapture(e.pointerId);
+  }, []);
+
+  const handlePointerMove = useCallback(async (e: React.PointerEvent) => {
+    if (!videoRef.current || !trackRef.current) return;
+    
+    activePointersRef.current.set(e.pointerId, e.nativeEvent);
+    
+    if (activePointersRef.current.size === 2) {
+      const pointers = [...activePointersRef.current.values()];
+      const distance = Math.hypot(
+        pointers[0].clientX - pointers[1].clientX,
+        pointers[0].clientY - pointers[1].clientY
+      );
+      
+      if (!pinchBaseRef.current) {
+        pinchBaseRef.current = distance;
+        return;
+      }
+      
+      const scale = distance / pinchBaseRef.current;
+      const targetZoom = Math.max(1, Math.min(currentZoomRef.current * scale, maxZoom));
+      
+      await safeZoom(trackRef.current, targetZoom);
+    }
+  }, [safeZoom, maxZoom]);
+
+  const handlePointerEnd = useCallback(() => {
+    activePointersRef.current.clear();
+    pinchBaseRef.current = null;
+  }, []);
+
+  // Double-tap to toggle zoom
+  const handleVideoClick = useCallback(async () => {
+    if (!trackRef.current) return;
+    
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      const nextZoom = currentZoom < (maxZoom * 0.6) ? Math.min(2, maxZoom) : 1;
+      await safeZoom(trackRef.current, nextZoom);
+    }
+    lastTapRef.current = now;
+  }, [currentZoom, maxZoom, safeZoom]);
+
+  // Zoom toggle button handler
+  const handleZoomToggle = useCallback(async () => {
+    if (!trackRef.current) return;
+    
+    const nextZoom = currentZoom < (maxZoom * 0.6) ? Math.min(2, maxZoom) : 1;
+    await safeZoom(trackRef.current, nextZoom);
+  }, [currentZoom, maxZoom, safeZoom]);
+
   // Constants and refs
   const OWNER = 'log_barcode_scanner';
 
@@ -94,6 +187,27 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const BUDGET_MS = THROTTLE ? 500 : 900;
   const ROI = { widthPct: 0.7, heightPct: 0.35 }; // horizontal band
   const COOLDOWN_MS = THROTTLE ? 300 : 600;
+
+  // Add keyframes to the styles
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes scan { 
+        0% { transform: translateY(-36%); opacity: 0.2; } 
+        50% { transform: translateY(36%); opacity: 0.9; } 
+        100% { transform: translateY(-36%); opacity: 0.2; } 
+      }
+      @keyframes fade { 
+        0%, 100% { opacity: 0; } 
+        10%, 90% { opacity: 1; } 
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   // Quick decode for autoscan with better tolerance
   const quickDecode = useCallback(async (video: HTMLVideoElement, opts: { budgetMs: number }) => {
@@ -258,25 +372,38 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     }
 
     try {
-      console.log("[LOG] Requesting camera stream...");
+      console.log("[LOG] Requesting high-resolution camera stream...");
       const THROTTLE = import.meta.env.VITE_SCANNER_THROTTLE === 'true';
       
-      // Use ideal constraints with robust fallback
+      // Request high-resolution rear camera for better zoom quality
       const getCamera = async () => {
         const primary = { 
+          video: { 
+            facingMode: { ideal: 'environment' }, 
+            width: { ideal: 1920 }, 
+            height: { ideal: 1080 },
+            aspectRatio: 16/9
+          } 
+        };
+        const fallback = { 
           video: { 
             facingMode: { ideal: 'environment' }, 
             width: { ideal: THROTTLE ? 640 : 1280 }, 
             height: { ideal: THROTTLE ? 480 : 720 } 
           } 
         };
-        const fallback = { video: true };
+        const basic = { video: true };
         
         try { 
           return await navigator.mediaDevices.getUserMedia(primary); 
         } catch (e: any) {
-          console.warn('[CAM] primary failed', e?.name);
-          return await navigator.mediaDevices.getUserMedia(fallback);
+          console.warn('[CAM] high-res failed, trying fallback', e?.name);
+          try {
+            return await navigator.mediaDevices.getUserMedia(fallback);
+          } catch (e2: any) {
+            console.warn('[CAM] fallback failed, trying basic', e2?.name);
+            return await navigator.mediaDevices.getUserMedia(basic);
+          }
         }
       };
       
@@ -292,6 +419,26 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         const track = mediaStream.getVideoTracks()[0];
         trackRef.current = track;
         setStream(mediaStream);
+        
+        // Initialize zoom capabilities
+        const caps: any = track.getCapabilities?.() ?? {};
+        if (caps.zoom) {
+          setSupportsZoom(true);
+          setMaxZoom(caps.zoom.max ?? 3);
+          setUseCSSZoom(false);
+          
+          // Set default zoom level
+          const defaultZoom = Math.min(2, caps.zoom.max ?? 2);
+          await safeZoom(track, defaultZoom);
+          console.log('[ZOOM] Hardware zoom available, max:', caps.zoom.max, 'default:', defaultZoom);
+        } else {
+          console.log('[ZOOM] No hardware zoom, using CSS fallback');
+          setSupportsZoom(false);
+          setUseCSSZoom(true);
+          const defaultZoom = 1.3;
+          currentZoomRef.current = defaultZoom;
+          setCurrentZoom(defaultZoom);
+        }
         
         // Camera inquiry logging
         const streamId = (mediaStream as any).__camInqId || 'unknown';
@@ -532,59 +679,42 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       <DialogContent 
         className="w-screen h-screen max-w-none max-h-none p-0 m-0 bg-black border-0 rounded-none [&>button]:hidden"
       >
-        <div className="relative w-full h-full bg-black overflow-hidden">
-          {/* Framing Mask - darkens everything except the scan area */}
-          <div 
-            className="absolute inset-0 bg-black/30"
-          />
-
-          {/* Unified Scan Overlay */}
-          <ScanOverlay show={overlayVisible} />
-
-          {/* Frozen Overlay */}
-          {phase !== 'scanning' && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <div className="text-white text-center">
-                <div className="animate-pulse text-lg">Processing...</div>
-              </div>
-            </div>
-          )}
-
-          {/* UI Overlay */}
-          <div className="absolute inset-0 flex flex-col">
-            {/* Header */}
-            <div className="relative flex items-center p-4 pt-8 bg-gradient-to-b from-black/70 to-transparent mt-[env(safe-area-inset-top)]">
-              {/* Title */}
-              <h2 className="text-white text-lg font-semibold text-center w-full">Scan a barcode</h2>
-              
+        <div className="grid h-full grid-rows-[auto_1fr_auto]">
+          {/* Header */}
+          <header className="row-start-1 px-4 pt-[max(env(safe-area-inset-top),12px)] pb-2 flex items-center justify-between">
+            <h2 className="text-white text-lg font-semibold mx-auto">Scan a barcode</h2>
+            
+            {/* Close Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="absolute right-4 text-white hover:bg-white/20"
+            >
+              <X className="h-6 w-6" />
+            </Button>
+            
+            {/* Floating Torch Button */}
+            {supportsTorch && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onOpenChange(false)}
-                className="absolute right-4 text-white hover:bg-white/20"
+                onClick={toggleTorch}
+                className={`absolute right-16 text-white hover:bg-white/20 transition-colors duration-200 ${
+                  torchOn ? 'bg-yellow-500/30 text-yellow-300' : ''
+                }`}
+                title={`Turn flash ${torchOn ? 'off' : 'on'}`}
               >
-                <X className="h-6 w-6" />
+                <Lightbulb className={`h-5 w-5 ${torchOn ? 'text-yellow-300' : 'text-white'}`} />
               </Button>
-              
-              {/* Floating Torch Button */}
-              {supportsTorch && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleTorch}
-                  className={`absolute right-16 text-white hover:bg-white/20 transition-colors duration-200 ${
-                    torchOn ? 'bg-yellow-500/30 text-yellow-300' : ''
-                  }`}
-                  title={`Turn flash ${torchOn ? 'off' : 'on'}`}
-                >
-                  <Lightbulb className={`h-5 w-5 ${torchOn ? 'text-yellow-300' : 'text-white'}`} />
-                </Button>
-              )}
-            </div>
+            )}
+          </header>
 
+          {/* Centered Stage */}
+          <main className="row-start-2 grid place-items-center px-4">
             {/* Status row – fixed height, centered */}
-            <div className="flex h-[28px] items-center justify-center px-4">
-              <span className="px-2.5 py-1 rounded-full text-[11px] bg-emerald-400/15 text-emerald-300 border border-emerald-300/30">
+            <div className="flex h-[28px] items-center justify-center mb-2">
+              <span className="px-2.5 py-1 rounded-full text-[11px] bg-emerald-400/12 text-emerald-300 border border-emerald-400/25">
                 {isLookingUp ? (
                   <>
                     <div className="inline-block w-1.5 h-1.5 bg-cyan-400 rounded-full mr-2 animate-pulse" />
@@ -601,25 +731,32 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
               </span>
             </div>
 
-            {/* Center Content */}
-            <div className="flex-1 flex flex-col items-center justify-center px-4">
-              {/* Helper text */}
-              <p className="text-white/70 text-sm text-center mb-6">
-                Align the code in the frame— we'll auto-detect.
-              </p>
-              
-              {/* Frame wrapper – fixed height so nothing jumps */}
-              <div className="relative mx-auto h-[320px] w-[260px] rounded-3xl overflow-hidden bg-black">
-                {/* Video feed */}
+            {/* Lift the frame slightly (clamped) so it feels centered */}
+            <div className="-translate-y-[clamp(8px,3vh,28px)]">
+              <div className="relative w-[min(86vw,360px)] aspect-[4/5] rounded-3xl overflow-hidden">
+                {/* Video element absolutely fills */}
                 <video 
                   ref={videoRef} 
                   autoPlay 
                   playsInline 
                   muted
-                  className="h-full w-full object-cover"
+                  className={cn(
+                    "absolute inset-0 h-full w-full object-cover",
+                    useCSSZoom && "will-change-transform"
+                  )}
+                  style={useCSSZoom ? {
+                    transform: `scale(${currentZoom})`,
+                    transformOrigin: 'center center'
+                  } : undefined}
+                  onPointerDown={handlePointerDown}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerEnd}
+                  onPointerCancel={handlePointerEnd}
+                  onPointerLeave={handlePointerEnd}
+                  onClick={handleVideoClick}
                 />
 
-                {/* Vignette overlay */}
+                {/* Vignette overlay with smoother fade and bigger bright area */}
                 <div
                   className="pointer-events-none absolute inset-0"
                   style={{
@@ -662,6 +799,14 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                     <Check className="h-4 w-4 text-white" />
                   </div>
                 )}
+
+                {/* Zoom Toggle Button */}
+                <button
+                  onClick={handleZoomToggle}
+                  className="absolute right-2 top-2 rounded-full px-2.5 py-1 text-xs bg-black/50 text-white border border-white/10 hover:bg-black/70 transition-colors"
+                >
+                  {currentZoom <= 1.05 ? '1×' : `${currentZoom.toFixed(1)}×`}
+                </button>
                   
                 {/* HINT (no layout shift) */}
                 <div
@@ -675,66 +820,55 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
                   )}
                 </div>
               </div>
-                
-              {/* Supported formats tooltip */}
-              <div className="relative mt-4">
-                <button
-                  onClick={() => setShowTooltip(!showTooltip)}
-                  className="inline-flex items-center text-white/50 hover:text-white/70 text-xs transition-colors"
-                >
-                  <Info className="h-3 w-3 mr-1" />
-                  Supported formats
-                </button>
-                
-                {showTooltip && (
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 bg-black/90 backdrop-blur-sm rounded-lg px-3 py-2 text-xs text-white/80 whitespace-nowrap border border-white/20">
-                    UPC-A, EAN-13, EAN-8, Code-128, QR codes
-                    <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-black/90 rotate-45 border-l border-t border-white/20"></div>
-                  </div>
-                )}
+            </div>
+          </main>
+
+          {/* Footer / CTA */}
+          <footer className="row-start-3 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+16px)]">
+            <Button
+              onClick={handleSnapAndDecode}
+              disabled={isDecoding || isLookingUp || !stream}
+              className="w-full rounded-2xl py-4 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-500 hover:to-blue-600 text-white font-medium h-14 disabled:opacity-50 transition-all duration-200"
+            >
+              {isDecoding ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
+                  Scanning...
+                </>
+              ) : isLookingUp ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
+                  Looking up product...
+                </>
+              ) : (
+                <span className="inline-flex items-center gap-2">
+                  <Camera className="h-5 w-5" />
+                  Scan & Log
+                </span>
+              )}
+            </Button>
+            
+            <div className="text-center mt-3">
+              <button
+                onClick={onManualEntry}
+                className="text-white/80 hover:text-white underline underline-offset-2 transition-colors duration-200"
+              >
+                Enter manually instead
+              </button>
+            </div>
+          </footer>
+
+          {/* Unified Scan Overlay */}
+          <ScanOverlay show={overlayVisible} />
+
+          {/* Frozen Overlay */}
+          {phase !== 'scanning' && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+              <div className="text-white text-center">
+                <div className="animate-pulse text-lg">Processing...</div>
               </div>
             </div>
-
-            {/* Gradient Tint - Stays at bottom */}
-            <div className="absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
-            
-            {/* Bottom Controls - Safe area */}
-            <footer className="absolute bottom-6 inset-x-0 pb-[env(safe-area-inset-bottom)] px-4 space-y-4 pt-16">
-              {/* Main Action Button */}
-              <Button
-                onClick={handleSnapAndDecode}
-                disabled={isDecoding || isLookingUp || !stream}
-                className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white h-14 text-lg font-medium disabled:opacity-50 transition-all duration-200"
-              >
-                {isDecoding ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
-                    Scanning...
-                  </>
-                ) : isLookingUp ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3" />
-                    Looking up product...
-                  </>
-                ) : (
-                  <>
-                    <Camera className="h-5 w-5 mr-2" />
-                    Scan & Log
-                  </>
-                )}
-              </Button>
-
-              {/* Secondary Action - Link Style */}
-              <div className="text-center">
-                <button
-                  onClick={onManualEntry}
-                  className="text-white/70 hover:text-white text-sm underline underline-offset-2 transition-colors duration-200"
-                >
-                  Enter manually instead
-                </button>
-              </div>
-            </footer>
-          </div>
+          )}
 
           {/* Error State */}
           {error && (
