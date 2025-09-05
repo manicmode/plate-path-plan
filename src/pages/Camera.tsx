@@ -3940,6 +3940,7 @@ console.log('Global search enabled:', enableGlobalSearch);
           open={showCamera}
           onOpenChange={setShowCamera}
           deferClose={true} // Keep modal open until next screen is ready
+          variant="logging"   // NEW: ensures logging copy shows here
           onCapture={async (input: File | Blob | string) => {
             console.log('[CAMERA][PHOTO] Photo captured from modal');
             try {

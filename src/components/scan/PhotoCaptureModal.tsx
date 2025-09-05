@@ -38,6 +38,8 @@ interface PhotoCaptureModalProps {
   onCapture: (imageData: string) => void;
   onManualFallback: () => void;
   deferClose?: boolean; // When true, modal won't self-close after capture/upload
+  /** NEW: selects banner copy; defaults to 'health' to preserve existing behavior */
+  variant?: 'health' | 'logging';
 }
 
 
@@ -46,7 +48,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   onOpenChange,
   onCapture,
   onManualFallback,
-  deferClose = false
+  deferClose = false,
+  variant = 'health'
 }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -73,6 +76,17 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const { supportsTorch, torchOn, setTorch, ensureTorchState } = useTorch(() => trackRef.current);
 
   const OWNER = 'photo_capture';
+
+  const banner =
+    variant === 'logging'
+      ? {
+          title: 'Detect & Log Food',
+          subtitle: 'Take a clear photo to identify your food and prefill your log.',
+        }
+      : {
+          title: 'Photo Health Analyzer',
+          subtitle: 'Take a photo of brand product or a meal for health report!',
+        };
 
   const releaseNow = useCallback(() => {
     // release BEFORE any navigation/unmount
@@ -531,11 +545,11 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                     <span className="text-white text-xl">📸</span>
                   </div>
                   <h2 className="text-white text-xl font-bold text-center">
-                    Photo Health Analyzer
+                    {banner.title}
                   </h2>
                 </div>
                 <p className="text-green-300 text-sm animate-pulse text-center">
-                  Take a photo of brand product or a meal for health report!
+                  {banner.subtitle}
                 </p>
               </div>
             </div>
