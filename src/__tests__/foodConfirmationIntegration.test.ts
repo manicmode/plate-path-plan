@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, waitFor, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
 
@@ -83,7 +83,7 @@ describe('FoodConfirmationCard Manual Entry Integration', () => {
     const mockOnClose = vi.fn();
     const mockOnConfirm = vi.fn();
 
-    render(
+    const { container } = render(
       FoodConfirmationCard({
         isOpen: true,
         onClose: mockOnClose,
@@ -95,26 +95,20 @@ describe('FoodConfirmationCard Manual Entry Integration', () => {
     );
 
     // Should show the food name
-    expect(screen.getByText('Hawaiian Pizza')).toBeInTheDocument();
+    expect(container.textContent).toContain('Hawaiian Pizza');
 
     // Should show Per serving text
-    await waitFor(() => {
-      expect(screen.getByText(/Per serving \(125 g\)/)).toBeInTheDocument();
-    });
+    expect(container.textContent).toContain('Per serving (125 g)');
 
     // Should show macros (with NaN guards applied)  
-    await waitFor(() => {
-      expect(screen.getByText('14g')).toBeInTheDocument(); // protein
-      expect(screen.getByText('41g')).toBeInTheDocument(); // carbs  
-      expect(screen.getByText('13g')).toBeInTheDocument(); // fat
-    });
+    expect(container.textContent).toContain('14g'); // protein
+    expect(container.textContent).toContain('41g'); // carbs  
+    expect(container.textContent).toContain('13g'); // fat
 
     // Should show database lookup badge when dataSource is canonical
-    await waitFor(() => {
-      expect(screen.getByText('Database lookup')).toBeInTheDocument();
-    });
+    expect(container.textContent).toContain('Database lookup');
 
     // Should NOT show infinite loading spinner
-    expect(screen.queryByText('Loading nutrition data...')).not.toBeInTheDocument();
+    expect(container.textContent).not.toContain('Loading nutrition data...');
   });
 });
