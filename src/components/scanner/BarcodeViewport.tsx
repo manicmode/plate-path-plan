@@ -2,6 +2,17 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { FF } from '@/featureFlags';
 import { useSnapAndDecode } from '@/lib/barcode/useSnapAndDecode';
 
+// Runtime override helper
+function isAutoEnabledAtRuntime(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.get('auto') === '1') return true;                          // URL override: ?auto=1
+    if (localStorage.getItem('scanner:auto-override') === 'on') return true; // local override
+  } catch {}
+  return false;
+}
+
 // ---- AUTO CONFIG ----
 const AUTO_CFG = {
   fps: 6,          // decode loop rate
@@ -51,7 +62,8 @@ export default function BarcodeViewport({
   const capturingRef = useRef(false);
   const lastCaptureRef = useRef(0);
   const [autoOn, setAutoOn] = useState(() => {
-    if (!FF.FEATURE_AUTO_CAPTURE) return false;
+    const allowAuto = FF.FEATURE_AUTO_CAPTURE || isAutoEnabledAtRuntime();
+    if (!allowAuto) return false;
     return localStorage.getItem('scanner:auto') !== 'off';
   });
   
@@ -60,8 +72,9 @@ export default function BarcodeViewport({
   const autoIvRef = useRef<number | ReturnType<typeof setInterval> | null>(null);
   
   const [hintText, setHintText] = useState(() => {
-    return FF.FEATURE_AUTO_CAPTURE 
-      ? "Align the code — we'll capture automatically. You can also tap Scan."
+    const allowAuto = FF.FEATURE_AUTO_CAPTURE || isAutoEnabledAtRuntime();
+    return allowAuto 
+      ? "Auto on (via override): Align the code — we'll capture automatically. You can also tap Scan."
       : "Align the code — then tap Scan.";
   });
   const [isCapturing, setIsCapturing] = useState(false);
@@ -252,38 +265,78 @@ export default function BarcodeViewport({
     safeCapture({ code: best });
   }, [windowStats, safeCapture]);
 
+  // Diagnostics helper (console only)
+  const diag = {
+    log: (...a: any[]) => { if (process.env.NODE_ENV !== 'production') console.log(...a); },
+    warn: (...a: any[]) => { if (process.env.NODE_ENV !== 'production') console.warn(...a); },
+    tick(code: string, best: string, bestCount: number, dwellMs: number) {
+      if (process.env.NODE_ENV !== 'production') console.debug('[scan][tick]', { code, best, bestCount, dwellMs: Math.round(dwellMs) });
+    },
+    dump(video?: HTMLVideoElement | null, track?: MediaStreamTrack | null) {
+      const caps = (track as any)?.getCapabilities?.() ?? {};
+      const settings = (track as any)?.getSettings?.() ?? {};
+      const info = { 
+        featureAutoCapture: FF.FEATURE_AUTO_CAPTURE, 
+        runtimeOverride: isAutoEnabledAtRuntime(),
+        videoReady: !!video,
+        dims: video ? { w: video.videoWidth, h: video.videoHeight, readyState: video.readyState } : null,
+        caps, settings, ts: new Date().toISOString() 
+      };
+      console.table(info); 
+      return info;
+    }
+  };
+
+  // Expose diagnostics helper
+  useEffect(() => {
+    (window as any).scannerDiag = () => {
+      const v = videoRef.current;
+      const track = trackRef.current;
+      return diag.dump(v, track);
+    };
+    return () => { try { delete (window as any).scannerDiag; } catch {} };
+  }, []);
+
   // Auto-capture decoder loop (using interval instead of RAF for consistent timing)
   useEffect(() => {
-    if (!FF.FEATURE_AUTO_CAPTURE || !autoOn) return;
+    // Gate: modal must be open; runtime override or flag must be true
+    const allowAuto = FF.FEATURE_AUTO_CAPTURE || isAutoEnabledAtRuntime();
+    if (!allowAuto || !autoOn) return;
     if (!videoRef.current) return;
 
     samplesRef.current = [];
     if (autoIvRef.current) clearInterval(autoIvRef.current as any);
 
     const period = Math.max(1000 / AUTO_CFG.fps, 120);
+    diag.log('[scan] auto loop start', { period });
 
     autoIvRef.current = setInterval(async () => {
-      // Don't decode while a capture is in flight or during cooldown
-      const now = performance.now();
-      if (capturingRef.current || now - lastCaptureRef.current < 200) return;
-
       try {
-        const res = await decodeFrame(videoRef.current!);
+        const v = videoRef.current!;
+        if (!v.videoWidth) return;                    // wait until video is ready
+        if (capturingRef.current) return;             // don't decode during capture
+
+        const res = await decodeFrame(v);             // EXISTING decoder path
         if (res?.code) {
-          // Use center position since we don't have precise detection coordinates
-          pushSample({ t: performance.now(), code: res.code, cx: 0.5, cy: 0.5 });
-          maybeAutoTrigger();
+          pushSample({ t: performance.now(), code: res.code, cx: 0.5, cy: 0.5 }); // center fallback
+          const { best, bestCount, dwellMs } = windowStats();
+          diag.tick(res.code, best, bestCount, dwellMs);
+          if (best && bestCount >= AUTO_CFG.minMatches && dwellMs >= AUTO_CFG.dwellMs) {
+            await safeCapture({ code: best });
+            samplesRef.current = [];                  // reset after fire
+          }
         }
       } catch (e) {
-        // Swallow to avoid breaking UI
+        diag.warn('[scan][err] autoLoop', e);
       }
     }, period) as any;
 
     return () => {
       if (autoIvRef.current) clearInterval(autoIvRef.current as any);
       autoIvRef.current = null;
+      diag.log('[scan] auto loop stop');
     };
-  }, [FF.FEATURE_AUTO_CAPTURE, autoOn, videoRef, decodeFrame, pushSample, maybeAutoTrigger]);
+  }, [autoOn, videoRef, decodeFrame, pushSample, windowStats, safeCapture]);
 
   // Slow hint timer
   useEffect(() => {
@@ -400,7 +453,8 @@ export default function BarcodeViewport({
 // Auto toggle chip component
 export function AutoToggleChip({ className = '' }: { className?: string }) {
   const [on, setOn] = useState(() => {
-    if (!FF.FEATURE_AUTO_CAPTURE) return false;
+    const allowAuto = FF.FEATURE_AUTO_CAPTURE || isAutoEnabledAtRuntime();
+    if (!allowAuto) return false;
     return localStorage.getItem('scanner:auto') !== 'off';
   });
   
