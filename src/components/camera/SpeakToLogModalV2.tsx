@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Mic, MicOff, X, Sparkles, Edit3, RotateCcw, Languages,
-  Wand2, CheckCircle, AlertCircle 
+  Wand2, CheckCircle, AlertCircle, Settings, Trash2, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -390,7 +390,7 @@ export const SpeakToLogModalV2: React.FC<SpeakToLogModalV2Props> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border-0 p-0 overflow-hidden">
+      <DialogContent className="max-w-md mx-auto bg-slate-900/70 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl/20 p-0 overflow-hidden">
         <VisuallyHidden>
           <DialogTitle>Speak to Log Food</DialogTitle>
         </VisuallyHidden>
@@ -405,352 +405,552 @@ export const SpeakToLogModalV2: React.FC<SpeakToLogModalV2Props> = ({
           {ariaLiveMessage}
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Mic className="h-6 w-6 text-emerald-500" />
-              {state === 'listening' && (
-                <motion.div
-                  animate={{ scale: [1, 1.5, 1] }}
-                  transition={{ repeat: Infinity, duration: 1.5 }}
-                  className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"
-                />
-              )}
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
+          className="p-6 md:p-8"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            {/* Left: Mic icon in branded pill */}
+            <div className="flex items-center gap-3">
+              <motion.div 
+                className="px-3 py-2 rounded-full bg-gradient-to-r from-sky-400 to-emerald-400 flex items-center gap-2"
+                animate={state === 'listening' ? { scale: [1, 1.05, 1] } : {}}
+                transition={{ repeat: state === 'listening' ? Infinity : 0, duration: 2 }}
+              >
+                <Mic className="h-4 w-4 text-white" />
+                {state === 'listening' && (
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    className="w-2 h-2 bg-white rounded-full"
+                  />
+                )}
+              </motion.div>
+              <h3 className="text-lg font-semibold text-white">
                 Speak to Log Food
               </h3>
-              {state === 'listening' && (
-                <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                  ● Live
-                </p>
-              )}
             </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {state === 'listening' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowLanguageSelect(!showLanguageSelect)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <Languages className="h-4 w-4" />
-              </Button>
-            )}
+            
+            {/* Right: Close button */}
             <Button
               variant="ghost"
               size="sm"
               onClick={handleClose}
-              className="text-gray-500 hover:text-gray-700"
+              className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full w-8 h-8 p-0 focus:ring-2 focus:ring-sky-400"
+              aria-label="Close modal"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
-        </div>
 
-        {/* Language selector */}
-        <AnimatePresence>
-          {showLanguageSelect && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="px-6 pb-4"
-            >
-              <Select value={language} onValueChange={(value: Language) => setLanguage(value)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select language" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auto">Auto-detect</SelectItem>
-                  <SelectItem value="en-US">English</SelectItem>
-                  <SelectItem value="es-ES">Spanish</SelectItem>
-                  <SelectItem value="fr-FR">French</SelectItem>
-                </SelectContent>
-              </Select>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          {/* Transcript Bubble */}
+          <TranscriptBubble 
+            transcript={transcript}
+            isListening={state === 'listening'}
+            isReady={state === 'result'}
+            onEdit={setTranscript}
+            onClear={() => {
+              setTranscript('');
+              setTranscriptWords([]);
+            }}
+          />
 
-        {/* Content */}
-        <div className="px-6 pb-6 space-y-6">
-          
-          {/* Waveform */}
-          {(state === 'listening' || state === 'processing') && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 56 }}
-              exit={{ opacity: 0, height: 0 }}
-              className="w-full"
+          {/* Main Mic Control */}
+          <div className="flex flex-col items-center my-8">
+            <MicButton 
+              state={state}
+              onPress={state === 'idle' ? startListening : state === 'listening' ? stopListening : undefined}
+              canvasRef={canvasRef}
+            />
+            
+            {/* Helper Text */}
+            <motion.p 
+              key={state}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 text-sm text-slate-400 text-center"
             >
-              <canvas
-                ref={canvasRef}
-                className="w-full h-14 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20"
-                style={{ width: '100%', height: '56px' }}
+              {getHelperText(state)}
+            </motion.p>
+          </div>
+
+          {/* Suggestions (Idle state only) */}
+          <AnimatePresence>
+            {state === 'idle' && !transcript && (
+              <SuggestionChips 
+                phrases={EXAMPLE_PHRASES.slice(0, 3)}
+                onSelect={(phrase) => {
+                  setTranscript(phrase);
+                  setTranscriptWords(phrase.split(' '));
+                  logTelemetry('UX', { event: 'suggestions_click', text: phrase });
+                }}
               />
-            </motion.div>
-          )}
-
-          {/* Transcript Chips */}
-          <AnimatePresence mode="wait">
-            {state === 'idle' && (
-              <motion.div
-                key="idle-chips"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="text-center space-y-4"
-              >
-                <motion.div
-                  onMouseEnter={onMouseEnter}
-                  onMouseLeave={onMouseLeave}
-                  animate={{ y: [-2, 2, -2] }}
-                  transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                  className="inline-block px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-100 to-teal-100 dark:from-emerald-800/30 dark:to-teal-800/30 text-emerald-700 dark:text-emerald-300 text-sm font-medium"
-                >
-                  "{currentExample}"
-                </motion.div>
-              </motion.div>
             )}
+          </AnimatePresence>
 
-            {(state === 'listening' || state === 'result') && transcriptWords.length > 0 && (
+          {/* Processing Steps */}
+          <AnimatePresence>
+            {state === 'processing' && (
               <motion.div
-                key="transcript-chips"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-6"
               >
-                <TranscriptChips
-                  words={transcriptWords}
-                  isEditable={state === 'result'}
-                  onEdit={editWord}
-                  onRemove={removeWord}
-                />
+                <ProcessingStepper steps={processingSteps} />
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Processing Stepper */}
-          {state === 'processing' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="py-4"
-            >
-              <ProcessingStepper steps={processingSteps} />
-            </motion.div>
-          )}
-
           {/* Results Summary */}
-          {state === 'result' && results.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-3"
-            >
-              <div className="text-center">
-                <CheckCircle className="inline-block h-8 w-8 text-emerald-500 mb-2" />
-                <h4 className="font-semibold text-gray-900 dark:text-white">
-                  Found {results.length} food item{results.length > 1 ? 's' : ''}
-                </h4>
-              </div>
-              
-              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-2">
-                {results.slice(0, 2).map((item, index) => (
-                  <div key={index} className="flex justify-between text-sm">
-                    <span className="font-medium text-gray-700 dark:text-gray-300">{item.name}</span>
-                    <span className="text-emerald-600 dark:text-emerald-400">{item.calories} cal</span>
-                  </div>
-                ))}
-                {results.length > 2 && (
-                  <div className="text-xs text-gray-500 text-center pt-2">
-                    +{results.length - 2} more item{results.length > 3 ? 's' : ''}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
+          <AnimatePresence>
+            {state === 'result' && results.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="h-5 w-5 text-emerald-400" />
+                  <span className="text-emerald-400 font-medium">
+                    Found {results.length} food item{results.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {results.slice(0, 2).map((item: any, index: number) => (
+                    <div key={index} className="text-sm text-slate-300">
+                      • {item.name} ({item.calories || 0} cal)
+                    </div>
+                  ))}
+                  {results.length > 2 && (
+                    <div className="text-sm text-slate-400">
+                      +{results.length - 2} more...
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Error States */}
-          {state === 'permission-denied' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center space-y-4"
-            >
-              <AlertCircle className="mx-auto h-12 w-12 text-orange-500" />
-              <div className="space-y-2">
-                <h4 className="font-semibold text-gray-900 dark:text-white">Microphone Access Needed</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Enable microphone permissions in your browser to use voice logging.
-                </p>
-              </div>
-            </motion.div>
-          )}
-
-          {state === 'error' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center space-y-4"
-            >
-              <AlertCircle className="mx-auto h-12 w-12 text-red-500" />
-              <div className="space-y-2">
-                <h4 className="font-semibold text-gray-900 dark:text-white">Didn't catch that</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Try speaking closer to your microphone or use manual entry.
-                </p>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Primary Action Button */}
-          <div className="flex justify-center">
-            {state === 'idle' && (
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button
-                  onClick={startListening}
-                  className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-2xl hover:shadow-3xl transition-all duration-300"
-                >
-                  <Mic className="h-12 w-12" />
-                </Button>
-              </motion.div>
+          <AnimatePresence>
+            {(state === 'error' || state === 'permission-denied') && (
+              <ErrorCallout 
+                state={state}
+                onRetry={() => setState('idle')}
+                onManualEntry={onOpenManualEntry}
+              />
             )}
-
-            {state === 'listening' && (
-              <motion.div
-                animate={{ 
-                  boxShadow: [
-                    "0 0 0 0 rgba(16, 185, 129, 0.4)",
-                    "0 0 0 20px rgba(16, 185, 129, 0)",
-                    "0 0 0 0 rgba(16, 185, 129, 0)"
-                  ]
-                }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button
-                  onClick={stopListening}
-                  className="w-32 h-32 rounded-full bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white shadow-2xl"
-                >
-                  <MicOff className="h-12 w-12" />
-                </Button>
-              </motion.div>
-            )}
-
-            {state === 'processing' && (
-              <Button
-                disabled
-                className="w-32 h-32 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 text-white shadow-xl"
-              >
-                <Wand2 className="h-8 w-8 animate-pulse" />
-              </Button>
-            )}
-          </div>
+          </AnimatePresence>
 
           {/* Action Buttons */}
-          <div className="flex gap-3">
-            {state === 'idle' && (
-              <>
+          <div className="flex items-center justify-between gap-3">
+            <Button
+              variant="ghost"
+              onClick={handleClose}
+              className="text-slate-400 hover:text-white hover:bg-white/10 focus:ring-2 focus:ring-slate-400"
+            >
+              Cancel
+            </Button>
+            
+            <div className="flex items-center gap-2">
+              {/* Manual Entry Link */}
+              {onOpenManualEntry && (
                 <Button
-                  variant="outline"
-                  onClick={handleClose}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={onOpenManualEntry}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  <Edit3 className="h-4 w-4 mr-2" />
-                  Find Food
-                </Button>
-              </>
-            )}
-
-            {(state === 'listening' || state === 'processing') && (
-              <>
-                <Button
-                  variant="outline"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
-                    setTranscript('');
-                    setTranscriptWords([]);
+                    onOpenManualEntry();
+                    handleClose();
                   }}
-                  disabled={state === 'processing'}
-                  className="flex-1"
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Clear
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={stopListening}
-                  disabled={state === 'processing'}
-                  className="flex-1"
-                >
-                  Stop
-                </Button>
-              </>
-            )}
-
-            {state === 'result' && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => setState('idle')}
-                  className="flex-1"
-                >
-                  Try Again
-                </Button>
-                <Button
-                  onClick={handleConfirm}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Review & Log
-                </Button>
-              </>
-            )}
-
-            {(state === 'error' || state === 'permission-denied') && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => setState('idle')}
-                  className="flex-1"
-                >
-                  Try Again
-                </Button>
-                <Button
-                  onClick={onOpenManualEntry}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="text-slate-500 hover:text-slate-300 text-xs"
                 >
                   Manual Entry
                 </Button>
-              </>
-            )}
+              )}
+              
+              {/* Find Food Button */}
+              <motion.div
+                animate={state === 'result' && transcript.trim() ? { scale: [1, 1.05, 1] } : {}}
+                transition={{ duration: 0.3 }}
+              >
+                <Button
+                  onClick={state === 'result' ? handleConfirm : () => processTranscript()}
+                  disabled={!transcript.trim() || state === 'processing'}
+                  className="bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-500 hover:to-emerald-500 text-white font-medium px-6 focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {state === 'processing' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {state === 'result' ? 'Review & Log' : 'Find Food'}
+                </Button>
+              </motion.div>
+            </div>
           </div>
-
-          {/* Tips */}
-          <div className="text-center">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {state === 'idle' && 'Try speaking naturally about your meal'}
-              {state === 'listening' && 'Tap Stop when done or wait for auto-stop'}
-              {state === 'processing' && 'AI is understanding your foods...'}
-              {state === 'result' && 'Tap chips above to edit words'}
-              {(state === 'error' || state === 'permission-denied') && 'Press Space to start recording'}
-            </p>
-          </div>
-        </div>
+        </motion.div>
       </DialogContent>
     </Dialog>
   );
+};
+
+// Helper Components
+
+interface TranscriptBubbleProps {
+  transcript: string;
+  isListening: boolean;
+  isReady: boolean;
+  onEdit: (text: string) => void;
+  onClear: () => void;
+}
+
+const TranscriptBubble: React.FC<TranscriptBubbleProps> = ({
+  transcript,
+  isListening,
+  isReady,
+  onEdit,
+  onClear
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(transcript);
+
+  const handleEdit = () => {
+    if (isReady) {
+      setIsEditing(true);
+      setEditValue(transcript);
+    }
+  };
+
+  const handleSave = () => {
+    onEdit(editValue);
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSave();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+      setEditValue(transcript);
+    }
+  };
+
+  return (
+    <AnimatePresence mode="wait">
+      {(transcript || isListening) && (
+        <motion.div
+          initial={{ opacity: 0, y: -10, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -10, scale: 0.95 }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
+          className="mb-4"
+        >
+          <div className="relative group">
+            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4 pr-12">
+              {isEditing ? (
+                <Input
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleSave}
+                  onKeyDown={handleKeyDown}
+                  className="bg-transparent border-none p-0 text-white placeholder:text-slate-400 focus-visible:ring-0"
+                  placeholder="grilled chicken and rice"
+                  autoFocus
+                />
+              ) : (
+                <p 
+                  className={`text-white cursor-pointer transition-colors ${
+                    isReady ? 'hover:text-sky-300' : ''
+                  } ${isListening ? 'animate-pulse' : ''}`}
+                  onClick={handleEdit}
+                  aria-live={isListening ? 'polite' : 'off'}
+                >
+                  {transcript || (
+                    <span className="text-slate-400 italic">
+                      grilled chicken and rice
+                    </span>
+                  )}
+                </p>
+              )}
+              
+              {/* Edit hint */}
+              {isReady && !isEditing && transcript && (
+                <Edit3 className="absolute top-1/2 right-4 -translate-y-1/2 h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              )}
+            </div>
+            
+            {/* Clear button */}
+            {transcript && !isListening && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClear}
+                className="absolute -top-2 -right-2 w-6 h-6 p-0 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white rounded-full"
+                aria-label="Clear transcript"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+interface MicButtonProps {
+  state: ModalState;
+  onPress?: () => void;
+  canvasRef: React.RefObject<HTMLCanvasElement>;
+}
+
+const MicButton: React.FC<MicButtonProps> = ({ state, onPress, canvasRef }) => {
+  const [timeElapsed, setTimeElapsed] = useState(0);
+
+  // Timer for listening state
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (state === 'listening') {
+      setTimeElapsed(0);
+      interval = setInterval(() => {
+        setTimeElapsed(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [state]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getButtonLabel = () => {
+    switch (state) {
+      case 'idle': return 'Start recording';
+      case 'listening': return 'Stop recording';
+      case 'processing': return 'Processing speech';
+      default: return 'Microphone';
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center">
+      {/* Timer chip for listening state */}
+      <AnimatePresence>
+        {state === 'listening' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="mb-3 px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-full text-emerald-300 text-sm font-mono"
+          >
+            {formatTime(timeElapsed)}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Main mic button */}
+      <div className="relative">
+        <motion.button
+          onClick={onPress}
+          disabled={!onPress}
+          className={`
+            relative w-28 h-28 md:w-36 md:h-36 rounded-full flex items-center justify-center
+            focus:outline-none focus:ring-4 focus:ring-sky-400/50 transition-all
+            ${state === 'idle' ? 'bg-gradient-to-br from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700' : ''}
+            ${state === 'listening' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' : ''}
+            ${state === 'processing' ? 'bg-gradient-to-br from-sky-500 to-sky-600' : ''}
+            ${state === 'result' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' : ''}
+            disabled:cursor-not-allowed
+          `}
+          whileTap={onPress ? { scale: 0.98 } : {}}
+          animate={
+            state === 'idle' 
+              ? { scale: [1, 1.02, 1], opacity: [0.9, 1, 0.9] }
+              : state === 'listening'
+              ? { scale: [1, 1.05, 1] }
+              : {}
+          }
+          transition={
+            state === 'idle'
+              ? { repeat: Infinity, duration: 2.4, ease: "easeInOut" }
+              : state === 'listening'
+              ? { repeat: Infinity, duration: 1.5, ease: "easeInOut" }
+              : { duration: 0.2 }
+          }
+          aria-label={getButtonLabel()}
+        >
+          {/* Pulsing ring for listening */}
+          {state === 'listening' && (
+            <motion.div
+              className="absolute inset-0 rounded-full border-4 border-emerald-300"
+              animate={{ scale: [1, 1.3, 1], opacity: [0.7, 0, 0.7] }}
+              transition={{ repeat: Infinity, duration: 1.5 }}
+            />
+          )}
+
+          {/* Spinner ring for processing */}
+          {state === 'processing' && (
+            <motion.div
+              className="absolute inset-0 rounded-full border-4 border-transparent border-t-sky-300"
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+            />
+          )}
+
+          {/* Waveform for listening */}
+          {state === 'listening' && (
+            <div className="absolute inset-4">
+              <canvas
+                ref={canvasRef}
+                className="w-full h-full rounded-full"
+                style={{ width: '100%', height: '100%' }}
+              />
+            </div>
+          )}
+
+          {/* Mic icon */}
+          <Mic className={`
+            ${state === 'listening' ? 'h-8 w-8 md:h-10 md:w-10 text-white relative z-10' : 'h-8 w-8 md:h-10 md:w-10'}
+            ${state === 'idle' ? 'text-slate-300' : 'text-white'}
+          `} />
+        </motion.button>
+      </div>
+    </div>
+  );
+};
+
+interface SuggestionChipsProps {
+  phrases: string[];
+  onSelect: (phrase: string) => void;
+}
+
+const SuggestionChips: React.FC<SuggestionChipsProps> = ({ phrases, onSelect }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.3, staggerChildren: 0.1 }}
+      className="mb-6"
+    >
+      <p className="text-sm text-slate-400 text-center mb-3">Try saying:</p>
+      <div className="flex flex-wrap justify-center gap-2">
+        {phrases.map((phrase, index) => (
+          <motion.button
+            key={phrase}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            onClick={() => onSelect(phrase)}
+            className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl text-sm text-slate-300 hover:text-white transition-all hover:-translate-y-0.5 focus:ring-2 focus:ring-sky-400"
+          >
+            "{phrase}"
+          </motion.button>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
+interface ErrorCalloutProps {
+  state: 'error' | 'permission-denied';
+  onRetry: () => void;
+  onManualEntry?: () => void;
+}
+
+const ErrorCallout: React.FC<ErrorCalloutProps> = ({ state, onRetry, onManualEntry }) => {
+  const isPermissionDenied = state === 'permission-denied';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl"
+    >
+      <div className="flex items-start gap-3">
+        <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <h4 className="text-red-400 font-medium mb-1">
+            {isPermissionDenied ? 'Microphone Access Needed' : 'Something Went Wrong'}
+          </h4>
+          <p className="text-sm text-slate-300 mb-3">
+            {isPermissionDenied 
+              ? 'Please enable microphone access in your browser settings to use voice logging.'
+              : 'We couldn\'t process your speech. Please try again or use manual entry.'
+            }
+          </p>
+          <div className="flex items-center gap-2">
+            {isPermissionDenied ? (
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => window.open('chrome://settings/content/microphone', '_blank')}
+                  className="bg-red-500 hover:bg-red-600 text-white text-xs"
+                >
+                  <Settings className="h-3 w-3 mr-1" />
+                  Open Settings
+                </Button>
+                {onManualEntry && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onManualEntry}
+                    className="border-slate-600 text-slate-300 hover:text-white text-xs"
+                  >
+                    Use Manual Entry
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  onClick={onRetry}
+                  className="bg-red-500 hover:bg-red-600 text-white text-xs"
+                >
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  Try Again
+                </Button>
+                {onManualEntry && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onManualEntry}
+                    className="border-slate-600 text-slate-300 hover:text-white text-xs"
+                  >
+                    Manual Entry
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// Helper function for state-based text
+const getHelperText = (state: ModalState): string => {
+  switch (state) {
+    case 'idle':
+      return 'Tap the mic or press Space to start recording';
+    case 'listening':
+      return 'Listening... speak your food items clearly';
+    case 'processing':
+      return 'Processing your speech and finding foods...';
+    case 'result':
+      return 'Review your foods or press Enter to log them';
+    case 'error':
+      return 'Something went wrong. Please try again';
+    case 'permission-denied':
+      return 'Microphone access is required for voice logging';
+    default:
+      return 'Try speaking naturally about your meal';
+  }
 };
