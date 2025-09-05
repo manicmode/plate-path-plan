@@ -112,6 +112,23 @@ interface RecognizedFood {
   servingGrams?: number;
   servingText?: string;
   portionSource?: 'DB'|'UPC'|'FALLBACK'|'NUMERIC'|'TEXT'|'KCAL_RATIO';
+  // Per-100g nutritional values for reference
+  calories_per_100g?: number;
+  protein_g_per_100g?: number;
+  carbs_g_per_100g?: number;
+  fat_g_per_100g?: number;
+  fiber_g_per_100g?: number;
+  sugar_g_per_100g?: number;
+  sodium_mg_per_100g?: number;
+  // Per-serving nutritional values (preferred for barcode)
+  calories_serving?: number;
+  protein_g_serving?: number;
+  carbs_g_serving?: number;
+  fat_g_serving?: number;
+  fiber_g_serving?: number;
+  sugar_g_serving?: number;
+  sodium_mg_serving?: number;
+  macro_mode?: 'SERVING_PROVIDER'|'SCALED_FROM_100G'|'PER100G_FALLBACK';
 }
 
 interface VisionApiResponse {
@@ -1593,7 +1610,12 @@ console.log('Global search enabled:', enableGlobalSearch);
             fat_g: mapped?.fat_g,
           });
           
-          console.log('[BARCODE][MAP][PORTION]', { grams: finalServingGrams, source: finalPortionSource });
+          console.log('[BARCODE][OPEN_CONFIRM_MACROS]', {
+            grams: finalServingGrams,
+            mode: mapped.macro_mode,
+            kcal_serving: mapped.calories_serving,
+            kcal_100g: mapped.calories_per_100g
+          });
 
           // Also get legacy mapped data for additional properties
           const legacyMapped = mapToLogFood(cleanBarcode, data);

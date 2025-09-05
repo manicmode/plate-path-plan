@@ -309,14 +309,37 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const gramsFactor = currentFoodItem.factor ?? 1; // portionGrams/100 at 100% slider
   const sliderFraction = portionMultiplier; // 0..1 (0%, 25%, 50%, 75%, 100%)
 
-  // Get base nutrition values - prefer item data for barcode
-  const baseCalories = preferItem ? ((currentFoodItem as any)?.calories ?? 0) : currentFoodItem.calories;
-  const baseProtein = preferItem ? ((currentFoodItem as any)?.protein_g ?? 0) : currentFoodItem.protein;
-  const baseCarbs = preferItem ? ((currentFoodItem as any)?.carbs_g ?? 0) : currentFoodItem.carbs;
-  const baseFat = preferItem ? ((currentFoodItem as any)?.fat_g ?? 0) : currentFoodItem.fat;
-  const baseFiber = preferItem ? ((currentFoodItem as any)?.fiber_g ?? 0) : currentFoodItem.fiber;
-  const baseSugar = preferItem ? ((currentFoodItem as any)?.sugar_g ?? 0) : currentFoodItem.sugar;
-  const baseSodium = preferItem ? ((currentFoodItem as any)?.sodium_mg ?? 0) : currentFoodItem.sodium;
+  // Helper for scaling per-100g values to serving when serving fields missing
+  const scaleFrom100g = (val100?: number, grams?: number) =>
+    typeof val100 === 'number' && typeof grams === 'number'
+      ? Math.round((val100 * grams) / 100)
+      : undefined;
+
+  // Get base nutrition values - prefer serving data for barcode items
+  const baseCalories = preferItem 
+    ? ((currentFoodItem as any)?.calories_serving ?? (currentFoodItem as any)?.calories ?? 0) 
+    : currentFoodItem.calories;
+  const baseProtein = preferItem 
+    ? ((currentFoodItem as any)?.protein_g_serving ?? (currentFoodItem as any)?.protein_g ?? 0) 
+    : currentFoodItem.protein;
+  const baseCarbs = preferItem 
+    ? ((currentFoodItem as any)?.carbs_g_serving ?? (currentFoodItem as any)?.carbs_g ?? 0) 
+    : currentFoodItem.carbs;
+  const baseFat = preferItem 
+    ? ((currentFoodItem as any)?.fat_g_serving ?? (currentFoodItem as any)?.fat_g ?? 0) 
+    : currentFoodItem.fat;
+  const baseFiber = preferItem 
+    ? ((currentFoodItem as any)?.fiber_g_serving ?? (currentFoodItem as any)?.fiber_g ?? 0) 
+    : currentFoodItem.fiber;
+  const baseSugar = preferItem 
+    ? ((currentFoodItem as any)?.sugar_g_serving ?? (currentFoodItem as any)?.sugar_g ?? 0) 
+    : currentFoodItem.sugar;
+  const baseSodium = preferItem 
+    ? ((currentFoodItem as any)?.sodium_mg_serving ?? (currentFoodItem as any)?.sodium_mg ?? 0) 
+    : currentFoodItem.sodium;
+
+  // Add macro mode logging
+  console.log('[CONFIRM][MACROS_MODE]', (currentFoodItem as any)?.macro_mode || 'UNKNOWN');
 
   const effective = base && !preferItem
     ? {

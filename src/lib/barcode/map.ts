@@ -119,7 +119,24 @@ export type RecognizedFood = {
   servingGrams: number | null;
   servingText?: string; // Optional display text for serving size
   portionSource?: 'DB'|'UPC'|'FALLBACK'|'NUMERIC'|'TEXT'|'KCAL_RATIO';
-  // nutrition per "serving" (or 0 if unknown)
+  // Per-100g nutritional values for reference
+  calories_per_100g?: number;
+  protein_g_per_100g?: number;
+  carbs_g_per_100g?: number;
+  fat_g_per_100g?: number;
+  fiber_g_per_100g?: number;
+  sugar_g_per_100g?: number;
+  sodium_mg_per_100g?: number;
+  // Per-serving nutritional values (preferred)
+  calories_serving?: number;
+  protein_g_serving?: number;
+  carbs_g_serving?: number;
+  fat_g_serving?: number;
+  fiber_g_serving?: number;
+  sugar_g_serving?: number;
+  sodium_mg_serving?: number;
+  macro_mode?: 'SERVING_PROVIDER'|'SCALED_FROM_100G'|'PER100G_FALLBACK';
+  // Legacy nutrition fields (for backward compatibility)
   calories: number;
   protein_g: number;
   carbs_g: number;
@@ -173,30 +190,81 @@ export function mapBarcodeToRecognizedFood(raw: any): RecognizedFood {
     portionSource = 'FALLBACK';
   }
 
-  // Extract per 100g first; fall back to per-serving fields; then sane defaults
-  const kcal =
+  // Extract per-100g nutrients (convert kJ to kcal if needed)
+  const kcal_100g = 
     pick<number>(raw, ['nutriments.energy-kcal_100g','energy-kcal_100g','nutrition.calories_100g'], true) ??
+    (pick<number>(raw, ['nutriments.energy-kj_100g','energy-kj_100g'], true) ? Math.round(pick<number>(raw, ['nutriments.energy-kj_100g','energy-kj_100g'], true)! / 4.184) : null) ??
     pick<number>(raw, ['nutriments.energy-kcal_serving','nutrition.calories','kcal','calories'], true) ?? 150;
 
-  const protein =
-    pick<number>(raw, ['nutriments.proteins_100g','proteins_100g','nutrition.protein_g'], true) ??
+  const protein_100g = pick<number>(raw, ['nutriments.proteins_100g','proteins_100g','nutrition.protein_g'], true) ??
     pick<number>(raw, ['protein_g','protein'], true) ?? 8;
 
-  const carbs =
-    pick<number>(raw, ['nutriments.carbohydrates_100g','carbohydrates_100g','nutrition.carbs_g'], true) ??
+  const carbs_100g = pick<number>(raw, ['nutriments.carbohydrates_100g','carbohydrates_100g','nutrition.carbs_g'], true) ??
     pick<number>(raw, ['carbs_g','carbohydrate','carbohydrates'], true) ?? 20;
 
-  const fat =
-    pick<number>(raw, ['nutriments.fat_100g','fat_100g','nutrition.fat_g'], true) ??
+  const fat_100g = pick<number>(raw, ['nutriments.fat_100g','fat_100g','nutrition.fat_g'], true) ??
     pick<number>(raw, ['fat_g','fat','total_fat'], true) ?? 4;
 
-  const fiber =
-    pick<number>(raw, ['nutriments.fiber_100g','fiber_100g','nutrition.fiber_g'], true) ??
+  const fiber_100g = pick<number>(raw, ['nutriments.fiber_100g','fiber_100g','nutrition.fiber_g'], true) ??
     pick<number>(raw, ['fiber_g','fiber'], true) ?? 2;
 
-  const sugar =
-    pick<number>(raw, ['nutriments.sugars_100g','sugars_100g','nutrition.sugar_g'], true) ??
+  const sugar_100g = pick<number>(raw, ['nutriments.sugars_100g','sugars_100g','nutrition.sugar_g'], true) ??
     pick<number>(raw, ['sugar_g','sugar'], true) ?? 5;
+
+  const sodium_100g = pick<number>(raw, ['nutriments.sodium_100g','sodium_100g','nutrition.sodium_mg'], true) ??
+    pick<number>(raw, ['sodium_mg','sodium'], true) ?? 0;
+
+  // Extract per-serving nutrients if available
+  const kcal_serving = pick<number>(raw, ['nutriments.energy-kcal_serving','energy-kcal_serving','nutrition.calories_serving'], true);
+  const protein_serving = pick<number>(raw, ['nutriments.proteins_serving','proteins_serving','nutrition.protein_serving'], true);
+  const carbs_serving = pick<number>(raw, ['nutriments.carbohydrates_serving','carbohydrates_serving','nutrition.carbs_serving'], true);
+  const fat_serving = pick<number>(raw, ['nutriments.fat_serving','fat_serving','nutrition.fat_serving'], true);
+  const fiber_serving = pick<number>(raw, ['nutriments.fiber_serving','fiber_serving','nutrition.fiber_serving'], true);
+  const sugar_serving = pick<number>(raw, ['nutriments.sugars_serving','sugars_serving','nutrition.sugar_serving'], true);
+  const sodium_serving = pick<number>(raw, ['nutriments.sodium_serving','sodium_serving','nutrition.sodium_serving'], true);
+
+  // Compute per-serving macros using precedence
+  let macro_mode: 'SERVING_PROVIDER'|'SCALED_FROM_100G'|'PER100G_FALLBACK';
+  let calories_serving_final: number;
+  let protein_g_serving_final: number;
+  let carbs_g_serving_final: number;
+  let fat_g_serving_final: number;
+  let fiber_g_serving_final: number;
+  let sugar_g_serving_final: number;
+  let sodium_mg_serving_final: number;
+
+  // Check if provider gives per-serving values
+  const hasServingMacros = kcal_serving || protein_serving || carbs_serving || fat_serving;
+
+  if (hasServingMacros) {
+    macro_mode = 'SERVING_PROVIDER';
+    calories_serving_final = kcal_serving ?? kcal_100g;
+    protein_g_serving_final = protein_serving ?? protein_100g;
+    carbs_g_serving_final = carbs_serving ?? carbs_100g;
+    fat_g_serving_final = fat_serving ?? fat_100g;
+    fiber_g_serving_final = fiber_serving ?? fiber_100g;
+    sugar_g_serving_final = sugar_serving ?? sugar_100g;
+    sodium_mg_serving_final = sodium_serving ?? sodium_100g;
+  } else if (servingGrams && servingGrams !== 100) {
+    macro_mode = 'SCALED_FROM_100G';
+    const scale = servingGrams / 100;
+    calories_serving_final = Math.round(kcal_100g * scale);
+    protein_g_serving_final = Math.round((protein_100g * scale) * 10) / 10;
+    carbs_g_serving_final = Math.round((carbs_100g * scale) * 10) / 10;
+    fat_g_serving_final = Math.round((fat_100g * scale) * 10) / 10;
+    fiber_g_serving_final = Math.round((fiber_100g * scale) * 10) / 10;
+    sugar_g_serving_final = Math.round((sugar_100g * scale) * 10) / 10;
+    sodium_mg_serving_final = Math.round(sodium_100g * scale);
+  } else {
+    macro_mode = 'PER100G_FALLBACK';
+    calories_serving_final = kcal_100g;
+    protein_g_serving_final = protein_100g;
+    carbs_g_serving_final = carbs_100g;
+    fat_g_serving_final = fat_100g;
+    fiber_g_serving_final = fiber_100g;
+    sugar_g_serving_final = sugar_100g;
+    sodium_mg_serving_final = sodium_100g;
+  }
 
   // Add telemetry
   console.log('[BARCODE][SERVING_PARSE]', {
@@ -207,6 +275,13 @@ export function mapBarcodeToRecognizedFood(raw: any): RecognizedFood {
       kcal_100g: raw?.nutriments?.['energy-kcal_100g'] 
     },
     parsed: { grams: servingGrams, text: servingText, source: portionSource }
+  });
+
+  console.log('[BARCODE][MACROS]', {
+    grams: servingGrams,
+    mode: macro_mode,
+    per100g: { kcal: kcal_100g, protein: protein_100g, carbs: carbs_100g, fat: fat_100g, fiber: fiber_100g, sugar: sugar_100g, sodium_mg: sodium_100g },
+    serving: { kcal: calories_serving_final, protein: protein_g_serving_final, carbs: carbs_g_serving_final, fat: fat_g_serving_final, fiber: fiber_g_serving_final, sugar: sugar_g_serving_final, sodium_mg: sodium_mg_serving_final }
   });
 
   // Build RecognizedFood — UI copies these into legacy fields for display
@@ -220,15 +295,33 @@ export function mapBarcodeToRecognizedFood(raw: any): RecognizedFood {
     servingGrams,
     servingText,
     portionSource,
-    calories: kcal,
-    protein_g: protein,
-    carbs_g: carbs,
-    fat_g: fat,
-    fiber_g: fiber,
-    sugar_g: sugar,
+    // Per-100g values for reference
+    calories_per_100g: kcal_100g,
+    protein_g_per_100g: protein_100g,
+    carbs_g_per_100g: carbs_100g,
+    fat_g_per_100g: fat_100g,
+    fiber_g_per_100g: fiber_100g,
+    sugar_g_per_100g: sugar_100g,
+    sodium_mg_per_100g: sodium_100g,
+    // Per-serving values (preferred)
+    calories_serving: calories_serving_final,
+    protein_g_serving: protein_g_serving_final,
+    carbs_g_serving: carbs_g_serving_final,
+    fat_g_serving: fat_g_serving_final,
+    fiber_g_serving: fiber_g_serving_final,
+    sugar_g_serving: sugar_g_serving_final,
+    sodium_mg_serving: sodium_mg_serving_final,
+    macro_mode,
+    // Legacy fields (keep for backward compatibility)
+    calories: calories_serving_final,
+    protein_g: protein_g_serving_final,
+    carbs_g: carbs_g_serving_final,
+    fat_g: fat_g_serving_final,
+    fiber_g: fiber_g_serving_final,
+    sugar_g: sugar_g_serving_final,
     __hydrated: true
   };
 
-  console.log('[BARCODE][MAP:ITEM]', { name, brand, servingGrams, portionSource });
+  console.log('[BARCODE][MAP:ITEM]', { name, brand, servingGrams, portionSource, macro_mode });
   return mapped;
 }
