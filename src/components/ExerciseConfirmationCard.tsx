@@ -154,7 +154,17 @@ export const ExerciseConfirmationCard = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-2xl z-50 flex items-center justify-center p-4"
+         style={{
+           top: 'calc(-1 * env(safe-area-inset-top))',
+           bottom: 'calc(-1 * env(safe-area-inset-bottom))',
+           left: 'calc(-1 * env(safe-area-inset-left))',
+           right: 'calc(-1 * env(safe-area-inset-right))',
+           paddingTop: `calc(env(safe-area-inset-top) + 1rem)`,
+           paddingBottom: `calc(env(safe-area-inset-bottom) + 1rem)`,
+           paddingLeft: `calc(env(safe-area-inset-left) + 1rem)`,
+           paddingRight: `calc(env(safe-area-inset-right) + 1rem)`,
+         }}>
       <AnimatePresence>
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}

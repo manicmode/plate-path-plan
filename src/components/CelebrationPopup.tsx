@@ -52,7 +52,17 @@ const CelebrationPopup = ({ show, message, onClose }: CelebrationPopupProps) => 
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-2xl"
+         style={{
+           top: 'calc(-1 * env(safe-area-inset-top))',
+           bottom: 'calc(-1 * env(safe-area-inset-bottom))',
+           left: 'calc(-1 * env(safe-area-inset-left))',
+           right: 'calc(-1 * env(safe-area-inset-right))',
+           paddingTop: 'env(safe-area-inset-top)',
+           paddingBottom: 'env(safe-area-inset-bottom)',
+           paddingLeft: 'env(safe-area-inset-left)',
+           paddingRight: 'env(safe-area-inset-right)',
+         }}>
       {/* Fireworks */}
       {fireworks.map((firework) => (
         <div

@@ -35,7 +35,17 @@ const AllergenAlarm = ({ detectedAllergens, onDismiss }: AllergenAlarmProps) => 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-2xl"
+         style={{
+           top: 'calc(-1 * env(safe-area-inset-top))',
+           bottom: 'calc(-1 * env(safe-area-inset-bottom))',
+           left: 'calc(-1 * env(safe-area-inset-left))',
+           right: 'calc(-1 * env(safe-area-inset-right))',
+           paddingTop: 'env(safe-area-inset-top)',
+           paddingBottom: 'env(safe-area-inset-bottom)',
+           paddingLeft: 'env(safe-area-inset-left)',
+           paddingRight: 'env(safe-area-inset-right)',
+         }}>
       <div className="relative w-full max-w-md mx-4">
         <Alert variant="destructive" className="border-red-500 bg-red-50 dark:bg-red-900/20 shadow-2xl animate-pulse">
           <AlertTriangle className="h-6 w-6 text-red-600 animate-bounce" />

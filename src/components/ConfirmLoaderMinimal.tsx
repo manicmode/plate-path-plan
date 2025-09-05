@@ -9,7 +9,18 @@ import * as React from 'react';
 export default function ConfirmLoaderMinimal() {
   return (
     <div
-      className="fixed inset-0 z-[600] bg-black/45 backdrop-blur-sm flex items-center justify-center"
+      className="fixed inset-0 z-[600] bg-black/80 backdrop-blur-2xl flex items-center justify-center"
+      style={{
+        // Ensure full coverage including safe areas
+        top: 'calc(-1 * env(safe-area-inset-top))',
+        bottom: 'calc(-1 * env(safe-area-inset-bottom))',
+        left: 'calc(-1 * env(safe-area-inset-left))',
+        right: 'calc(-1 * env(safe-area-inset-right))',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+      }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="clm-title"
@@ -22,7 +33,7 @@ export default function ConfirmLoaderMinimal() {
       {/* Animation container */}
       <div className="relative w-[120px] h-[120px] md:w-[140px] md:h-[140px]">
         {/* Soft glass card */}
-        <div className="absolute inset-0 rounded-3xl bg-background/70 backdrop-blur-xl border shadow-xl" />
+        <div className="absolute inset-0 rounded-3xl bg-background/90 backdrop-blur-2xl border shadow-xl" />
 
         {/* Glow orb */}
         <div className="absolute inset-0 grid place-items-center">

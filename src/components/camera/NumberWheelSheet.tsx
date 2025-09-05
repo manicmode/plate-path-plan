@@ -131,7 +131,7 @@ export const NumberWheelSheet: React.FC<NumberWheelSheetProps> = ({
   return (
     <Dialog.Root open={open} onOpenChange={onClose}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[101] bg-black/50 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 z-[101] bg-black/75 backdrop-blur-2xl" />
         <Dialog.Content
           className="fixed inset-x-0 bottom-0 z-[102] bg-background rounded-t-3xl border-t border-border max-h-[70vh] flex flex-col"
           onOpenAutoFocus={(e) => e.preventDefault()}

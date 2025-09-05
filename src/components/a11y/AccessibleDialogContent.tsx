@@ -45,7 +45,7 @@ export default function AccessibleDialogContent({
       <Dialog.Overlay
         data-testid="dialog-overlay"
         className={cn(
-          "fixed inset-0 bg-black/50 backdrop-blur-sm",
+          "fixed inset-0 bg-black/75 backdrop-blur-2xl",
           OVERLAY_Z
         )}
       />

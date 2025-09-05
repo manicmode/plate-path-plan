@@ -786,7 +786,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       {/* Meal Set Reminder Dialog - Using exact same structure as item reminders */}
       <Dialog.Root open={showMealSetReminder} onOpenChange={setShowMealSetReminder}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-[700] bg-black/40 backdrop-blur-sm" />
+          <Dialog.Overlay className="fixed inset-0 z-[700] bg-black/75 backdrop-blur-2xl" />
           <Dialog.Content className="fixed z-[710] left-1/2 top-1/2 w-[92vw] max-w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-5 shadow-xl">
             <Dialog.Title className="sr-only">Create Reminder</Dialog.Title>
             <Dialog.Description className="sr-only">
