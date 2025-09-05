@@ -390,7 +390,10 @@ export const SpeakToLogModalV2: React.FC<SpeakToLogModalV2Props> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-md mx-auto bg-slate-900/70 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl/20 p-0 overflow-hidden">
+      <DialogContent 
+        showCloseButton={false}
+        className="max-w-md mx-auto bg-slate-900/70 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl/20 p-0 overflow-hidden"
+      >
         <VisuallyHidden>
           <DialogTitle>Speak to Log Food</DialogTitle>
         </VisuallyHidden>
