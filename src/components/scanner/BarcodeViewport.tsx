@@ -45,6 +45,7 @@ interface BarcodeViewportProps {
   onVideoClick: () => void;
   mode?: 'auto' | 'tap'; // Add mode prop
   className?: string;
+  forceDisableAutoRef?: React.MutableRefObject<() => void>; // Add ref to disable auto capture
 }
 
 export default function BarcodeViewport({
@@ -59,7 +60,8 @@ export default function BarcodeViewport({
   onPointerEnd,
   onVideoClick,
   mode = 'tap', // Add mode prop with default
-  className = ""
+  className = "",
+  forceDisableAutoRef // Add ref to disable auto capture
 }: BarcodeViewportProps) {
   const rafRef = useRef<number | null>(null);
   const capturingRef = useRef(false);
@@ -385,6 +387,26 @@ export default function BarcodeViewport({
       triggerCapture();
     }
   }, [triggerCapture]);
+
+  // Expose force disable auto function via ref
+  useEffect(() => {
+    if (forceDisableAutoRef) {
+      forceDisableAutoRef.current = () => {
+        console.log('[SCANNER][VIEWPORT] Force disabling auto capture');
+        setAutoOn(false);
+        // Also clear the interval immediately
+        if (autoIvRef.current) {
+          clearInterval(autoIvRef.current as any);
+          autoIvRef.current = null;
+        }
+      };
+    }
+    return () => {
+      if (forceDisableAutoRef) {
+        forceDisableAutoRef.current = () => {};
+      }
+    };
+  }, [forceDisableAutoRef]);
 
   // Expose to global for manual trigger
   useEffect(() => {

@@ -555,6 +555,9 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     console.log('[CAMERA][TEARDOWN:COMPLETE]', { reason, tracksStopped: stopped });
   }, []);
 
+  // Ref to force disable auto capture in viewport
+  const forceDisableAutoRef = useRef<() => void>(() => {});
+  
   const cleanup = async () => {
     if (tearingDownRef.current) return;
     tearingDownRef.current = true;
@@ -620,6 +623,9 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     if (cleanedRef.current) return;
     cleanedRef.current = true;
     console.log('[SCANNER][CLOSE]', { reason });
+    
+    // Immediately disable auto capture to prevent camera restart
+    forceDisableAutoRef.current?.();
     
     // 1) Stop scan loops, decoders, tracks
     cleanup();
@@ -978,6 +984,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
             onPointerEnd={handlePointerEnd}
             onVideoClick={handleVideoClick}
             mode={mode}
+            forceDisableAutoRef={forceDisableAutoRef}
           />
         </main>
 
