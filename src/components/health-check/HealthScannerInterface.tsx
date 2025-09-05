@@ -19,6 +19,7 @@ import { useTorch } from '@/lib/camera/useTorch';
 import { scannerLiveCamEnabled } from '@/lib/platform';
 import { toLegacyFromEdge } from '@/lib/health/toLegacyFromEdge';
 import { playBeep } from '@/lib/sound/soundManager';
+import { SFX } from '@/lib/sfx/sfxManager';
 import { openPhotoCapture } from '@/components/camera/photoCapture';
 import { mark, measure, checkBudget } from '@/lib/perf';
 import { PERF_BUDGET } from '@/config/perfBudget';
@@ -523,27 +524,7 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
     }
   };
 
-  const playCameraClickSound = () => {
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
-      
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.1);
-    } catch (error) {
-      devLog('Camera click sound not available');
-    }
-  };
+  const playCameraClickSound = () => { SFX().play('shutter'); };
 
   // Helper function to crop center ROI for barcode detection
   const cropCenterROI = (srcCanvas: HTMLCanvasElement): HTMLCanvasElement => {
@@ -1210,7 +1191,8 @@ export const HealthScannerInterface: React.FC<HealthScannerInterfaceProps> = ({
         
         if (!error && data && !data.fallback) {
           console.log("✅ Barcode path success:", data);
-          playBeep();
+          SFX().play('scan_success');
+          playBeep(); // legacy fallback
           onCapture(fullBase64 + `&barcode=${detectedBarcode}`);
           return;
         } else {

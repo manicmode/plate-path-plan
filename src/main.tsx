@@ -26,6 +26,9 @@ import { installCameraGuardianWire } from "./lib/camera/guardianWire";
 import "./lib/camera/testGuardian"; // Test utilities
 import { installCamDump } from "./lib/camera/camDump";
 
+// Global SFX unlock on first gesture (no UI change)
+import '@/lib/sfx/autoUnlock';
+
 // Apply security headers on app initialization
 applySecurityHeaders();
 

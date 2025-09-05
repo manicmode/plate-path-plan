@@ -581,10 +581,11 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 {/* Capture Button - Center, larger */}
                 <Button
                   id="capture-btn"
-                  onPointerDown={() => { 
-                    Sound.ensureUnlocked(); 
-                    Sound.play('shutter'); 
-                  }}
+      onPointerDown={() => {
+        import('@/lib/sfx/sfxManager').then(({ SFX }) => { SFX().unlock(); SFX().play('shutter'); });
+        Sound.ensureUnlocked(); 
+        Sound.play('shutter'); // keep existing fallback
+      }}
                   onClick={capturePhoto}
                   disabled={isCapturing || !stream}
                   size="lg"

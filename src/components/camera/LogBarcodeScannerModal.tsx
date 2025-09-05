@@ -18,6 +18,7 @@ import { decodeBarcodeFromFile } from '@/lib/decodeFromImage';
 import { logOwnerAcquire, logOwnerAttach, logOwnerRelease, logPerfOpen, logPerfClose, checkForLeaks } from '@/diagnostics/cameraInq';
 import { ScanOverlay } from '@/components/camera/ScanOverlay';
 import { playBeep } from '@/lib/sound/soundManager';
+import { SFX } from '@/lib/sfx/sfxManager';
 import BarcodeViewport, { AutoToggleChip } from '@/components/scanner/BarcodeViewport';
 import { FF } from '@/featureFlags';
 
@@ -245,7 +246,8 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     try {
       const lookupResult = await handleOffLookup(decoded.code);
       if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
-        playBeep();
+        SFX().play('scan_success');
+        playBeep(); // legacy fallback
         onBarcodeDetected(decoded.code);
         onOpenChange(false);
       } else {

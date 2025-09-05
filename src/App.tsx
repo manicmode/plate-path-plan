@@ -156,8 +156,16 @@ function AppContent() {
     
     // Bootstrap sound system - ensure unlock on first user gesture
     const unlockSound = () => {
-      import('@/lib/sound/soundManager').then(({ Sound }) => {
-        Sound.ensureUnlocked();
+      import('@/lib/sound/soundManager').then(({ Sound }) => { Sound.ensureUnlocked(); });
+      import('@/lib/sfx/sfxManager').then(async ({ SFX }) => {
+        try {
+          const k = 'sfx:welcome:played';
+          if (!sessionStorage.getItem(k)) {
+            await SFX().unlock();
+            SFX().play('welcome');
+            sessionStorage.setItem(k, '1');
+          }
+        } catch {}
       });
     };
     
