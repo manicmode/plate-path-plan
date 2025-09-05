@@ -308,6 +308,7 @@ const CameraPage = () => {
       }
       
       setShowReviewScreen(true);
+      setShowCamera(false); // Close camera modal when review screen opens
       
       console.log('[ROUTE_ITEMS] Opening review for multiple items:', items.length);
     }
@@ -373,6 +374,7 @@ const CameraPage = () => {
         setErrorType('timeout');
         setErrorMessage('Analysis timed out. Please try again or use manual entry.');
         setShowError(true);
+        setShowCamera(false); // Close camera modal on timeout
       }
     }
   );
@@ -743,7 +745,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       ? null // Will be handled by existing analyze flow
       : new File([imageSource as Blob], `log-${Date.now()}.jpg`, { type: "image/jpeg" });
 
-    setShowCamera(false);
+    // Don't close camera modal early - wait for next screen to be ready
     console.log('[FLOW][CONFIRM:START_LOADER]');
     setShowSmartLoader(true);
     setAnalyzeDone(false);
@@ -978,6 +980,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       toast.error('Invalid image format. Please try again.');
       setShowManualFoodEntry(true);
       setShowSmartLoader(false);
+      setShowCamera(false); // Close camera modal on error path
       return;
     }
 
@@ -989,6 +992,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       toast.error('Invalid image format. Please try again.');
       setShowManualFoodEntry(true);
       setShowSmartLoader(false);
+      setShowCamera(false); // Close camera modal on error path
       return;
     }
 
@@ -1077,6 +1081,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
             toast.error('No foods detected in this image. Try a clearer photo or add foods manually.');
             setShowManualFoodEntry(true);
             setShowSmartLoader(false);
+            setShowCamera(false); // Close camera modal on error path
             return;
           }
 
@@ -1098,12 +1103,14 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           setReviewItems(reviewItems);
           setShowReviewScreen(true);
           setShowSmartLoader(false);
+          setShowCamera(false); // Close camera modal when review screen opens
 
         } catch (error) {
           console.error('[FLOW][ANALYZE:ERROR]', error);
           toast.error('Failed to analyze image. Please try again.');
           setShowManualFoodEntry(true);
           setShowSmartLoader(false);
+          setShowCamera(false); // Close camera modal on error path
           return;
         }
       })();
@@ -1130,6 +1137,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
             'Try manual food entry instead'
           ]);
           setShowError(true);
+          setShowCamera(false); // Close camera modal on error
           toast.error('Analysis timed out. Please try again or use manual entry.');
         } else if (isAborted) {
           console.log('Analysis was cancelled');
@@ -1139,6 +1147,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           setErrorType('analysis');
           setErrorMessage(error instanceof Error ? error.message : 'Failed to analyze image');
           setShowError(true);
+          setShowCamera(false); // Close camera modal on error
           toast.error('Failed to analyze image. Please try again.');
         }
       }
@@ -3843,6 +3852,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         <PhotoCaptureModal
           open={showCamera}
           onOpenChange={setShowCamera}
+          deferClose={true} // Keep modal open until next screen is ready
           onCapture={async (imageData) => {
             console.log('[CAMERA][PHOTO] Photo captured from modal');
             // Convert base64 to File for handleConfirmImage
@@ -3858,6 +3868,7 @@ console.log('Global search enabled:', enableGlobalSearch);
           onManualFallback={() => {
             console.log('[CAMERA][PHOTO] Manual fallback requested');
             setShowManualFoodEntry(true);
+            setShowCamera(false); // Close camera modal on manual fallback
           }}
         />
 

@@ -36,6 +36,7 @@ interface PhotoCaptureModalProps {
   onOpenChange: (open: boolean) => void;
   onCapture: (imageData: string) => void;
   onManualFallback: () => void;
+  deferClose?: boolean; // When true, modal won't self-close after capture/upload
 }
 
 
@@ -43,7 +44,8 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   open,
   onOpenChange,
   onCapture,
-  onManualFallback
+  onManualFallback,
+  deferClose = false
 }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -117,6 +119,15 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     };
   }, [open, releaseNow]);
 
+  // Guardrail: Guarantee camera shutdown when parent closes modal
+  useEffect(() => {
+    if (!open) {
+      try { 
+        camHardStop?.('modal_close'); 
+      } catch {}
+    }
+  }, [open]);
+
   // Unmount guard
   useEffect(() => () => releaseNow(), [releaseNow]);
 
@@ -178,8 +189,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
           onCapture(imageBase64);
         };
         reader.readAsDataURL(file);
-        camHardStop('modal_close');
-        onOpenChange(false);
+        if (!deferClose) {
+          camHardStop('modal_close');
+          onOpenChange(false);
+        }
         return null;
       } catch (fallbackErr) {
         console.error("[PHOTO] Both live and photo capture failed:", err, fallbackErr);
@@ -358,8 +371,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       canvas.toBlob(async (blob) => {
         if (blob) {
           await handleCapturedBlob(blob);
-          camHardStop('modal_close');
-          onOpenChange(false);
+          if (!deferClose) {
+            camHardStop('modal_close');
+            onOpenChange(false);
+          }
         }
       }, 'image/jpeg', 0.95); // High quality export
       
@@ -381,8 +396,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
       if (file) {
         console.log('[PHOTO] Image uploaded from gallery, processing...');
         await handleCapturedBlob(file);
-        camHardStop('modal_close');
-        onOpenChange(false);
+        if (!deferClose) {
+          camHardStop('modal_close');
+          onOpenChange(false);
+        }
       }
     };
     input.click();
