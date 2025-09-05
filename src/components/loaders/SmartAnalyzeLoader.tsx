@@ -125,9 +125,23 @@ export function SmartAnalyzeLoader({
   // prefers-reduced-motion
   const prefersReducedMotion = reduceMotion ?? window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+  // Cancel handler with event guard
+  const cancelExecutedRef = React.useRef(false);
+  const fireCancel = React.useCallback((e: React.SyntheticEvent) => {
+    if (cancelExecutedRef.current) return;
+    cancelExecutedRef.current = true;
+    
+    console.log('[CANCEL][CLICK]', { component: 'SmartAnalyzeLoader', eventType: e.type });
+    onCancel?.();
+    console.log('[CANCEL][DONE]', { component: 'SmartAnalyzeLoader' });
+    
+    // Reset after a short delay to allow for legitimate repeated cancels
+    setTimeout(() => { cancelExecutedRef.current = false; }, 500);
+  }, [onCancel]);
+
   return (
     <div 
-      className="fixed inset-0 z-[760] flex items-center justify-center"
+      className="fixed inset-0 z-[760] flex items-center justify-center pointer-events-auto"
       style={{
         // Ensure complete coverage including areas above safe zones
         top: 'calc(-1 * max(env(safe-area-inset-top), 44px))',
@@ -145,7 +159,7 @@ export function SmartAnalyzeLoader({
       }}
     >
       <div
-        className="w-[min(92vw,520px)] rounded-3xl border border-white/8 bg-gradient-to-b from-white/6 to-white/3 p-5 shadow-2xl"
+        className="w-[min(92vw,520px)] rounded-3xl border border-white/8 bg-gradient-to-b from-white/6 to-white/3 p-5 shadow-2xl pointer-events-auto"
         role="status"
         aria-live="polite"
         style={{
@@ -212,12 +226,15 @@ export function SmartAnalyzeLoader({
           {onCancel && (
             <button
               type="button"
-              onClick={withSafeCancel((e) => {
-                console.log('[CANCEL][CLICK]', { component: 'SmartAnalyzeLoader' });
-                onCancel();
-                console.log('[CANCEL][DONE]', { component: 'SmartAnalyzeLoader' });
-              })}
-              className="inline-flex items-center justify-center rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
+              onClick={fireCancel}
+              onPointerUp={fireCancel}
+              onTouchEnd={fireCancel}
+              className="inline-flex items-center justify-center rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10 pointer-events-auto cursor-pointer"
+              style={{ 
+                touchAction: 'manipulation',
+                userSelect: 'none',
+                WebkitTapHighlightColor: 'transparent'
+              }}
             >
               Cancel
             </button>
