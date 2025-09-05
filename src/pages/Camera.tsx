@@ -479,6 +479,24 @@ const CameraPage = () => {
   // Smart analyze loader states
   const [showSmartLoader, setShowSmartLoader] = useState(false);
   const [analyzePhase, setAnalyzePhase] = useState<"uploading"|"preprocessing"|"detecting"|"hydrating"|"buildingReview"|undefined>(undefined);
+
+  // Pre-confirm UI blocking - prevents main UI flash before confirmation modal
+  const hasPendingConfirm = !!recognizedFoods?.[0];
+  const blockMainUI = 
+    showConfirmation ||
+    showVoiceAnalyzing ||
+    showProcessingNextItem ||
+    showSmartLoader ||
+    hasPendingConfirm;
+
+  // Telemetry for pre-confirm blocking
+  useEffect(() => {
+    if (hasPendingConfirm && !showConfirmation) {
+      console.log('[PRECONFIRM][BLOCK_UI:on]');
+    } else if (!hasPendingConfirm || showConfirmation) {
+      console.log('[PRECONFIRM][BLOCK_UI:off]');
+    }
+  }, [hasPendingConfirm, showConfirmation]);
   const [analyzeDone, setAnalyzeDone] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -3472,7 +3490,7 @@ console.log('Global search enabled:', enableGlobalSearch);
       )}
 
       {/* Main Camera UI */}
-      {activeTab === 'main' && !selectedImage && !showConfirmation && !showError && !showManualEdit && !showVoiceAnalyzing && !showProcessingNextItem && !showVoiceEntry && !showTransition && (
+      {activeTab === 'main' && !blockMainUI && !showError && !showManualEdit && !showVoiceEntry && !showTransition && (
         <Card className="animate-slide-up mb-0 !mb-0">
           <CardHeader>
             <CardTitle className="flex items-center justify-center gap-2 text-cyan-400">

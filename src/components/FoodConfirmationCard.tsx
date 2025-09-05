@@ -382,10 +382,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   React.useEffect(() => {
     if (isOpen && currentFoodItem && onVoiceAnalyzingComplete) {
       // Ensure the modal is fully rendered and stable before hiding the overlay
-      const timer = setTimeout(() => {
+      console.log('[CONFIRM][READY_TO_HIDE_OVERLAY]');
+      requestAnimationFrame(() => setTimeout(() => {
         onVoiceAnalyzingComplete();
-      }, 200);
-      return () => clearTimeout(timer);
+      }, 150));
     }
   }, [isOpen, currentFoodItem, onVoiceAnalyzingComplete]);
 
@@ -952,6 +952,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
           onEscapeKeyDown={(e) => forceConfirm && e.preventDefault()}
           onInteractOutside={(e) => forceConfirm && e.preventDefault()}
         >
+          <VisuallyHidden><DialogTitle>Confirm Food Log</DialogTitle></VisuallyHidden>
           <div className="p-6">
             {/* Unknown Product Alert */}
             {isUnknownProduct && (
