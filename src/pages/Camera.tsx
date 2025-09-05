@@ -48,7 +48,7 @@ import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { UnifiedLoggingTabs } from '@/components/camera/UnifiedLoggingTabs';
 import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
-import { UnifiedPhotoCaptureModal } from '@/components/camera/UnifiedPhotoCaptureModal';
+import { PhotoCaptureModal } from '@/components/scan/PhotoCaptureModal';
 import { SmartAnalyzeLoader } from '@/components/loaders/SmartAnalyzeLoader';
 import { useAnalyzeFlow } from '@/hooks/useAnalyzeFlow';
 import { analyzePhotoForLyfV1 } from '@/lyf_v1_frozen';
@@ -3839,22 +3839,26 @@ console.log('Global search enabled:', enableGlobalSearch);
         </div>
       )}
 
-      {/* Unified Photo Capture Modal */}
-        <UnifiedPhotoCaptureModal
-          isOpen={showCamera}
-          onClose={() => setShowCamera(false)}
-          onConfirm={handleConfirmImage}
-          
-          // bottom prompt (already in place)
-          title="Position food in the frame"
-          subtitle="Capture, upload, or exit"
-
-          // NEW — top banner for logging
-          bannerEmoji="🍽️"
-          bannerTitle="Log your meal"
-          bannerSubtext="We'll analyze the photo and prep your review"
-          
-          blockCamera={showConfirmation}
+      {/* Photo Capture Modal */}
+        <PhotoCaptureModal
+          open={showCamera}
+          onOpenChange={setShowCamera}
+          onCapture={async (imageData) => {
+            console.log('[CAMERA][PHOTO] Photo captured from modal');
+            // Convert base64 to File for handleConfirmImage
+            try {
+              const response = await fetch(imageData);
+              const blob = await response.blob();
+              const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
+              await handleConfirmImage(file);
+            } catch (error) {
+              console.error('Failed to process captured photo:', error);
+            }
+          }}
+          onManualFallback={() => {
+            console.log('[CAMERA][PHOTO] Manual fallback requested');
+            setShowManualFoodEntry(true);
+          }}
         />
 
         {/* Smart Analyze Loader - Modified to overlay instead of replace */}
