@@ -694,7 +694,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
           </main>
 
           {/* Footer / CTA */}
-          <footer className="row-start-3 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+16px)]">
+          <footer className="row-start-3 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+40px)]">
             <Button
               onClick={handleManualCapture}
               disabled={isDecoding || isLookingUp || !stream}
