@@ -384,6 +384,7 @@ const CameraPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const selectedImageRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const activeRequestIdRef = useRef<string | null>(null);
   const { addFood } = useNutrition();
   const { isRecording, isProcessing: isVoiceProcessing, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
   const { playFoodLogConfirm } = useSound();
@@ -427,15 +428,12 @@ const CameraPage = () => {
     setSelectedFoodItem(null);
     setForceConfirm(false);
     setAnalysisRequestId(null);
+    activeRequestIdRef.current = null;
     
-    // Restore prior UI
-    if (!showCamera) {
-      // If camera modal was not open, return to grid
-      setSelectedImage(null);
-      setActiveTab('main');
-      // Don't navigate - stay on Camera page
-    }
-    // If showCamera was true, leave it true to maintain camera preview
+    // Force close camera and return to main logging page
+    setShowCamera(false);
+    setSelectedImage(null);
+    setActiveTab('main');
     
     console.log('[CANCEL][DONE]', { component: 'CameraPage', result: 'closed' });
   }, [abortControllerRef, cancelAnalyzeFlow, showCamera, setIsAnalyzing, setShowSmartLoader, setShowVoiceAnalyzing, setIsManualAnalyzing, setShowProcessingNextItem, setIsProcessingVoice, setIsProcessingFood, setIsMultiAILoading, setShowConfirmation, setShowReviewScreen, setShowSummaryPanel, setShowTransition, setShowError, setShowMultiAIDetection, setRecognizedFoods, setReviewItems, setSummaryItems, setSelectedFoodItem, setForceConfirm, setSelectedImage, setActiveTab]);
@@ -841,6 +839,12 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       if (maybeFile) {
         // Wrapper function for the existing analyzeImage logic
         const analyzeImageForFile = async (file: File, options?: { signal?: AbortSignal }) => {
+          // Check for early cancellation
+          if (options?.signal?.aborted || !activeRequestIdRef.current) {
+            console.log('[FLOW][ANALYZE:EARLY_CANCEL]');
+            throw new Error('Analysis cancelled');
+          }
+          
           // Process the image file first
           await processImageFile(file);
           
@@ -1098,6 +1102,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     // Generate unique request ID and setup abort controller
     const requestId = crypto.randomUUID();
     setAnalysisRequestId(requestId);
+    activeRequestIdRef.current = requestId;
     
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -1160,7 +1165,10 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           const items = await run(imageBase64, { mode: 'log' });
           
           // Check if analysis was cancelled before proceeding
-          if (controller.signal.aborted || analysisRequestId !== requestId) return;
+          if (controller.signal.aborted || activeRequestIdRef.current !== requestId) {
+            console.log('[FLOW][ANALYZE:ABANDON]', 'Request cancelled or superseded');
+            return;
+          }
           
           console.log('[FLOW][ANALYZE:RESULT]', { itemsCount: items?.length, isArray: Array.isArray(items) });
           
