@@ -285,9 +285,16 @@ const CameraPage = () => {
 
     console.log(`[ROUTE_ITEMS] Processing ${items.length} items from ${sourceHint || 'unknown'} source`);
 
+    // Determine the source type
+    const isBarcode = sourceHint === 'barcode';
+    const isManualLike = sourceHint === 'manual' || sourceHint === 'speech';
+
     if (items.length === 1) {
       const item = items[0];
       setRecognizedFoods([item]);
+      
+      // Force confirmation for manual/voice inputs - never auto-log them
+      const mustConfirm = isManualLike;
       
       // Allow confirm-card to bypass hydration gate for text-sourced items
       if (sourceHint === 'speech' || sourceHint === 'manual' || sourceHint === 'barcode' || 
@@ -298,11 +305,20 @@ const CameraPage = () => {
       }
       
       setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : sourceHint === 'barcode' ? 'barcode' : 'photo');
-      setShowConfirmation(true);
+      
+      // Force confirmation for manual/voice - never bypass
+      const showConfirmation = isManualLike ? true : true; // Always show confirmation for now
+      setShowConfirmation(showConfirmation);
       setShowLogBarcodeScanner(false);
       setShowCamera(false);
       
-      console.log('[ROUTE_ITEMS] Opening confirmation for single item:', item.name);
+      console.log('[ROUTE_ITEMS] Opening confirmation for single item:', {
+        name: item.name,
+        source: sourceHint,
+        isManualLike,
+        mustConfirm,
+        showConfirmation
+      });
     } else {
       // Transform to ReviewItem format for multiple items
       const reviewItems = items.map((item: any, index: number) => ({

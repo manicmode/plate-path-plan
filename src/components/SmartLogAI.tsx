@@ -43,10 +43,12 @@ export const SmartLogAI: React.FC<SmartLogAIProps> = ({ onFoodSelect }) => {
     queryFn: async () => {
       if (!user?.id) return 0;
       
+      // Replace problematic HEAD request with safe SELECT
       const { count, error } = await supabase
         .from('nutrition_logs')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
+        .select('id', { count: 'exact' })
+        .eq('user_id', user.id)
+        .limit(1);
 
       if (error) throw error;
       return count || 0;
