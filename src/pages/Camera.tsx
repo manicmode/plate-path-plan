@@ -1344,6 +1344,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
 
   // Barcode lookup function - Enhanced with ingredient detection
   const handleBarcodeDetected = async (barcode: string) => {
+    try { SFX().unlock(); } catch {}
     try {
       setIsLoadingBarcode(true);
       setInputSource('barcode');
@@ -3052,6 +3053,12 @@ console.log('Global search enabled:', enableGlobalSearch);
   }, []);
 
   // Kill any stray camera tracks when modals close or route unmounts
+  // Add hard-block guard for any camera start during confirm
+  useEffect(() => {
+    if ((globalThis as any).__confirmOpen !== undefined) return; // already set above
+    (globalThis as any).__confirmOpen = showConfirmation;
+  }, [showConfirmation]);
+
   useEffect(() => {
     if ((!showLogBarcodeScanner && !showCamera) || showConfirmation) {
       try {
@@ -3225,7 +3232,10 @@ console.log('Global search enabled:', enableGlobalSearch);
                 <div className="grid grid-cols-2 gap-4">
                   {/* Upload Photo Tab */}
                   <Button
-                    onClick={() => setShowCamera(true)}
+                    onClick={() => {
+                      try { SFX().unlock(); } catch {}
+                      setShowCamera(true);
+                    }}
                     className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                     size="lg"
                   >

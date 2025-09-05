@@ -60,7 +60,14 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   const startTimeRef = useRef<number>(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+const [stream, setStream] = useState<MediaStream | null>(null);
+  // Autoscan control
+  const scanningRef = useRef(false);
+  const decodeAbortRef = useRef<AbortController | null>(null);
+  // Prevent stale async attach after close
+  const genRef = useRef(0);
+  // Avoid double cleanup races
+  const tearingDownRef = useRef(false);
   const [isDecoding, setIsDecoding] = useState(false);
   const [phase, setPhase] = useState<ScanPhase>('scanning');
   
@@ -206,11 +213,37 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     try { (video as any).srcObject = null; } catch {}
   };
 
+  function killScanLoop() {
+    scanningRef.current = false;
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    if (decodeAbortRef.current) {
+      try { decodeAbortRef.current.abort(); } catch {}
+      decodeAbortRef.current = null;
+    }
+  }
+
+  function scanLoop() {
+    if (!scanningRef.current) return;
+    rafIdRef.current = requestAnimationFrame(async () => {
+      if (!scanningRef.current) return;
+      try {
+        // your decodeFrame(...) or similar; pass abort signal if supported
+        // await decodeFrame({ signal: decodeAbortRef.current?.signal });
+      } catch (e:any) {
+        if (e?.name === 'AbortError') return; // expected on teardown
+      }
+      scanLoop();
+    });
+  }
+
   const stopAutoscan = () => {
     runningRef.current = false;
     scanRunningRef.current = false;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    if (rafIdRef.current != null) { cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; }
+    killScanLoop();
     inFlightRef.current = false;
     hitsRef.current = [];
   };
@@ -247,6 +280,14 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     };
   }, []);
 
+  // If you auto-capture on successful decode, stop the loop *before* opening confirm
+  const onAutoCapture = useCallback((code: string) => {
+    killScanLoop();           // stop RAF/decoder immediately
+    genRef.current++;         // invalidate any in-flight startCamera
+    // now call upstream to open confirm; cleanup effect will stop tracks
+    onBarcodeDetected(code);
+  }, [onBarcodeDetected]);
+
   // Handle barcode capture from viewport
   const handleBarcodeCapture = useCallback(async (decoded: { code: string }) => {
     console.log('[SCANNER] Auto-capture detected:', decoded.code);
@@ -258,7 +299,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       if (lookupResult.hit && lookupResult.data?.ok && lookupResult.data.product) {
         SFX().play('scan_success');
         playBeep(); // legacy fallback
-        onBarcodeDetected(decoded.code);
+        onAutoCapture(decoded.code);
         onOpenChange(false);
       } else {
         setPhase('scanning');
@@ -269,7 +310,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       setPhase('scanning');
       setShowSuccess(false);
     }
-  }, [onBarcodeDetected, onOpenChange]);
+  }, [onAutoCapture, onOpenChange]);
 
   // Force capture for manual button
   const handleManualCapture = useCallback(() => {
@@ -311,6 +352,10 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
   }, [open, stream, updateStreamRef]);
 
   const startCamera = async () => {
+    // bump generation; any late async below will check this
+    const myGen = ++genRef.current;
+    // block re-acquire if modal closed mid-flight
+    if (!open) return;
     if (typeof window !== 'undefined' && (window as any).__confirmOpen) {
       console.log('[CAMERA][BLOCKED_WHILE_CONFIRM]');
       return;
@@ -378,13 +423,20 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
         const track = mediaStream.getVideoTracks()[0];
         trackRef.current = track;
         setStream(mediaStream);
-        scanRunningRef.current = true;
-        const loop = () => {
-          if (!scanRunningRef.current) return;
-          // decode pass...
-          rafIdRef.current = requestAnimationFrame(loop);
-        };
-        rafIdRef.current = requestAnimationFrame(loop);
+        
+        // stale async check: if we closed while awaiting, stop & bail
+        if (myGen !== genRef.current || !open) {
+          mediaStream.getTracks().forEach(t => t.stop());
+          if (videoRef.current) {
+            try { videoRef.current.pause(); } catch {}
+            videoRef.current.srcObject = null;
+          }
+          return;
+        }
+        // start autoscan loop
+        scanningRef.current = true;
+        decodeAbortRef.current = new AbortController();
+        scanLoop();
         
         // Initialize zoom capabilities
         const caps: any = track.getCapabilities?.() ?? {};
@@ -438,21 +490,21 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     }
   };
 
-  const cleanup = () => {
-    // 1) cancel RAF loop first to drop references the decoder holds
-    scanRunningRef.current = false;
-    if (rafIdRef.current) {
-      cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = null;
-    }
-    
+  const cleanup = async () => {
+    if (tearingDownRef.current) return;
+    tearingDownRef.current = true;
+    // 1) stop loop/decoders *first*
+    killScanLoop();
+    // 2) give RAF/decoder a beat to unwind
+    await new Promise(r => requestAnimationFrame(() => r(null)));
+    // 3) stop tracks & detach video
     const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()?.[0];
     torchOff(track);
 
     const s = (videoRef.current?.srcObject as MediaStream) || undefined;
     let tracksStopped = 0;
     if (s) {
-      s.getTracks().forEach(t => { try { t.stop(); tracksStopped++; } catch {} });
+      try { s.getTracks().forEach(t => { t.stop(); tracksStopped++; }); } catch {}
     }
 
     if (videoRef.current) { 
@@ -469,6 +521,7 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
     setIsDecoding(false);
     setPhase('scanning');
     setIsLookingUp(false);
+    tearingDownRef.current = false;
   };
 
   const handleOffLookup = async (barcode: string): Promise<{ hit: boolean; status: string | number; data?: any }> => {
