@@ -332,6 +332,18 @@ export const SpeakToLogModalV2: React.FC<SpeakToLogModalV2Props> = ({
   };
 
   const handleConfirm = () => {
+    // A) Log enriched data right before opening Confirm card (SpeakToLog)
+    if (results.length > 0) {
+      const enriched = results[0]; // Log first item for debugging
+      console.log("[CONFIRM][ENRICHED]", {
+        name: enriched?.name,
+        source: enriched?.source || enriched?.enrichmentSource,
+        confidence: enriched?.confidence || enriched?.enrichmentConfidence,
+        ingLen: enriched?.ingredients?.length ?? 0,
+        perServingG: enriched?.perServing?.serving_grams,
+      });
+    }
+    
     onResults(results);
     handleClose();
   };

@@ -57,8 +57,11 @@ interface FoodItem {
   barcode?: string;
   ingredientsText?: string;
   ingredientsAvailable?: boolean;
+  ingredients?: Array<{ name: string; grams?: number; amount?: string }>; // Add ingredients property
   source?: string; // Nutrition data source (branded-database, usda, openfoodfacts, ai-estimate, etc.)
   confidence?: number; // Confidence score for the nutrition estimation
+  enrichmentSource?: string; // Add enrichment metadata
+  enrichmentConfidence?: number; // Add enrichment confidence
   // Additional data for flag detection from health report prefill
   allergens?: string[];
   additives?: string[];
@@ -191,6 +194,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   // Derive a stable ID from props (not from transient state)
   const foodId = foodItem?.id ?? null;
+
+  // A) Log what FoodConfirmationCard receives as props
+  useEffect(() => {
+    console.log("[CONFIRM][PROPS]", {
+      source: foodItem?.source, 
+      confidence: foodItem?.confidence,
+      ingLen: foodItem?.ingredients?.length ?? 0,
+      enrichmentSource: foodItem?.enrichmentSource,
+      enrichmentConfidence: foodItem?.enrichmentConfidence
+    });
+  }, [foodItem]);
 
   // Zustand selector MUST run unconditionally on every render
   const storeAnalysis = useNutritionStore(

@@ -538,6 +538,16 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
       // Pass results to parent
       if (onResults) {
+        // A) Log enriched data right before opening Confirm card (ManualEntry)
+        const enriched = enrichedData;
+        console.log("[CONFIRM][ENRICHED]", {
+          name: enriched?.name,
+          source: enriched?.source,
+          confidence: enriched?.confidence,
+          ingLen: enriched?.ingredients?.length ?? 0,
+          perServingG: enriched?.perServing?.serving_grams,
+        });
+        
         onResults(scaledItems);
       }
 

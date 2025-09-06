@@ -410,30 +410,50 @@ serve(async (req) => {
       });
     }
 
-    // Resolver cascade
+    // Resolver cascade - prioritize Nutritionix for complex queries
     let result: EnrichedFood | null = null;
     
-    // 1. Try FDC first
-    result = await searchFDC(query);
-    if (result) {
-      console.log(`[ENRICH][HIT source=FDC] confidence=${result.confidence}`);
+    // Detect if query is complex (multiple words) suggesting a composed dish
+    const isComplexQuery = normalizedQuery.split(' ').length >= 2;
+    
+    if (isComplexQuery) {
+      // 1. Try Nutritionix first for complex queries (better ingredients)
+      result = await searchNutritionix(query);
+      if (result) {
+        console.log(`[ENRICH][HIT source=NUTRITIONIX] confidence=${result.confidence}`);
+      }
+      
+      // 2. Try FDC if Nutritionix failed or low confidence
+      if (!result || result.confidence < 0.7) {
+        const fdcResult = await searchFDC(query);
+        if (fdcResult && (!result || fdcResult.confidence > result.confidence)) {
+          result = fdcResult;
+          console.log(`[ENRICH][HIT source=FDC] confidence=${result.confidence}`);
+        }
+      }
+    } else {
+      // 1. Try FDC first for simple queries (single ingredients)
+      result = await searchFDC(query);
+      if (result) {
+        console.log(`[ENRICH][HIT source=FDC] confidence=${result.confidence}`);
+      }
+      
+      // 2. Try Nutritionix if FDC failed or low confidence
+      if (!result || result.confidence < 0.7) {
+        const nutritionixResult = await searchNutritionix(query);
+        if (nutritionixResult && (!result || nutritionixResult.confidence > result.confidence)) {
+          result = nutritionixResult;
+          console.log(`[ENRICH][HIT source=NUTRITIONIX] confidence=${result.confidence}`);
+        }
+      }
     }
     
-    // 2. Try Edamam if FDC failed or low confidence
+    // 3. Try Edamam if still low confidence
     if (!result || result.confidence < 0.7) {
       const edamamResult = await searchEdamam(query);
       if (edamamResult && (!result || edamamResult.confidence > result.confidence)) {
         result = edamamResult;
         console.log(`[ENRICH][HIT source=EDAMAM] confidence=${result.confidence}`);
-      }
-    }
-    
-    // 3. Try Nutritionix if still low confidence
-    if (!result || result.confidence < 0.7) {
-      const nutritionixResult = await searchNutritionix(query);
-      if (nutritionixResult && (!result || nutritionixResult.confidence > result.confidence)) {
-        result = nutritionixResult;
-        console.log(`[ENRICH][HIT source=NUTRITIONIX] confidence=${result.confidence}`);
       }
     }
     
@@ -452,6 +472,15 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // B) Log what the edge function returns before cache write/return
+    console.log("[ENRICH][HIT]", {
+      q: normalizedQuery, 
+      source: result.source, 
+      conf: result.confidence,
+      ingLen: result.ingredients?.length ?? 0,
+      perServingG: result.perServing?.serving_grams
+    });
 
     // Cache the result with 90-day TTL
     const expires_at = new Date(Date.now() + 90 * 24 * 3600 * 1000).toISOString();
