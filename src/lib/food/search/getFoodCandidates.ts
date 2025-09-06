@@ -632,7 +632,6 @@ export async function getFoodCandidates(
   
   return finalCandidates;
 }
-}
 
 /**
  * Determines if candidate picker should be shown based on confidence thresholds
