@@ -335,10 +335,7 @@ const ProfileContent = () => {
 
       {/* Tracker Selection */}
       <TrackerSelection 
-        selectedTrackers={formData.selectedTrackers}
-        userSelectedTrackers={userSelectedTrackers}
         isEditing={editingSection === 'homeDisplay'}
-        onToggleTracker={toggleTracker}
         onEditToggle={() => withStabilizedViewport(() => setEditingSection(editingSection === 'homeDisplay' ? null : 'homeDisplay'))}
       />
 

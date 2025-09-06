@@ -1,51 +1,98 @@
 
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Monitor, Settings } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Monitor, Settings, RefreshCw } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
-import { getAutoFilledTrackers, isAutoFilledTracker } from '@/lib/trackerUtils';
 import { withStabilizedViewport } from '@/utils/scrollStabilizer';
+import { getHomeTrackers, setHomeTrackers, HomeTrackers } from '@/store/userPrefs';
+import { TrackerKey } from '@/lib/trackers/trackerRegistry';
 
 interface TrackerSelectionProps {
-  selectedTrackers: string[];
-  userSelectedTrackers: string[]; // Trackers explicitly selected by user
   isEditing: boolean;
-  onToggleTracker: (trackerId: string) => void;
   onEditToggle: () => void;
 }
 
 const trackerOptions = [
-  { id: 'calories', label: 'Calories' },
-  { id: 'protein', label: 'Protein' },
-  { id: 'carbs', label: 'Carbs' },
-  { id: 'fat', label: 'Fat' },
-  { id: 'hydration', label: 'Hydration' },
-  { id: 'supplements', label: 'Supplements' },
-  { id: 'fiber', label: 'Fiber' },
-  { id: 'micronutrients', label: 'Micronutrients' },
+  { id: 'calories' as TrackerKey, label: 'Calories' },
+  { id: 'protein' as TrackerKey, label: 'Protein' },
+  { id: 'carbs' as TrackerKey, label: 'Carbs' },
+  { id: 'fat' as TrackerKey, label: 'Fat' },
+  { id: 'hydration' as TrackerKey, label: 'Hydration' },
+  { id: 'supplements' as TrackerKey, label: 'Supplements' },
+  { id: 'fiber' as TrackerKey, label: 'Fiber' },
+  { id: 'micronutrients' as TrackerKey, label: 'Micronutrients' },
 ];
 
-export const TrackerSelection = ({ selectedTrackers, userSelectedTrackers, isEditing, onToggleTracker, onEditToggle }: TrackerSelectionProps) => {
-  const isMobile = useIsMobile();
+// Diagnostics flag
+const DIAG_ENABLED = import.meta.env.VITE_TRACKER_QUICKSWAP_DIAG === 'true';
 
-  const handleToggleTracker = (trackerId: string) => {
+export const TrackerSelection = ({ isEditing, onEditToggle }: TrackerSelectionProps) => {
+  const isMobile = useIsMobile();
+  const [homeTrackers, setLocalHomeTrackers] = useState<HomeTrackers>(getHomeTrackers());
+  const [replacingIndex, setReplacingIndex] = useState<number | null>(null);
+
+  // Subscribe to home tracker changes
+  useEffect(() => {
+    const onChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ trackers: HomeTrackers }>;
+      if (customEvent.detail?.trackers) {
+        setLocalHomeTrackers(customEvent.detail.trackers);
+        if (DIAG_ENABLED) {
+          console.debug('[ProfileDisplay] homeTrackerChanged event', customEvent.detail.trackers);
+        }
+      }
+    };
+    
+    window.addEventListener('homeTrackerChanged', onChange);
+    return () => window.removeEventListener('homeTrackerChanged', onChange);
+  }, []);
+
+  // Refresh state from canonical source on mount and edit toggle
+  useEffect(() => {
+    const current = getHomeTrackers();
+    setLocalHomeTrackers(current);
+    if (DIAG_ENABLED) {
+      console.debug('[ProfileDisplay] render', current);
+    }
+  }, [isEditing]);
+
+  const handleTrackerClick = useCallback(async (trackerId: TrackerKey) => {
     if (!isEditing) return;
     
-    const isUserSelected = userSelectedTrackers.includes(trackerId);
+    const isSelected = homeTrackers.includes(trackerId);
     
-    
-    if (isUserSelected) {
-      // Remove tracker - auto-fill will handle ensuring 3 total
-      onToggleTracker(trackerId);
-      
-    } else {
-      // Add tracker - auto-fill will handle max 3 limit
-      onToggleTracker(trackerId);
-      
+    if (isSelected) {
+      // Show tooltip for already selected
+      toast('Already selected on Home — use Replace to pick another');
+      return;
     }
-  };
+
+    // If not selected, show replace menu
+    setReplacingIndex(null); // Will show "Replace which?" popover
+  }, [isEditing, homeTrackers]);
+
+  const handleReplace = useCallback(async (oldIndex: number, newKey: TrackerKey) => {
+    try {
+      const newTrackers = [...homeTrackers] as HomeTrackers;
+      newTrackers[oldIndex] = newKey;
+      
+      if (DIAG_ENABLED) {
+        console.debug('[ProfileDisplay] setHomeTrackers', newTrackers);
+      }
+      
+      await setHomeTrackers(newTrackers);
+      setReplacingIndex(null);
+      
+      toast('Tracker updated! Changes reflected on Home page.');
+    } catch (error) {
+      console.error('Failed to update tracker:', error);
+      toast(error instanceof Error ? error.message : 'Failed to update tracker');
+    }
+  }, [homeTrackers]);
 
   return (
     <Card className="animate-slide-up glass-card border-0 rounded-3xl ProfileCard" style={{ animationDelay: '350ms' }}>
@@ -60,7 +107,7 @@ export const TrackerSelection = ({ selectedTrackers, userSelectedTrackers, isEdi
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-withStabilizedViewport(() => onEditToggle());
+            withStabilizedViewport(() => onEditToggle());
           }}
           className="opacity-70 hover:opacity-100"
           style={{ touchAction: 'manipulation' }}
@@ -71,38 +118,62 @@ withStabilizedViewport(() => onEditToggle());
       <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
         <div className="space-y-3">
           <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-600 dark:text-gray-300`}>
-            Choose which 3 trackers appear on your home page ({selectedTrackers.length}/3 selected)
+            Choose which 3 trackers appear on your home page (3/3 selected)
           </p>
           <div className={`flex flex-wrap ${isMobile ? 'gap-1' : 'gap-2'}`}>
             {trackerOptions.map(tracker => {
-              const isSelected = selectedTrackers.includes(tracker.id);
-              const isUserSelected = userSelectedTrackers.includes(tracker.id);
-              const isAutoFilled = isSelected && !isUserSelected;
+              const isSelected = homeTrackers.includes(tracker.id);
               
               return (
-                <Badge
-                  key={tracker.id}
-                  variant={isSelected ? "default" : "outline"}
-                  className={`cursor-pointer relative ${
-                    isEditing ? 'hover:bg-green-100' : 'cursor-default'
-                  } ${
-                    isMobile ? 'text-xs px-2 py-1' : 'text-sm'
-                  } ${
-                    isAutoFilled ? 'opacity-70 ring-1 ring-muted-foreground' : ''
-                  }`}
-                  onClick={() => handleToggleTracker(tracker.id)}
-                >
-                  {tracker.label}
-                  {isAutoFilled && (
-                    <span className="ml-1 text-xs opacity-60">•</span>
+                <Popover key={tracker.id}>
+                  <PopoverTrigger asChild>
+                    <Badge
+                      variant={isSelected ? "default" : "outline"}
+                      className={`cursor-pointer relative ${
+                        isEditing ? 'hover:bg-green-100 hover:scale-105' : 'cursor-default'
+                      } ${
+                        isMobile ? 'text-xs px-2 py-1' : 'text-sm'
+                      } transition-all duration-200`}
+                      onClick={() => handleTrackerClick(tracker.id)}
+                    >
+                      {tracker.label}
+                      {isSelected && (
+                        <span className="ml-1 text-xs opacity-80">✓</span>
+                      )}
+                    </Badge>
+                  </PopoverTrigger>
+                  {isEditing && !isSelected && (
+                    <PopoverContent className="w-56 p-2">
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Replace which tracker?</p>
+                        <div className="grid gap-1">
+                          {homeTrackers.map((currentTracker, index) => {
+                            const currentOption = trackerOptions.find(opt => opt.id === currentTracker);
+                            return (
+                              <Button
+                                key={index}
+                                variant="ghost"
+                                size="sm"
+                                className="justify-start h-8"
+                                onClick={() => handleReplace(index, tracker.id)}
+                              >
+                                <RefreshCw className="h-3 w-3 mr-2" />
+                                Replace {currentOption?.label}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </PopoverContent>
                   )}
-                </Badge>
+                </Popover>
               );
             })}
           </div>
           {isEditing && (
             <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground mt-2`}>
-              • Auto-filled trackers shown with lower opacity. They'll be replaced when you select others.
+              • Click any unselected tracker to replace one of your current selections
+              • Changes sync instantly with your Home page
             </p>
           )}
         </div>

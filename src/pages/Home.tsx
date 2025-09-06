@@ -533,7 +533,7 @@ const Home = () => {
   ]);
 
   // Use preferences from localStorage/state instead of user object
-  const selectedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
+  const storedTrackers = preferences.selectedTrackers || ['calories', 'hydration', 'supplements'];
 
   const allTrackerConfigs = {
     calories: {
@@ -693,6 +693,7 @@ const Home = () => {
   };
 
   // Get the three selected tracker configs
+  const selectedTrackers = getHomeTrackers();
   const displayedTrackers = selectedTrackers.map(trackerId => allTrackerConfigs[trackerId]).filter(Boolean);
 
   // Handle quick swap
@@ -1122,7 +1123,7 @@ const Home = () => {
             key={tracker.name}
             tracker={tracker}
             index={index as 0 | 1 | 2}
-            visibleTrackers={selectedTrackers as TrackerKey[]}
+            visibleTrackers={selectedTrackers}
             onQuickSwap={handleQuickSwap}
             getMotivationalMessage={getMotivationalMessage}
           />
