@@ -62,6 +62,9 @@ import { normalizeServing, getServingDebugInfo } from '@/utils/servingNormalizat
 import { DebugPanel } from '@/components/camera/DebugPanel';
 import { SFX } from '@/lib/sfx/sfxManager';
 import { getUserPortionPreference } from '@/lib/nutrition/userPortionPrefs';
+import { F, sampledOn } from '@/lib/flags';
+import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
+import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
 
 // Import smoke tests for development
 import '@/utils/smokeTests';
@@ -278,6 +281,20 @@ const CameraPage = () => {
   
   // Add confirmOpenRef for blocking camera while confirm is open
   const confirmOpenRef = useRef(false);
+  
+  // OCR enrichment state
+  const ocrGenRef = useRef(0);
+  const ocrAbortRef = useRef<AbortController | null>(null);
+  const { enrich } = useManualFoodEnrichment();
+  
+  // Helper to update confirm item in place
+  const updateConfirmItem = useCallback((updater: (prev: RecognizedFood | null) => RecognizedFood) => {
+    setRecognizedFoods(prev => {
+      if (prev.length === 0) return prev;
+      const updated = updater(prev[0]);
+      return [updated];
+    });
+  }, []);
   
   // Nutrition hydration helper for v3 items
   const ensureNutritionHydrated = useCallback(async (item: any, signal?: AbortSignal) => {
@@ -659,10 +676,69 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
       requiresPortionConfirmation: prefill.item.requiresConfirmation
     };
     
-    // Open confirm modal with prefilled data
+    // Open confirm modal with prefilled data (fail-open behavior)
     setRecognizedFoods([prefillFood]);
     setShowConfirmation(true);
     setInputSource('photo'); // Use photo source for UI display
+
+    // Attempt health scan enrichment (fail-open, no regressions)
+    const runEnrich = F.FEATURE_ENRICH_HEALTHSCAN && sampledOn(F.HEALTHSCAN_SAMPLING_PCT);
+    const dishName = prefill.item.itemName;
+    
+    if (runEnrich && dishName && dishName !== 'Unknown Product') {
+      const myGen = ++ocrGenRef.current;
+      
+      // Abort any previous attempt
+      if (ocrAbortRef.current) { 
+        try { ocrAbortRef.current.abort(); } catch {} 
+      }
+      const ctl = new AbortController();
+      ocrAbortRef.current = ctl;
+      
+      const t = setTimeout(() => { 
+        try { ctl.abort(); } catch {} 
+      }, F.ENRICH_TIMEOUT_MS);
+      
+      const start = performance.now();
+      enrich(dishName, 'auto')
+        .then((enriched) => {
+          const ms = Math.round(performance.now() - start);
+          
+          if (!enriched) {
+            console.log('[HEALTHSCAN][ENRICH][MISS]', { q: dishName, ms });
+            return;
+          }
+          
+          console.log('[HEALTHSCAN][ENRICH][HIT]', { 
+            q: dishName, 
+            source: enriched?.source, 
+            ingLen: enriched?.ingredients?.length ?? 0, 
+            ms 
+          });
+          
+          // Guard against stale updates
+          if (myGen !== ocrGenRef.current) return;
+          
+          const enrichedItem = enrichedFoodToLogItem(enriched);
+          
+          // IMPORTANT: swap in-place (do NOT close/reopen dialog)
+          updateConfirmItem((prev) => {
+            if (!prev) return enrichedItem;
+            return {
+              ...enrichedItem,
+              // Preserve current portion grams if user moved slider
+              portionGrams: prev.portionGrams ?? enrichedItem.portionGrams,
+            };
+          });
+        })
+        .catch((err) => {
+          const ms = Math.round(performance.now() - start);
+          const kind = err?.name === 'AbortError' ? 'TIMEOUT' : 'MISS';
+          console.log(`[HEALTHSCAN][ENRICH][${kind}]`, { q: dishName, ms });
+          // Fail-open: ignore errors/aborts
+        })
+        .finally(() => clearTimeout(t));
+    }
     
     // Clear the router state so back/forward doesn't re-trigger
     navigate('.', { replace: true, state: null });

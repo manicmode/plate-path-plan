@@ -25,7 +25,16 @@ export const F = {
   CORE_NOUN_STRICT:         flag('VITE_CORE_NOUN_STRICT', true),
   MANUAL_ENTRY_DIAG:        flag('VITE_MANUAL_ENTRY_DIAG', false),
   MIN_MANUAL_CHOICES:       intFlag('VITE_MIN_MANUAL_CHOICES', 3),
+  
+  // Health Scan Enrichment flags
+  FEATURE_ENRICH_HEALTHSCAN: flag('VITE_FEATURE_ENRICH_HEALTHSCAN', false),
+  ENRICH_TIMEOUT_MS: Number((import.meta as any).env?.VITE_ENRICH_TIMEOUT_MS || 1200),
+  HEALTHSCAN_SAMPLING_PCT: Number((import.meta as any).env?.VITE_HEALTHSCAN_SAMPLING_PCT || 0),
 };
+
+// Helper for sampling (dev-only randomness)
+export const sampledOn = (pct: number) =>
+  pct >= 100 ? true : pct <= 0 ? false : (Math.random() * 100) < pct;
 
 export const ENABLE_FOOD_TEXT_V3 = 
   import.meta.env.VITE_FOOD_TEXT_V3 !== '0'; // default on unless explicitly 0

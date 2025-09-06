@@ -22,6 +22,13 @@ const TEST_QUERIES = [
   'pollo con rajas'
 ];
 
+const HEALTH_SCAN_QUERIES = [
+  'club sandwich on wheat',
+  'yakisoba', 
+  'aloo gobi',
+  'pollo con rajas'
+];
+
 const getPassCriteria = (query: string, source: string | null, ingredients_len: number) => {
   if (query.includes('club sandwich')) {
     return source === 'NUTRITIONIX' && ingredients_len >= 5;
@@ -37,7 +44,9 @@ const getPassCriteria = (query: string, source: string | null, ingredients_len: 
 
 export default function QAPage() {
   const [results, setResults] = useState<QAResult[]>([]);
+  const [healthScanResults, setHealthScanResults] = useState<QAResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [isRunningHealthScan, setIsRunningHealthScan] = useState(false);
   const { enrich } = useManualFoodEnrichment();
 
   const runEnrichmentTest = async () => {
@@ -87,7 +96,57 @@ export default function QAPage() {
     setIsRunning(false);
   };
 
+  const runHealthScanTest = async () => {
+    setIsRunningHealthScan(true);
+    setHealthScanResults([]);
+
+    const testResults: QAResult[] = [];
+
+    for (const query of HEALTH_SCAN_QUERIES) {
+      try {
+        console.log(`[HEALTHSCAN QA] Testing: "${query}"`);
+        
+        const start = performance.now();
+        const enriched = await enrich(query);
+        const ms = Math.round(performance.now() - start);
+        
+        const source = enriched?.source || null;
+        const confidence = enriched?.confidence || null;
+        const ingredients_len = enriched?.ingredients?.length || 0;
+        const kcal_100g = enriched?.per100g?.calories || null;
+        
+        const pass_fail = getPassCriteria(query, source, ingredients_len) ? 'PASS' : 'FAIL';
+        
+        testResults.push({
+          query,
+          source,
+          confidence,
+          ingredients_len,
+          kcal_100g,
+          pass_fail
+        });
+        
+        console.log(`[HEALTHSCAN QA] ${query}: ${source}, ${ingredients_len} ingredients, ${pass_fail}, ${ms}ms`);
+        
+      } catch (error) {
+        console.error(`[HEALTHSCAN QA] ${query} failed:`, error);
+        testResults.push({
+          query,
+          source: null,
+          confidence: null,
+          ingredients_len: 0,
+          kcal_100g: null,
+          pass_fail: 'FAIL'
+        });
+      }
+    }
+
+    setHealthScanResults(testResults);
+    setIsRunningHealthScan(false);
+  };
+
   const overallStatus = results.length > 0 && results.every(r => r.pass_fail === 'PASS') ? 'PASS' : 'FAIL';
+  const healthScanOverallStatus = healthScanResults.length > 0 && healthScanResults.every(r => r.pass_fail === 'PASS') ? 'PASS' : 'FAIL';
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -123,6 +182,22 @@ export default function QAPage() {
                 </>
               ) : (
                 'Run Enrichment QA'
+              )}
+            </Button>
+
+            <Button 
+              onClick={runHealthScanTest} 
+              disabled={isRunningHealthScan}
+              className="mb-4 ml-4"
+              variant="outline"
+            >
+              {isRunningHealthScan ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Running Health Scan QA...
+                </>
+              ) : (
+                'Run Health Scan QA'
               )}
             </Button>
 
@@ -185,6 +260,84 @@ export default function QAPage() {
                     <li>• Club sandwich variants → source = NUTRITIONIX and ingredients_len ≥ 5</li>
                     <li>• Yakisoba / Aloo gobi → ingredients_len ≥ 2</li>
                     <li>• Pollo con rajas → source ∈ (EDAMAM, ESTIMATED, NUTRITIONIX) and ingredients_len ≥ 3</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {healthScanResults.length > 0 && (
+              <div className="mt-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="text-lg font-semibold">Health Scan QA Results</h3>
+                  <Badge 
+                    variant={healthScanOverallStatus === 'PASS' ? 'default' : 'destructive'}
+                    className="text-sm"
+                  >
+                    {healthScanOverallStatus === 'PASS' ? (
+                      <><CheckCircle className="w-4 h-4 mr-1" />Overall: PASS</>
+                    ) : (
+                      <><XCircle className="w-4 h-4 mr-1" />Overall: FAIL</>
+                    )}
+                  </Badge>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-border">
+                    <thead>
+                      <tr className="bg-muted">
+                        <th className="border border-border p-2 text-left">Query</th>
+                        <th className="border border-border p-2 text-left">Source</th>
+                        <th className="border border-border p-2 text-left">Confidence</th>
+                        <th className="border border-border p-2 text-left">Ingredients Len</th>
+                        <th className="border border-border p-2 text-left">Kcal/100g</th>
+                        <th className="border border-border p-2 text-left">Result</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {healthScanResults.map((result, index) => (
+                        <tr key={index} className="hover:bg-muted/50">
+                          <td className="border border-border p-2 font-medium">{result.query}</td>
+                          <td className="border border-border p-2">
+                            {result.source ? (
+                              <Badge variant="outline" className="text-xs">
+                                {result.source}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </td>
+                          <td className="border border-border p-2">
+                            {result.confidence ? `${Math.round(result.confidence * 100)}%` : '-'}
+                          </td>
+                          <td className="border border-border p-2">{result.ingredients_len}</td>
+                          <td className="border border-border p-2">
+                            {result.kcal_100g ? Math.round(result.kcal_100g) : '-'}
+                          </td>
+                          <td className="border border-border p-2">
+                            <Badge 
+                              variant={result.pass_fail === 'PASS' ? 'default' : 'destructive'}
+                              className="text-xs"
+                            >
+                              {result.pass_fail === 'PASS' ? (
+                                <><CheckCircle className="w-3 h-3 mr-1" />PASS</>
+                              ) : (
+                                <><XCircle className="w-3 h-3 mr-1" />FAIL</>
+                              )}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="mt-4 p-4 bg-muted rounded-lg">
+                  <h4 className="font-semibold mb-2">Health Scan Enrichment Info:</h4>
+                  <ul className="text-sm space-y-1 text-muted-foreground">
+                    <li>• Tests OCR-extracted dish names through enrichment pipeline</li>
+                    <li>• Same PASS criteria as manual enrichment tests</li>
+                    <li>• Simulates fail-open health scan enrichment flow</li>
+                    <li>• Expected timeout: ~1200ms, fail-open behavior on errors</li>
                   </ul>
                 </div>
               </div>
