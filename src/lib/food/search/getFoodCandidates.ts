@@ -88,107 +88,47 @@ const CORE_NOUNS = [
   'pasta', 'bread', 'fries', 'cookie'
 ];
 
-/**
- * Checks if a food name contains core noun tokens
- */
-function hasCoreTokNounMatch(query: string, foodName: string): boolean {
-  // Flag: VITE_CORE_NOUN_STRICT (default OFF) - Word boundary matching
-  const useStrictMatching = (import.meta.env.VITE_CORE_NOUN_STRICT ?? '0') === '1';
+function hasCoreTokNounMatch(query: string, candidateName: string): boolean {
+  // Extract potential noun from query (last significant word)
+  const queryTokens = query.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+  if (queryTokens.length === 0) return true;
   
-  const queryLower = query.toLowerCase();
-  const nameLower = foodName.toLowerCase();
+  const coreToken = queryTokens[queryTokens.length - 1];
+  const candidateWords = candidateName.toLowerCase().split(/\s+/);
   
-  // Check for core nouns in both query and food name
-  for (const noun of CORE_NOUNS) {
-    if (queryLower.includes(noun) && nameLower.includes(noun)) {
-      if (useStrictMatching) {
-        // Use word boundaries to prevent "roll" matching "rolled"
-        const queryRegex = new RegExp(`\\b${noun}s?\\b`, 'i');
-        const nameRegex = new RegExp(`\\b${noun}s?\\b`, 'i');
-        if (queryRegex.test(queryLower) && nameRegex.test(nameLower)) {
-          return true;
-        }
-      } else {
-        return true;
-      }
-    }
+  const useCoreNounStrict = (import.meta.env.VITE_CORE_NOUN_STRICT ?? '1') === '1';
+  
+  if (useCoreNounStrict) {
+    // Use word boundaries to avoid "roll" matching "rolled"
+    const coreRegex = new RegExp(`\\b${coreToken}s?\\b|\\b${coreToken.slice(0, -1)}s?\\b`); // Handle singular/plural
+    return candidateWords.some(word => coreRegex.test(word));
+  } else {
+    // Legacy substring matching
+    return candidateWords.some(word => word.includes(coreToken));
   }
-  
-  // Check for exact word matches
-  const queryWords = queryLower.split(/\s+/);
-  const nameWords = nameLower.split(/\s+/);
-  
-  for (const qWord of queryWords) {
-    if (qWord.length > 3) { // Only meaningful words
-      for (const nWord of nameWords) {
-        if (useStrictMatching) {
-          // Exact word match or singular/plural variants
-          if (qWord === nWord || 
-              (qWord.endsWith('s') && qWord.slice(0,-1) === nWord) ||
-              (nWord.endsWith('s') && nWord.slice(0,-1) === qWord)) {
-            return true;
-          }
-        } else {
-          // Legacy substring matching
-          if (qWord === nWord || qWord.includes(nWord) || nWord.includes(qWord)) {
-            return true;
-          }
-        }
-      }
-    }
-  }
-  
-  return false;
 }
 
-/**
- * Determines if item is generic vs brand
- */
-function classifyItemKind(item: CanonicalSearchResult): 'generic' | 'brand' | 'unknown' {
-  // Flag: VITE_CANDIDATE_CLASSIFIER_SAFE (default OFF) - Safer classification
-  const useSafeClassifier = (import.meta.env.VITE_CANDIDATE_CLASSIFIER_SAFE ?? '0') === '1';
+function classifyItemKind(item: any): 'generic' | 'brand' | 'unknown' {
+  const useClassifierSafe = (import.meta.env.VITE_CANDIDATE_CLASSIFIER_SAFE ?? '1') === '1';
   
-  const name = item.name.toLowerCase();
-  
-  // Check for explicit brand evidence first
-  if ((item as any).brand || (item as any).brands) return 'brand';
-  if ((item as any).code && typeof (item as any).code === 'string' && (item as any).code.length >= 8) return 'brand';
-  
-  // Check for explicit generic indicators
-  if ((item as any).provider === 'generic' || (item as any).isGeneric) return 'generic';
-  
-  // Brand indicators
-  const brandIndicators = [
-    'brand', 'co.', 'inc.', 'ltd.', 'corp.', '®', '™',
-    'kraft', 'nestle', 'kellogg', 'general mills', 'pepsi',
-    'coca cola', 'mcdonalds', 'burger king', 'subway',
-    'quaker', 'oreo', 'spam', 'coca-cola'
-  ];
-  
-  for (const indicator of brandIndicators) {
-    if (name.includes(indicator.toLowerCase())) {
-      return 'brand';
-    }
-  }
-  
-  // Generic indicators  
-  const genericIndicators = [
-    'generic', 'cooked', 'raw', 'fresh', 'steamed', 'grilled', 
-    'baked', 'fried', 'homemade', 'prepared'
-  ];
-  
-  for (const indicator of genericIndicators) {
-    if (name.includes(indicator.toLowerCase())) {
-      return 'generic';
-    }
-  }
-  
-  if (useSafeClassifier) {
-    // Safe mode: return 'unknown' for ambiguous cases, avoid word count fallback
+  if (useClassifierSafe) {
+    // Brand evidence overrides everything
+    const hasBrandEvidence = !!(item.brand || item.brands || (item.code && String(item.code).length >= 8));
+    if (hasBrandEvidence) return 'brand';
+    
+    // Explicit generic indicators
+    if (item.provider === 'generic' || item.isGeneric) return 'generic';
+    
+    // Default to unknown when ambiguous (no fallback to word count)
     return 'unknown';
   } else {
-    // Legacy: Default to generic for simple names
-    const wordCount = name.split(/\s+/).length;
+    // Legacy behavior
+    if (item.provider === 'generic') return 'generic';
+    if (item.kind === 'generic') return 'generic';
+    
+    // Simple heuristic: short names (3 words or fewer) are often generic
+    const wordCount = (item.name || '').trim().split(/\s+/).length;
+    
     return wordCount <= 3 ? 'generic' : 'brand';
   }
 }
@@ -454,7 +394,7 @@ export async function getFoodCandidates(
         result, 
         'lexical', 
         facets, 
-        kind === 'unknown' ? 'brand' : kind, // Treat unknown as brand for scoring
+        kind === 'unknown' ? 'brand' : (kind as 'generic' | 'brand'), // Treat unknown as brand for scoring
         source
       );
       
@@ -500,7 +440,7 @@ export async function getFoodCandidates(
         result, 
         'alias', 
         facets, 
-        kind === 'unknown' ? 'brand' : kind, // Treat unknown as brand for scoring
+        kind === 'unknown' ? 'brand' : (kind as 'generic' | 'brand'), // Treat unknown as brand for scoring
         source
       );
       
@@ -548,9 +488,9 @@ export async function getFoodCandidates(
 
       const topIsBrand = !!((top as any)?.brands || (top as any)?.brand || (typeof (top as any)?.code === 'string' && (top as any).code.length >= 8));
       
-      // Safe second-is-generic check respecting VITE_CANDIDATE_CLASSIFIER_SAFE flag
-      const useSafeClassifier = (import.meta.env.VITE_CANDIDATE_CLASSIFIER_SAFE ?? '0') === '1';
-      const secondIsGeneric = useSafeClassifier 
+      // Tightened check: must be explicitly generic AND have no brand evidence
+      const useClassifierSafe = (import.meta.env.VITE_CANDIDATE_CLASSIFIER_SAFE ?? '1') === '1';
+      const secondIsGeneric = useClassifierSafe 
         ? ((second as any)?.provider === 'generic' || (second as any)?.isGeneric) && 
           !((second as any)?.brands || (second as any)?.brand || ((second as any)?.code && typeof (second as any).code === 'string' && (second as any).code.length >= 8))
         : looksGeneric(second);

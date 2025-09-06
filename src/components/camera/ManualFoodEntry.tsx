@@ -66,7 +66,6 @@ const coreNoun = (text?: string) => {
   return t.length ? t[t.length - 1] : _norm(text).split(' ').pop() || '';
 };
 const looksGeneric = (it: any): boolean => {
-  // Flag: VITE_MANUAL_ENTRY_LABEL_TIGHT (default ON) - Tight UI badge predicate
   const useTightLabeling = (import.meta.env.VITE_MANUAL_ENTRY_LABEL_TIGHT ?? '1') === '1';
   
   if (useTightLabeling) {
@@ -74,17 +73,14 @@ const looksGeneric = (it: any): boolean => {
     if (it?.isGeneric === true) return true;
     if (typeof it?.canonicalKey === 'string' && it.canonicalKey.startsWith('generic_')) return true;
 
-    // 2) name heuristic (UI-only safeguard)
-    if (/^generic[\s-]/i.test(it?.name || '')) return true;
-
-    // 3) search-side kind/provider… but ONLY if no brand evidence
+    // 2) brand evidence overrides any generic signals
     const hasBrandEvidence = !!(it?.brand || it?.brands || (it?.code && String(it.code).length >= 8));
-    if ((it?.kind === 'generic' || it?.provider === 'generic') && !hasBrandEvidence) return true;
-
-    // 4) hard override: if we *do* have brand evidence, it's Brand
     if (hasBrandEvidence) return false;
 
-    // 5) default: unknown = Brand (conservative)
+    // 3) search-side kind/provider (only if no brand evidence)
+    if (it?.kind === 'generic' || it?.provider === 'generic') return true;
+
+    // 4) default: unknown = Brand (conservative)
     return false;
   } else {
     // Legacy behavior 
@@ -199,9 +195,10 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         const legacyAlts = items.length > 1 ? items.slice(1) : [];
 
         const rawAlts = [...v3Alts, ...legacyAlts];
-        const filteredAlts = rawAlts.filter((c: any) => sharesCore(c?.name, primary?.name)).slice(0, 8);
+        const filteredAlts = rawAlts.filter((c: any) => sharesCore(c?.name, primary?.name));
 
-        filteredAlts.forEach((c: any, i: number) => {
+        // Take up to 8 alts initially
+        filteredAlts.slice(0, 8).forEach((c: any, i: number) => {
           list.push({
             id: `candidate-alt-${i}`,
             name: c.name,
@@ -235,44 +232,53 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           }
         }
 
-        // Flag: VITE_MANUAL_INJECT_GENERIC (default OFF) - Synthetic generic injection
-        const allowSyntheticGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '0') === '1';
+        // Flag: VITE_MANUAL_INJECT_GENERIC (default ON) - Synthetic generic injection
+        const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '1') === '1';
         
-        // If we ended up with no Generic candidate, synthesize a safe Generic option.
-        // This keeps the experience from being "Brand-only".
-        const hasGeneric = list.some(c => c.isGeneric === true);
-        if (!hasGeneric && allowSyntheticGeneric) {
-          const titleCase = (s: string) => s.replace(/\b\w/g, m => m.toUpperCase());
+        if (shouldInjectGeneric) {
+          const hasGeneric = list.some(c => c.isGeneric);
+          
+          if (!hasGeneric) {
+            const titleCase = (s: string) => s.replace(/\b\w/g, m => m.toUpperCase());
+            const core = coreNoun(query || primary?.name);
+            
+            if (core) {
+              const defaultMapping: Record<string, { grams: number; canonicalKey: string }> = {
+                chicken: { grams: 113, canonicalKey: 'generic_chicken_breast' },
+                fish: { grams: 85, canonicalKey: 'generic_fish_fillet' },
+                egg: { grams: 50, canonicalKey: 'generic_egg' },
+                rice: { grams: 158, canonicalKey: 'generic_rice_cooked' },
+                pasta: { grams: 140, canonicalKey: 'generic_pasta_cooked' },
+                pizza: { grams: 125, canonicalKey: 'generic_pizza_slice' },
+                burger: { grams: 100, canonicalKey: 'generic_burger_patty' },
+                sushi: { grams: 100, canonicalKey: 'generic_sushi' },
+                cereal: { grams: 30, canonicalKey: 'generic_cereal' },
+                apple: { grams: 182, canonicalKey: 'generic_apple' },
+                yogurt: { grams: 170, canonicalKey: 'generic_yogurt_plain' },
+                salad: { grams: 100, canonicalKey: 'generic_salad' }
+              };
+              
+              const mapping = defaultMapping[core.toLowerCase()] || { grams: 100, canonicalKey: `generic_${core.toLowerCase()}` };
+              const defaultG = mapping.grams;
 
-          const core = coreNoun(query || primary?.name);
-          if (core) {
-            // Choose a sensible default grams:
-            //  - Prefer primary.servingGrams if present,
-            //  - else candidate.servingG from the first alt if present,
-            //  - else 100g.
-            const defaultG =
-              (primary?.servingGrams as number | undefined) ??
-              (list.find((c, i) => i > 0)?.defaultPortion?.amount as number | undefined) ??
-              100;
-
-            list.push({
-              id: 'candidate-generic-synthetic',
-              name: titleCase(core),          // e.g., "Chicken"
-              isGeneric: true,                // label as Generic
-              portionHint: `${defaultG}g default`,
-              defaultPortion: { amount: defaultG, unit: 'g' },
-              provider: 'generic',
-              imageUrl: undefined,
-              // Minimal data that confirm can hydrate by name (no store coupling).
-              data: {
-                name: titleCase(core),
-                source: 'manual',
+              list.push({
+                id: 'candidate-generic-synthetic',
+                name: `Generic ${titleCase(core)}`,
                 isGeneric: true,
-                kind: 'generic',
-                canonicalKey: `generic_${core.toLowerCase()}`,
-                servingG: defaultG
-              }
-            });
+                portionHint: `${defaultG}g default`,
+                defaultPortion: { amount: defaultG, unit: 'g' },
+                provider: 'generic',
+                imageUrl: undefined,
+                data: {
+                  name: `Generic ${titleCase(core)}`,
+                  source: 'manual',
+                  isGeneric: true,
+                  kind: 'generic',
+                  canonicalKey: mapping.canonicalKey,
+                  servingG: defaultG
+                }
+              });
+            }
           }
         }
 
@@ -302,9 +308,43 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       const strictCoreNounFilter = (import.meta.env.VITE_CORE_NOUN_STRICT ?? '0') === '1';
       const relevant = strictCoreNounFilter ? list.filter(c => matchesQueryCore(query, c.data)) : list;
 
-      // Ensure minimum choices fallback - if strict filter leaves < 3 items, use broader list
-      const MIN_CHOICES = 3;
-      const finalList = relevant.length >= MIN_CHOICES ? relevant : list.slice(0, MIN_CHOICES);
+      // Ensure minimum choices fallback
+      const MIN_CHOICES = Number(import.meta.env.VITE_MIN_MANUAL_CHOICES ?? '3') || 3;
+      let finalList = relevant.length >= MIN_CHOICES ? relevant : list.slice(0, MIN_CHOICES);
+      
+      // If we still don't have enough choices and need more synthetic generics
+      if (finalList.length < MIN_CHOICES) {
+        const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '1') === '1';
+        
+        if (shouldInjectGeneric) {
+          const titleCase = (s: string) => s.replace(/\b\w/g, m => m.toUpperCase());
+          const core = coreNoun(query);
+          
+          while (finalList.length < MIN_CHOICES && finalList.length < 5) {
+            const altName = finalList.length === 1 ? `${titleCase(core)} (medium)` : `${titleCase(core)} (large)`;
+            const baseGrams = 100;
+            const altGrams = finalList.length === 1 ? baseGrams * 1.5 : baseGrams * 2;
+            
+            finalList.push({
+              id: `synthetic_generic_${finalList.length}`,
+              name: altName,
+              isGeneric: true,
+              portionHint: `${Math.round(altGrams)}g default`,
+              defaultPortion: { amount: Math.round(altGrams), unit: 'g' },
+              provider: 'generic',
+              imageUrl: undefined,
+              data: {
+                name: altName,
+                source: 'manual',
+                isGeneric: true,
+                kind: 'generic',
+                canonicalKey: `generic_${core.toLowerCase()}_${finalList.length}`,
+                servingG: Math.round(altGrams)
+              }
+            });
+          }
+        }
+      }
 
       // Generics first
       finalList.sort((a, b) => (a.isGeneric === b.isGeneric ? 0 : a.isGeneric ? -1 : 1));
@@ -312,19 +352,18 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       setCandidates(finalList);
       setState(finalList.length > 0 ? 'candidates' : 'idle');
       
-      // Instrumentation: VITE_MANUAL_ENTRY_DIAG=1 (opt-in console logging)
-      if (import.meta.env.VITE_MANUAL_ENTRY_DIAG === '1') {
-        finalList.forEach((candidate, idx) => {
+      // Diagnostic logging
+      if ((import.meta.env.VITE_MANUAL_ENTRY_DIAG ?? '0') === '1') {
+        finalList.forEach((item, idx) => {
           console.log('[MANUAL_DIAG][LABEL]', {
             q: query,
-            idx,
-            name: candidate.name,
-            isGeneric_UI: candidate.isGeneric,
-            kind: candidate.data?.kind || candidate.provider,
-            canonicalKey: candidate.data?.canonicalKey,
-            brand: candidate.data?.brand,
-            brands: candidate.data?.brands,
-            code: candidate.data?.code,
+            name: item.name,
+            isGeneric_UI: item.isGeneric,
+            canonicalKey: item.data?.canonicalKey,
+            brand: item.data?.brand,
+            brands: item.data?.brands,
+            code: item.data?.code,
+            kind: item.data?.kind
           });
         });
       }
@@ -681,13 +720,13 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                 className="mb-6"
               >
                 <CandidateList
-                  candidates={showMoreCandidates ? candidates : candidates.slice(0, 6)}
+                candidates={showMoreCandidates ? candidates : candidates.slice(0, Math.max(6, Number(import.meta.env.VITE_MIN_MANUAL_CHOICES ?? '3') || 3))}
                   selectedCandidate={selectedCandidate}
                   onSelect={handleCandidateSelect}
                 />
                 
                 {/* Show More Button */}
-                {candidates.length > 6 && (
+                {candidates.length > Math.max(6, Number(import.meta.env.VITE_MIN_MANUAL_CHOICES ?? '3') || 3) && (
                   <div className="mt-3 text-center">
                     <Button
                       variant="ghost"
@@ -695,7 +734,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                       onClick={() => setShowMoreCandidates(!showMoreCandidates)}
                       className="text-slate-400 hover:text-white text-xs"
                     >
-                      {showMoreCandidates ? 'Show Less' : `Show ${candidates.length - 6} More Results`}
+                      {showMoreCandidates ? 'Show Less' : `Show ${candidates.length - Math.max(6, Number(import.meta.env.VITE_MIN_MANUAL_CHOICES ?? '3') || 3)} More Results`}
                       {showMoreCandidates ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
                     </Button>
                   </div>
