@@ -66,12 +66,32 @@ const coreNoun = (text?: string) => {
   return t.length ? t[t.length - 1] : _norm(text).split(' ').pop() || '';
 };
 const looksGeneric = (it: any): boolean => {
-  if (it?.isGeneric === true) return true;
-  if (it?.kind === 'generic' || it?.provider === 'generic') return true;
-  if (it?.brands || it?.brand) return false;
-  if (typeof it?.code === 'string' && it.code.length >= 8) return false;
-  if (typeof it?.canonicalKey === 'string' && it.canonicalKey.startsWith('generic_')) return true;
-  return false;
+  // Flag: VITE_MANUAL_ENTRY_LABEL_TIGHT (default ON) - Tight UI badge predicate
+  const useTightLabeling = (import.meta.env.VITE_MANUAL_ENTRY_LABEL_TIGHT ?? '1') === '1';
+  
+  if (useTightLabeling) {
+    // Tight predicate: Generic iff explicit indicators AND no brand evidence
+    if (it?.isGeneric === true) return true;
+    if (it?.canonicalKey?.startsWith('generic_')) return true;
+    
+    // Check for brand evidence (overrides generic)
+    const hasBrandEvidence = !!(it?.brand || it?.brands || (it?.code && typeof it.code === 'string' && it.code.length >= 8));
+    if (hasBrandEvidence) return false;
+    
+    // Only allow generic if kind/provider says so AND no brand evidence
+    if ((it?.kind === 'generic' || it?.provider === 'generic') && !hasBrandEvidence) return true;
+    
+    // Default to Brand (safer when uncertain)
+    return false;
+  } else {
+    // Legacy behavior 
+    if (it?.isGeneric === true) return true;
+    if (it?.kind === 'generic' || it?.provider === 'generic') return true;
+    if (it?.brands || it?.brand) return false;
+    if (typeof it?.code === 'string' && it.code.length >= 8) return false;
+    if (typeof it?.canonicalKey === 'string' && it.canonicalKey.startsWith('generic_')) return true;
+    return false;
+  }
 };
 const matchesQueryCore = (q: string, candidate: any): boolean => {
   const qCore = coreNoun(q);
@@ -211,10 +231,13 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           }
         }
 
+        // Flag: VITE_MANUAL_INJECT_GENERIC (default OFF) - Synthetic generic injection
+        const allowSyntheticGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '0') === '1';
+        
         // If we ended up with no Generic candidate, synthesize a safe Generic option.
         // This keeps the experience from being "Brand-only".
         const hasGeneric = list.some(c => c.isGeneric === true);
-        if (!hasGeneric) {
+        if (!hasGeneric && allowSyntheticGeneric) {
           const titleCase = (s: string) => s.replace(/\b\w/g, m => m.toUpperCase());
 
           const core = coreNoun(query || primary?.name);
@@ -280,6 +303,23 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
       setCandidates(finalList);
       setState(finalList.length > 0 ? 'candidates' : 'idle');
+      
+      // Instrumentation: VITE_MANUAL_ENTRY_DIAG=1 (opt-in console logging)
+      if (import.meta.env.VITE_MANUAL_ENTRY_DIAG === '1') {
+        finalList.forEach((candidate, idx) => {
+          console.log('[MANUAL_DIAG][LABEL]', {
+            q: query,
+            idx,
+            name: candidate.name,
+            isGeneric_UI: candidate.isGeneric,
+            kind: candidate.data?.kind || candidate.provider,
+            canonicalKey: candidate.data?.canonicalKey,
+            brand: candidate.data?.brand,
+            brands: candidate.data?.brands,
+            code: candidate.data?.code,
+          });
+        });
+      }
       
       // optional: very light debug (leave in dev only if a flag exists)
       if (FOOD_TEXT_DEBUG) {

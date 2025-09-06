@@ -126,7 +126,11 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
       // v3 specific fields
       __altCandidates: candidates.slice(1, 6).map(c => {
         const altPortion = inferPortion(c.name, query, facets, c.classId);
-        return {
+        
+        // Flag: VITE_V3_ALT_BRAND_FIELDS (default ON) - Include brand fields for UI badge logic
+        const includeBrandFields = (import.meta.env.VITE_V3_ALT_BRAND_FIELDS ?? '1') === '1';
+        
+        const baseAlt = {
           id: c.id || `alt-${Date.now()}-${Math.random()}`,
           name: c.name,
           servingG: altPortion.grams, // Pre-calculated portion
@@ -141,6 +145,21 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
           kind: c.kind,
           classId: c.classId
         };
+        
+        // Include brand fields when flag is ON for proper UI badge logic
+        if (includeBrandFields) {
+          return {
+            ...baseAlt,
+            brand: (c as any).brand,
+            brands: (c as any).brands,
+            code: (c as any).code,
+            canonicalKey: (c as any).canonicalKey,
+            provider: (c as any).provider,
+            isGeneric: (c as any).isGeneric
+          };
+        }
+        
+        return baseAlt;
       }),
       __source: source === 'speech' ? 'voice' : 'manual',
       __originalText: query

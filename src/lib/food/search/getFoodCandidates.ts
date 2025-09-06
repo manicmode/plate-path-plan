@@ -55,7 +55,7 @@ const matchesQueryCore = (q: string, candidate: any): boolean => {
 export interface Candidate {
   id: string;
   name: string;
-  kind: 'generic' | 'brand';
+  kind: 'generic' | 'brand' | 'unknown';
   classId?: string;        // used for portion defaults
   facets?: Record<string, string[]>;
   score: number;
@@ -92,13 +92,25 @@ const CORE_NOUNS = [
  * Checks if a food name contains core noun tokens
  */
 function hasCoreTokNounMatch(query: string, foodName: string): boolean {
+  // Flag: VITE_CORE_NOUN_STRICT (default OFF) - Word boundary matching
+  const useStrictMatching = (import.meta.env.VITE_CORE_NOUN_STRICT ?? '0') === '1';
+  
   const queryLower = query.toLowerCase();
   const nameLower = foodName.toLowerCase();
   
   // Check for core nouns in both query and food name
   for (const noun of CORE_NOUNS) {
     if (queryLower.includes(noun) && nameLower.includes(noun)) {
-      return true;
+      if (useStrictMatching) {
+        // Use word boundaries to prevent "roll" matching "rolled"
+        const queryRegex = new RegExp(`\\b${noun}s?\\b`, 'i');
+        const nameRegex = new RegExp(`\\b${noun}s?\\b`, 'i');
+        if (queryRegex.test(queryLower) && nameRegex.test(nameLower)) {
+          return true;
+        }
+      } else {
+        return true;
+      }
     }
   }
   
@@ -109,8 +121,18 @@ function hasCoreTokNounMatch(query: string, foodName: string): boolean {
   for (const qWord of queryWords) {
     if (qWord.length > 3) { // Only meaningful words
       for (const nWord of nameWords) {
-        if (qWord === nWord || qWord.includes(nWord) || nWord.includes(qWord)) {
-          return true;
+        if (useStrictMatching) {
+          // Exact word match or singular/plural variants
+          if (qWord === nWord || 
+              (qWord.endsWith('s') && qWord.slice(0,-1) === nWord) ||
+              (nWord.endsWith('s') && nWord.slice(0,-1) === qWord)) {
+            return true;
+          }
+        } else {
+          // Legacy substring matching
+          if (qWord === nWord || qWord.includes(nWord) || nWord.includes(qWord)) {
+            return true;
+          }
         }
       }
     }
@@ -122,14 +144,25 @@ function hasCoreTokNounMatch(query: string, foodName: string): boolean {
 /**
  * Determines if item is generic vs brand
  */
-function classifyItemKind(item: CanonicalSearchResult): 'generic' | 'brand' {
+function classifyItemKind(item: CanonicalSearchResult): 'generic' | 'brand' | 'unknown' {
+  // Flag: VITE_CANDIDATE_CLASSIFIER_SAFE (default OFF) - Safer classification
+  const useSafeClassifier = (import.meta.env.VITE_CANDIDATE_CLASSIFIER_SAFE ?? '0') === '1';
+  
   const name = item.name.toLowerCase();
+  
+  // Check for explicit brand evidence first
+  if ((item as any).brand || (item as any).brands) return 'brand';
+  if ((item as any).code && typeof (item as any).code === 'string' && (item as any).code.length >= 8) return 'brand';
+  
+  // Check for explicit generic indicators
+  if ((item as any).provider === 'generic' || (item as any).isGeneric) return 'generic';
   
   // Brand indicators
   const brandIndicators = [
     'brand', 'co.', 'inc.', 'ltd.', 'corp.', '®', '™',
     'kraft', 'nestle', 'kellogg', 'general mills', 'pepsi',
-    'coca cola', 'mcdonalds', 'burger king', 'subway'
+    'coca cola', 'mcdonalds', 'burger king', 'subway',
+    'quaker', 'oreo', 'spam', 'coca-cola'
   ];
   
   for (const indicator of brandIndicators) {
@@ -150,9 +183,14 @@ function classifyItemKind(item: CanonicalSearchResult): 'generic' | 'brand' {
     }
   }
   
-  // Default to generic for simple names
-  const wordCount = name.split(/\s+/).length;
-  return wordCount <= 3 ? 'generic' : 'brand';
+  if (useSafeClassifier) {
+    // Safe mode: return 'unknown' for ambiguous cases, avoid word count fallback
+    return 'unknown';
+  } else {
+    // Legacy: Default to generic for simple names
+    const wordCount = name.split(/\s+/).length;
+    return wordCount <= 3 ? 'generic' : 'brand';
+  }
 }
 
 /**
@@ -396,34 +434,49 @@ export async function getFoodCandidates(
       }
       
       const kind = classifyItemKind(result);
+      
+      // Instrumentation: VITE_MANUAL_ENTRY_DIAG=1 diagnostic logging
+      if (import.meta.env.VITE_MANUAL_ENTRY_DIAG === '1') {
+        console.log('[MANUAL_DIAG][CANDIDATE]', {
+          q: normalizedQuery,
+          name: result.name,
+          kind,
+          brand: (result as any).brand,
+          brands: (result as any).brands,
+          code: (result as any).code,
+          canonicalKey: (result as any).canonicalKey,
+          score: null // will be calculated next
+        });
+      }
+      
       const { score, confidence, explanation } = scoreFoodCandidate(
         normalizedQuery, 
         result, 
         'lexical', 
         facets, 
-        kind,
+        kind === 'unknown' ? 'brand' : kind, // Treat unknown as brand for scoring
         source
       );
       
-      candidates.set(result.id, {
-        id: result.id,
-        name: result.name,
-        kind,
-        classId: inferClassId(result.name, facets),
-        score,
-        confidence,
-        explanation,
-        source: 'lexical',
-        imageUrl: result.imageUrl,
-        servingGrams: (result as any).servingGrams || 100,
-        calories: result.caloriesPer100g || 0,
-        protein: 0, // Will be populated from nutrition data
-        carbs: 0,
-        fat: 0,
-        fiber: 0,
-        sugar: 0,
-        sodium: 0,
-      });
+        candidates.set(result.id, {
+          id: result.id,
+          name: result.name,
+          kind,
+          classId: inferClassId(result.name, facets),
+          score,
+          confidence,
+          explanation,
+          source: 'lexical',
+          imageUrl: result.imageUrl,
+          servingGrams: (result as any).servingGrams || 100,
+          calories: result.caloriesPer100g || 0,
+          protein: 0, // Will be populated from nutrition data
+          carbs: 0,
+          fat: 0,
+          fiber: 0,
+          sugar: 0,
+          sodium: 0,
+        });
     }
   } catch (error) {
     console.error('[CANDIDATES] Lexical search failed:', error);
@@ -447,7 +500,7 @@ export async function getFoodCandidates(
         result, 
         'alias', 
         facets, 
-        kind,
+        kind === 'unknown' ? 'brand' : kind, // Treat unknown as brand for scoring
         source
       );
       
@@ -485,7 +538,7 @@ export async function getFoodCandidates(
   // Apply generic preference and interleaving
   if (options.preferGeneric) {
     const generics = sortedCandidates.filter(c => c.kind === 'generic');
-    const brands = sortedCandidates.filter(c => c.kind === 'brand');
+    const brands = sortedCandidates.filter(c => c.kind === 'brand' || c.kind === 'unknown');
     
     // Only promote when the second item is truly generic AND relevant to the query core noun/class.
     if ((source === 'manual' || source === 'speech') && sortedCandidates.length >= 2) {
@@ -494,7 +547,14 @@ export async function getFoodCandidates(
       const scoreDiff = (top.score || 0) - (second.score || 0);
 
       const topIsBrand = !!((top as any)?.brands || (top as any)?.brand || (typeof (top as any)?.code === 'string' && (top as any).code.length >= 8));
-      const secondIsGeneric = looksGeneric(second);
+      
+      // Safe second-is-generic check respecting VITE_CANDIDATE_CLASSIFIER_SAFE flag
+      const useSafeClassifier = (import.meta.env.VITE_CANDIDATE_CLASSIFIER_SAFE ?? '0') === '1';
+      const secondIsGeneric = useSafeClassifier 
+        ? ((second as any)?.provider === 'generic' || (second as any)?.isGeneric) && 
+          !((second as any)?.brands || (second as any)?.brand || ((second as any)?.code && typeof (second as any).code === 'string' && (second as any).code.length >= 8))
+        : looksGeneric(second);
+        
       const secondMatchesQuery = matchesQueryCore(normalizedQuery, second);
 
       if (topIsBrand && secondIsGeneric && secondMatchesQuery && scoreDiff < 0.15) {
