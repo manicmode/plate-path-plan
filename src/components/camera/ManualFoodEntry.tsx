@@ -76,6 +76,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   // Refs
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchGenRef = useRef<number>(0);
+  const searchLockedRef = useRef<boolean>(false);
 
   // Telemetry logging
   const logTelemetry = (event: string, data?: any) => {
@@ -92,11 +94,22 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       return;
     }
 
+    // Check if search is locked
+    if (searchLockedRef.current) {
+      return;
+    }
+
+    const currentGen = ++searchGenRef.current;
     setState('searching');
     logTelemetry('SEARCH', { query });
 
     try {
       const { items } = await submitTextLookup(query, { source: 'manual' });
+      
+      // Check if this search result is still valid
+      if (currentGen !== searchGenRef.current || searchLockedRef.current) {
+        return; // Ignore stale results
+      }
       
       // Transform to candidate format
       const candidateList: Candidate[] = (items || []).slice(0, 6).map((item: any, index: number) => ({
@@ -125,6 +138,11 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       logTelemetry('CANDIDATES', { count: candidateList.length });
 
     } catch (error) {
+      // Check if this error is still relevant
+      if (currentGen !== searchGenRef.current || searchLockedRef.current) {
+        return; // Ignore stale errors
+      }
+      
       setState('error');
       logTelemetry('ERROR', { message: (error as Error).message });
       toast.error('Search failed. Please try again.');
@@ -178,6 +196,17 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       return;
     }
 
+    // Lock search to prevent race conditions
+    searchLockedRef.current = true;
+    
+    // Cancel any pending search timeouts
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Invalidate any pending search results
+    searchGenRef.current++;
+
     setState('loading');
     
     try {
@@ -199,6 +228,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
       if (!items || items.length === 0) {
         setState('error');
+        searchLockedRef.current = false; // Unlock search on error
         toast.error('No nutrition data found. Try a different name or spelling.');
         return;
       }
@@ -244,6 +274,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
     } catch (error) {
       setState('error');
+      searchLockedRef.current = false; // Unlock search on error
       logTelemetry('ERROR', { message: (error as Error).message });
       toast.error('Failed to add food. Please try again.');
     }
@@ -252,6 +283,15 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   // Handle modal close
   const handleClose = () => {
     onClose();
+    
+    // Reset search locks
+    searchLockedRef.current = false;
+    searchGenRef.current++;
+    
+    // Cancel pending search timeouts
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
     
     // Reset state after close animation
     setTimeout(() => {
@@ -320,7 +360,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         )}
       </AnimatePresence>
 
-      <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <Dialog open={isOpen && state !== 'loading'} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent 
           showCloseButton={false}
           className="max-w-md mx-auto bg-slate-900/70 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl/20 p-0 overflow-hidden max-h-[90vh] overflow-y-auto"
