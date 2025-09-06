@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { DailyProgressSection } from '@/components/analytics/sections/DailyProgressSection';
@@ -31,9 +31,29 @@ import { SectionHeader } from '@/components/analytics/ui/SectionHeader';
 import { WeeklyOverviewChart } from '@/components/analytics/WeeklyOverviewChart';
 import { Activity, Apple, Heart } from 'lucide-react';
 import { StickyHeader } from '@/components/ui/sticky-header';
+import { getScrollableAncestor } from '@/utils/scroll';
+
+// Helper function to scroll to top of the nearest scrollable container
+function scrollTopOfNearestScroller(el: HTMLElement | null) {
+  const scroller = getScrollableAncestor(el); // can be window or an element
+  const opts: ScrollToOptions = { top: 0, behavior: "smooth" };
+
+  // wait for content to mount/paint so sticky headers measure correctly
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (scroller === window) {
+        // iOS Safari fallback if smooth not supported
+        try { window.scrollTo(opts); } catch { window.scrollTo(0, 0); }
+      } else {
+        try { (scroller as HTMLElement).scrollTo(opts); } catch { (scroller as HTMLElement).scrollTo(0, 0); }
+      }
+    });
+  });
+}
 
 export default function Analytics() {
   const [activeTab, setActiveTab] = useState('nutrition');
+  const containerRef = useRef<HTMLDivElement>(null);
   const {
     progress,
     weeklyAverage,
@@ -45,8 +65,24 @@ export default function Analytics() {
   // Initialize milestone tracking to check for new achievements
   useMilestoneTracker();
 
+  // Auto-scroll to top when tab changes
+  useEffect(() => {
+    // Guards: skip if already near top or modal is open
+    const currentScrollTop = window.scrollY || document.documentElement.scrollTop;
+    if (currentScrollTop <= 8) return;
+    
+    // Check for modal (common patterns)
+    const hasModal = document.querySelector('[aria-hidden="true"]') || 
+                    document.querySelector('[data-modal-open="true"]') ||
+                    document.body.classList.contains('modal-open');
+    if (hasModal) return;
+
+    scrollTopOfNearestScroller(containerRef.current);
+  }, [activeTab]);
+
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div ref={containerRef}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-gray-50 dark:bg-gray-900 min-h-screen">
       <StickyHeader className="z-[60]">
         <div className="p-4 pb-0 text-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
@@ -191,6 +227,7 @@ export default function Analytics() {
         </TabsContent>
 
       </div>
-    </Tabs>
+      </Tabs>
+    </div>
   );
 }
