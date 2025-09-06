@@ -110,6 +110,7 @@ const MyReports = lazy(() => import('@/pages/MyReports'));
 const ReportViewer = lazy(() => import('@/pages/ReportViewer'));
 const FirebaseSetup = lazy(() => import('@/pages/FirebaseSetup'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
+const EnrichmentQAComponent = lazy(() => import('@/components/debug/EnrichmentQAComponent').then(m => ({ default: m.EnrichmentQAComponent })));
 
 // Prefetch critical components after initial load
 const prefetchCriticalComponents = () => {
@@ -296,6 +297,14 @@ function AppContent() {
                               element={
                                 <React.Suspense fallback={<div style={{ padding: 24 }}>Loading Debug Pipeline…</div>}>
                                   <DebugPipeline />
+                                </React.Suspense>
+                              }
+                            />
+                            <Route 
+                              path="/qa"
+                              element={
+                                <React.Suspense fallback={<div style={{ padding: 24 }}>Loading QA Tests…</div>}>
+                                  <EnrichmentQAComponent />
                                 </React.Suspense>
                               }
                             />
