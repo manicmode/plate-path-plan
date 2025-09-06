@@ -89,29 +89,76 @@ interface FoodItem {
   isGeneric?: boolean;
 }
 
-interface FoodConfirmationCardProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (foodItem: FoodItem) => void;
-  onSkip?: () => void; // Skip functionality (now "Don't Log")
-  onCancelAll?: () => void; // Cancel all items functionality
-  onCancel?: () => void; // NEW: Cancel handler for parent orchestration
-  foodItem: FoodItem | null;
-  showSkip?: boolean; // Whether to show "Don't Log" button
-  currentIndex?: number; // Current item index for multi-item flow
-  totalItems?: number; // Total items for multi-item flow
-  isProcessingFood?: boolean; // Whether the parent is processing the food item
-  onVoiceAnalyzingComplete?: () => void; // Callback to hide voice analyzing overlay
-  skipNutritionGuard?: boolean; // when true, allow render without perGram readiness
-  bypassHydration?: boolean; // NEW: bypass store hydration for barcode items
-  forceConfirm?: boolean; // NEW: force confirmation dialog to stay open (for manual/voice)
-  candidates?: Candidate[]; // NEW: alternative food candidates for manual/voice
-  originalText?: string; // NEW: original user input for portion inference
+/**
+ * Filters alternatives to show only relevant matches
+ */
+function filterGoodAlternatives(altCandidates: any[], currentItem: FoodItem, query?: string): any[] {
+  if (!altCandidates || altCandidates.length === 0) return [];
+  
+  // Helper function to check family matching
+  const sameFamily = (a?: string, b?: string) =>
+    a && b ? a.split(':')[0] === b.split(':')[0] : true;
+  
+  const currentClassId = (currentItem as any)?.classId;
+  const currentCanonicalKey = (currentItem as any)?.canonicalKey;
+  
+  const goodAlts = altCandidates
+    .filter(candidate => {
+      // Don't show the same item
+      if (candidate.id === currentItem.id) {
+        return false;
+      }
+      
+      // Check same class if both have classId
+      if (currentClassId && candidate.classId && candidate.classId !== currentClassId) {
+        return false;
+      }
+      
+      // Or check same canonical family when available
+      if (!sameFamily(candidate.canonicalKey, currentCanonicalKey)) {
+        return false;
+      }
+      
+      // At least 1 core noun in common
+      const coreOverlap = candidate.coreOverlap ?? 0;
+      if (coreOverlap < 1) {
+        return false;
+      }
+      
+      // Confidence floor
+      const score = candidate.score ?? 0;
+      if (score < 0.55) {
+        return false;
+      }
+      
+      return true;
+    })
+    .slice(0, 4); // Limit to top 4
+  
+  return goodAlts;
 }
 
 const CONFIRM_FIX_REV = "2025-08-31T15:43Z-r11";
 
-const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
+const FoodConfirmationCard: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (foodItem: FoodItem) => void;
+  onSkip?: () => void;
+  onCancelAll?: () => void;
+  onCancel?: () => void;
+  foodItem: FoodItem | null;
+  showSkip?: boolean;
+  currentIndex?: number;
+  totalItems?: number;
+  isProcessingFood?: boolean;
+  onVoiceAnalyzingComplete?: () => void;
+  skipNutritionGuard?: boolean;
+  bypassHydration?: boolean;
+  forceConfirm?: boolean;
+  candidates?: Candidate[];
+  originalText?: string;
+}> = ({
   isOpen,
   onClose,
   onConfirm,
@@ -141,6 +188,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [isEvaluatingQuality, setIsEvaluatingQuality] = useState(false);
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [localAltCandidates, setLocalAltCandidates] = useState<any[]>([]);
   
   const { toast } = useToast();
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
@@ -164,9 +212,25 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     setLocalAltCandidates(altCands);
   }, [currentFoodItem?.id, (currentFoodItem as any)?.rev]);
 
+  // Optional helpers (no new hooks below guards) 
+  const perGram = storeAnalysis?.perGram || {};
+  const perGramSum = Object.values(perGram).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
+
+  // Reset alt candidates when item changes (prevent stale carry-over)
+  useEffect(() => {
+    const altCands = (currentFoodItem as any)?.__altCandidates ?? [];
+    setLocalAltCandidates(altCands);
+  }, [currentFoodItem?.id, (currentFoodItem as any)?.rev]);
+
   // Calculate good alternatives with filtering
-  const rawAlts = localAltCandidates || candidates || [];
-  const goodAlts = filterGoodAlternatives(rawAlts, currentFoodItem!, originalText);
+  const rawAlts = (localAltCandidates || candidates || []) as any[];
+  const goodAlts = rawAlts.filter(candidate => {
+    if (!candidate || candidate.id === currentFoodItem?.id) return false;
+    const coreOverlap = candidate.coreOverlap ?? 0;
+    const score = candidate.score ?? 0;
+    return coreOverlap >= 1 && score >= 0.55;
+  }).slice(0, 4);
+  
   const showSwapStrip = goodAlts.length >= 2;
 
   // Telemetry logging for swap strip

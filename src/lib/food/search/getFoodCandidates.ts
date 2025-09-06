@@ -98,19 +98,6 @@ function shouldBanCandidate(query: string, candidate: CanonicalSearchResult, cla
     const isGrainOats = /\b(oat|oatmeal|rolled oats|grain|cereal)\b/.test(nameLower) || 
                       (classId && /grain|oat|cereal/.test(classId));
     
-/**
- * Checks if a candidate should be banned based on negative alias rules
- */
-function shouldBanCandidate(query: string, candidate: CanonicalSearchResult, classId?: string): boolean {
-  const queryLower = query.toLowerCase();
-  const nameLower = candidate.name.toLowerCase();
-  
-  // Ban rule: "roll" query with sushi signals should not match grain/oats
-  if (queryLower.includes('roll')) {
-    const hasSushiSignals = /\b(california|sushi|maki|nori|wasabi|soy|salmon|tuna|avocado)\b/.test(queryLower);
-    const isGrainOats = /\b(oat|oatmeal|rolled oats|grain|cereal)\b/.test(nameLower) || 
-                      (classId && /grain|oat|cereal/.test(classId));
-    
     if (hasSushiSignals && isGrainOats) {
       console.log('[CANDIDATES][BAN]', { 
         query, 
@@ -199,197 +186,130 @@ function classifyItemKind(item: CanonicalSearchResult): 'generic' | 'brand' {
     }
   }
   
-  // Default to generic for simple names
-  const wordCount = name.split(/\s+/).length;
-  return wordCount <= 3 ? 'generic' : 'brand';
+  // Default to brand if no clear indicators
+  return 'brand';
 }
 
 /**
- * Maps class ID for portion defaults
+ * Infers food class ID from facets and name
  */
 function inferClassId(name: string, facets: ParsedFacets): string | undefined {
   const nameLower = name.toLowerCase();
   
-  // Direct mappings
-  if (nameLower.includes('hot dog') || nameLower.includes('hotdog')) return 'hot_dog_link';
-  if (nameLower.includes('pizza') && nameLower.includes('slice')) return 'pizza_slice';
-  if (nameLower.includes('pizza')) return 'pizza_slice';
-  if (nameLower.includes('teriyaki') && nameLower.includes('bowl')) return 'teriyaki_bowl';
-  if (nameLower.includes('california') && nameLower.includes('roll')) return 'california_roll';
-  if (nameLower.includes('rice')) return 'rice_cooked';
-  if (nameLower.includes('egg')) return 'egg_large';
-  if (nameLower.includes('oatmeal') || nameLower.includes('oats')) return 'oatmeal_cooked';
-  if (nameLower.includes('chicken') && !nameLower.includes('soup')) return 'chicken_breast';
+  // Use core nouns from facets first
+  if (facets.core.length > 0) {
+    return `food:${facets.core[0]}`;
+  }
   
-  // Use facets
-  if (facets.core.includes('pizza')) return 'pizza_slice';
-  if (facets.core.includes('bowl')) return 'teriyaki_bowl';
-  if (facets.core.includes('roll')) return 'california_roll';
-  if (facets.core.includes('rice')) return 'rice_cooked';
-  if (facets.core.includes('egg')) return 'egg_large';
+  // Fallback to name analysis
+  if (nameLower.includes('pizza')) return 'food:pizza';
+  if (nameLower.includes('burger')) return 'food:burger';
+  if (nameLower.includes('salad')) return 'food:salad';
+  if (nameLower.includes('sandwich')) return 'food:sandwich';
   
   return undefined;
 }
 
 /**
- * Calculates similarity score using multiple methods
- */
-function calculateSimilarity(query: string, foodName: string): number {
-  const queryLower = query.toLowerCase();
-  const nameLower = foodName.toLowerCase();
-  
-  // Exact match
-  if (queryLower === nameLower) return 1.0;
-  
-  // Contains query (high score)
-  if (nameLower.includes(queryLower)) return 0.85;
-  
-  // Query contains name
-  if (queryLower.includes(nameLower)) return 0.75;
-  
-  // Jaccard similarity on words
-  const queryWords = new Set(queryLower.split(/\s+/));
-  const nameWords = new Set(nameLower.split(/\s+/));
-  const intersection = new Set([...queryWords].filter(x => nameWords.has(x)));
-  const union = new Set([...queryWords, ...nameWords]);
-  const jaccard = intersection.size / union.size;
-  
-  if (jaccard > 0.5) return 0.6 + jaccard * 0.2;
-  
-  // Trigram similarity for partial matches
-  const trigrams = (text: string) => {
-    const result = [];
-    for (let i = 0; i <= text.length - 3; i++) {
-      result.push(text.slice(i, i + 3));
-    }
-    return new Set(result);
-  };
-  
-  const queryTrigrams = trigrams(queryLower);
-  const nameTrigrams = trigrams(nameLower);
-  const trigramIntersection = new Set([...queryTrigrams].filter(x => nameTrigrams.has(x)));
-  const trigramUnion = new Set([...queryTrigrams, ...nameTrigrams]);
-  const trigramSim = trigramIntersection.size / trigramUnion.size;
-  
-  return Math.max(0.1, trigramSim * 0.6);
-}
-
-/**
- * Scores a food candidate using the specified formula
+ * Scores food candidate based on relevance
  */
 function scoreFoodCandidate(
   query: string,
   item: CanonicalSearchResult,
-  source: Candidate['source'],
+  source: string,
   facets: ParsedFacets,
   kind: 'generic' | 'brand'
 ): { score: number; confidence: number; explanation: string } {
   let score = 0;
-  const explanationParts: string[] = [];
+  let explanation = '';
   
-  // Base similarity (0-55 points)
-  const similarity = calculateSimilarity(query, item.name);
-  const lexicalScore = similarity * 55;
-  score += lexicalScore;
-  explanationParts.push(`Lexical: ${Math.round(lexicalScore)}pts`);
-  
-  // Semantic similarity (0-35 points) - placeholder for embedding
-  const semanticScore = similarity * 35; // Using lexical as proxy
-  score += semanticScore;
-  explanationParts.push(`Semantic: ${Math.round(semanticScore)}pts`);
-  
-  // Prep/cuisine/form boosts (0-10 points)
-  let facetBonus = 0;
+  const queryLower = query.toLowerCase();
   const nameLower = item.name.toLowerCase();
   
-  if (facets.prep.length > 0) {
-    const prepMatches = facets.prep.filter(prep => nameLower.includes(prep));
-    facetBonus += prepMatches.length * 2;
+  // Exact match bonus
+  if (nameLower === queryLower) {
+    score += 100;
+    explanation += 'exact match; ';
   }
   
-  if (facets.cuisine.length > 0) {
-    const cuisineMatches = facets.cuisine.filter(cuisine => nameLower.includes(cuisine));
-    facetBonus += cuisineMatches.length * 2;
+  // Word overlap scoring
+  const queryWords = queryLower.split(/\s+/);
+  const nameWords = nameLower.split(/\s+/);
+  
+  let wordMatches = 0;
+  for (const qWord of queryWords) {
+    if (nameWords.some(nWord => nWord.includes(qWord) || qWord.includes(nWord))) {
+      wordMatches++;
+    }
   }
   
-  if (facets.form.length > 0) {
-    const formMatches = facets.form.filter(form => nameLower.includes(form));
-    facetBonus += formMatches.length * 1;
+  const wordOverlap = wordMatches / Math.max(queryWords.length, nameWords.length);
+  score += wordOverlap * 50;
+  
+  // Generic preference bonus
+  if (kind === 'generic') {
+    score += 10;
+    explanation += 'generic bonus; ';
   }
   
-  facetBonus = Math.min(facetBonus, 10);
-  score += facetBonus;
-  if (facetBonus > 0) {
-    explanationParts.push(`Facets: +${facetBonus}pts`);
+  // Source bonus
+  if (source === 'lexical') {
+    score += 5;
   }
   
-  // Brand penalty (0-20 points deduction)
-  const brandPenalty = kind === 'brand' && !query.toLowerCase().includes('brand') ? 20 : 0;
-  score -= brandPenalty;
-  if (brandPenalty > 0) {
-    explanationParts.push(`Brand penalty: -${brandPenalty}pts`);
-  }
-  
-  // Alias exact match bonus (0-10 points)
-  const aliasBonus = source === 'alias' ? 10 : 0;
-  score += aliasBonus;
-  if (aliasBonus > 0) {
-    explanationParts.push(`Alias: +${aliasBonus}pts`);
-  }
-  
-  // Convert to confidence (0-1 scale)
-  const confidence = Math.min(score / 100, 1.0);
+  const confidence = Math.min(0.99, Math.max(0.1, score / 100));
   
   return {
     score,
     confidence,
-    explanation: explanationParts.join(', ')
+    explanation: explanation || 'basic scoring'
   };
 }
 
 /**
- * Performs lexical search using existing food search infrastructure
+ * Performs lexical search using direct text matching
  */
 async function lexicalSearch(query: string, limit: number = 15): Promise<CanonicalSearchResult[]> {
+  console.log(`[LEXICAL] Searching for: "${query}"`);
+  
   try {
-    const results = await searchFoodByName(query, { 
-      maxResults: limit, 
-      bypassGuard: true 
-    });
-    
-    console.log(`[LEXICAL] Found ${results.length} results for "${query}"`);
-    return results;
+    const results = await searchFoodByName(query);
+    console.log(`[LEXICAL] Found ${results.length} results`);
+    return results.slice(0, limit);
   } catch (error) {
-    console.error('[LEXICAL] Search error:', error);
+    console.error('[LEXICAL] Search failed:', error);
     return [];
   }
 }
 
 /**
- * Searches using food aliases
+ * Performs alias-expanded search
  */
 async function aliasSearch(query: string, limit: number = 10): Promise<CanonicalSearchResult[]> {
+  console.log(`[ALIAS] Expanding aliases for: "${query}"`);
+  
   const aliases = expandAliases(query);
+  console.log(`[ALIAS] Expanded to: ${aliases.join(', ')}`);
+  
   const results: CanonicalSearchResult[] = [];
+  const seen = new Set<string>();
   
-  console.log(`[ALIAS] Expanded "${query}" to ${aliases.length} terms:`, aliases.slice(0, 5));
-  
-  for (const alias of aliases.slice(0, 3)) { // Limit to top 3 aliases
-    if (alias === query.toLowerCase()) continue; // Skip original
-    
+  for (const alias of aliases.slice(0, 3)) { // Limit alias expansion
     try {
-      const aliasResults = await searchFoodByName(alias, { 
-        maxResults: Math.ceil(limit / 3), 
-        bypassGuard: true 
-      });
+      const aliasResults = await searchFoodByName(alias);
       
-      results.push(...aliasResults);
+      for (const result of aliasResults) {
+        if (!seen.has(result.id) && results.length < limit) {
+          seen.add(result.id);
+          results.push(result);
+        }
+      }
     } catch (error) {
-      console.error(`[ALIAS] Search error for "${alias}":`, error);
+      console.warn(`[ALIAS] Failed to search "${alias}":`, error);
     }
   }
   
-  // Remove duplicates by ID
+  // Remove duplicates and sort by relevance
   const unique = results.filter((item, index, self) => 
     index === self.findIndex(t => t.id === item.id)
   );
@@ -612,23 +532,6 @@ export async function getFoodCandidates(
       source: c.source
     }))
   });
-  
-  // Debug logging if enabled
-  const debugEnabled = import.meta.env.VITE_FOOD_TEXT_DEBUG === '1';
-  if (debugEnabled) {
-    console.log('[TEXT][QUERY]', normalizedQuery);
-    console.log('[TEXT][FACETS]', facets);
-    finalCandidates.forEach((c, i) => {
-      console.log(`[TEXT][CANDIDATE_${i}]`, {
-        name: c.name,
-        kind: c.kind,
-        classId: c.classId,
-        score: Math.round(c.score),
-        confidence: Math.round(c.confidence * 100) / 100,
-        explanation: c.explanation
-      });
-    });
-  }
   
   return finalCandidates;
 }

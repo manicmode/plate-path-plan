@@ -54,12 +54,5 @@ export function canonicalFor(foodName: string): string | undefined {
   return undefined;
 }
 
-/**
- * Check if two foods belong to the same canonical family
- */
-export function sameCanonicalFamily(foodA: string, foodB: string): boolean {
-  const familyA = canonicalFor(foodA);
-  const familyB = canonicalFor(foodB);
-  
-  return !!(familyA && familyB && familyA === familyB);
-}
+export const CANONICAL_BY_CORE_NOUN = CANONICAL_FAMILIES;
+export type CanonicalKey = string;
