@@ -56,41 +56,43 @@ const MEAL_TYPE_CHIPS = [
   { value: 'snack', label: 'Snack', emoji: '🍿' }
 ];
 
-// Very small, local helpers (UI-only)
+// --- BEGIN local helpers (duplicate of search-side, kept local to avoid imports)
 const _norm = (s?: string) =>
-  (s || '')
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^\w\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-const _tokens = (s?: string) =>
-  _norm(s).split(' ').filter(Boolean);
-
-// Words we ignore when extracting a "core noun"
-const STOP = new Set([
-  'a','an','the','and','or','with','of','in','on','to',
-  // prep / style words
-  'grilled','baked','fried','roasted','boiled','steamed','sauteed','bbq','barbecue','smoked','raw','cooked',
-  // misc adjectives
-  'fresh','organic','low','reduced','classic','premium','style'
-]);
-
-// best-effort head noun picker from a name, falling back safely
-const coreNoun = (name?: string) => {
-  const t = _tokens(name).filter(x => !STOP.has(x));
-  // prefer the last non-stop token (often the noun: "grilled chicken" -> "chicken")
-  return t.length ? t[t.length - 1] : _tokens(name).pop() || '';
+  (s || '').toLowerCase().normalize('NFKD').replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+const STOP = new Set(['a','an','the','and','or','with','of','in','on','to','style','classic','premium','original','fresh','organic',
+  'grilled','baked','fried','roasted','boiled','steamed','sauteed','bbq','barbecue','smoked','raw','cooked']);
+const coreNoun = (text?: string) => {
+  const t = _norm(text).split(' ').filter(Boolean).filter(x => !STOP.has(x));
+  return t.length ? t[t.length - 1] : _norm(text).split(' ').pop() || '';
+};
+const looksGeneric = (it: any): boolean => {
+  if (it?.isGeneric === true) return true;
+  if (it?.kind === 'generic' || it?.provider === 'generic') return true;
+  if (it?.brands || it?.brand) return false;
+  if (typeof it?.code === 'string' && it.code.length >= 8) return false;
+  if (typeof it?.canonicalKey === 'string' && it.canonicalKey.startsWith('generic_')) return true;
+  return false;
+};
+const matchesQueryCore = (q: string, candidate: any): boolean => {
+  const qCore = coreNoun(q);
+  const nCore = coreNoun(candidate?.name);
+  if (!qCore || !nCore) return false;
+  if (qCore === nCore) return true;
+  if (qCore.endsWith('s') && qCore.slice(0,-1) === nCore) return true;
+  if (nCore.endsWith('s') && nCore.slice(0,-1) === qCore) return true;
+  if (candidate?.classId && String(candidate.classId).includes(qCore)) return true;
+  if (candidate?.canonicalKey && String(candidate.canonicalKey).includes(qCore)) return true;
+  return false;
 };
 
-// checks whether candidate name shares the primary's core noun
+// legacy helper for backwards compatibility
 const sharesCore = (candidateName?: string, primaryName?: string) => {
   const core = coreNoun(primaryName);
   if (!core) return true; // be permissive if we can't infer
   const cand = _norm(candidateName);
   return cand.includes(core);
 };
+// --- END local helpers
 
 export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   isOpen,
@@ -154,29 +156,20 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       if (items.length > 0) {
         const primary = items[0];
 
-        const primaryIsGeneric =
-          Boolean(primary?.isGeneric) ||
-          primary?.provider === 'generic' ||
-          primary?.kind === 'generic';
-
+        // Primary
         list.push({
           id: 'candidate-0',
-          name: primary?.name ?? 'Food',
-          isGeneric: primaryIsGeneric,
-          portionHint: primary?.servingText || `${primary?.servingGrams ?? 100}g default`,
-          defaultPortion: {
-            amount: primary?.servingGrams ?? 100,
-            unit: 'g',
-          },
-          provider: primary?.provider ?? primary?.kind,
-          imageUrl: primary?.imageUrl,
-          data: primary, // preserve original object for confirm
+          name: primary.name,
+          isGeneric: looksGeneric(primary),
+          portionHint: primary.servingText || `${primary.servingGrams || 100}g default`,
+          defaultPortion: { amount: primary.servingGrams || 100, unit: 'g' },
+          provider: primary.provider,
+          imageUrl: primary.imageUrl,
+          data: primary
         });
 
         // v3 alt candidates (preferred)
-        const v3Alts = Array.isArray(primary?.__altCandidates)
-          ? primary.__altCandidates
-          : [];
+        const v3Alts = Array.isArray(primary.__altCandidates) ? primary.__altCandidates : [];
 
         // legacy "multiple items" fallback as alts
         const legacyAlts = items.length > 1 ? items.slice(1) : [];
@@ -185,21 +178,15 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         const filteredAlts = rawAlts.filter((c: any) => sharesCore(c?.name, primary?.name)).slice(0, 5);
 
         filteredAlts.forEach((c: any, i: number) => {
-          const isGeneric =
-            Boolean(c?.isGeneric) || c?.kind === 'generic' || c?.provider === 'generic';
-
           list.push({
             id: `candidate-alt-${i}`,
-            name: c?.name ?? 'Option',
-            isGeneric,
-            portionHint: `${c?.servingG ?? primary?.servingGrams ?? 100}g default`,
-            defaultPortion: {
-              amount: c?.servingG ?? primary?.servingGrams ?? 100,
-              unit: 'g',
-            },
-            provider: c?.provider ?? c?.kind,
-            imageUrl: c?.imageUrl,
-            data: c,
+            name: c.name,
+            isGeneric: looksGeneric(c),
+            portionHint: `${c.servingG || 100}g default`,
+            defaultPortion: { amount: c.servingG || 100, unit: 'g' },
+            provider: c.kind || c.provider,
+            imageUrl: c.imageUrl,
+            data: c
           });
         });
 
@@ -215,8 +202,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
               id: `candidate-alt-rescue`,
               name: rescue?.name ?? 'Option',
               isGeneric: true,
-              portionHint: `${rescue?.servingG ?? primary?.servingGrams ?? 100}g default`,
-              defaultPortion: { amount: rescue?.servingG ?? primary?.servingGrams ?? 100, unit: 'g' },
+              portionHint: `${rescue?.servingG || primary?.servingGrams || 100}g default`,
+              defaultPortion: { amount: rescue?.servingG || primary?.servingGrams || 100, unit: 'g' },
               provider: rescue?.provider ?? rescue?.kind,
               imageUrl: rescue?.imageUrl,
               data: rescue,
@@ -259,25 +246,52 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             });
           }
         }
+
+        // fallback: if filtering removed everything and we had raw alts,
+        // allow the single best generic that shares the query token exactly
+        if (list.length === 1 && rawAlts.length > 0) {
+          const qCore = coreNoun(query);
+          const rescue = rawAlts.find((c: any) => _norm(c?.name).includes(qCore) && (
+            Boolean(c?.isGeneric) || c?.kind === 'generic' || c?.provider === 'generic'
+          ));
+          if (rescue) {
+            list.push({
+              id: `candidate-alt-rescue`,
+              name: rescue?.name ?? 'Option',
+              isGeneric: true,
+              portionHint: `${rescue?.servingG ?? primary?.servingGrams ?? 100}g default`,
+              defaultPortion: { amount: rescue?.servingG ?? primary?.servingGrams ?? 100, unit: 'g' },
+              provider: rescue?.provider ?? rescue?.kind,
+              imageUrl: rescue?.imageUrl,
+              data: rescue,
+            });
+          }
+        }
       }
 
-      // Keep existing generics-first rule (stable within groups)
-      list.sort((a, b) => (a.isGeneric === b.isGeneric ? 0 : a.isGeneric ? -1 : 1));
+      // FINAL relevance sieve: drop off-topic items (e.g., "Quaker Rolled Oats" for "california roll")
+      const relevant = list.filter(c => matchesQueryCore(query, c.data));
 
-      setCandidates(list);
-      setState(list.length > 0 ? 'candidates' : 'idle');
+      // If nothing survives, fall back to the original list to avoid empty UI (rare).
+      const finalList = relevant.length ? relevant : list;
+
+      // Generics first
+      finalList.sort((a, b) => (a.isGeneric === b.isGeneric ? 0 : a.isGeneric ? -1 : 1));
+
+      setCandidates(finalList);
+      setState(finalList.length > 0 ? 'candidates' : 'idle');
       
       // optional: very light debug (leave in dev only if a flag exists)
       if (FOOD_TEXT_DEBUG) {
         console.log('[MANUAL_ENTRY][CANDS]', {
           q: query,
-          total: list.length,
-          top: list[0]?.name,
-          topIsGeneric: list[0]?.isGeneric,
+          total: finalList.length,
+          top: finalList[0]?.name,
+          topIsGeneric: finalList[0]?.isGeneric,
         });
       }
       
-      logTelemetry('CANDIDATES', { count: list.length });
+      logTelemetry('CANDIDATES', { count: finalList.length });
 
     } catch (error) {
       // Check if this error is still relevant

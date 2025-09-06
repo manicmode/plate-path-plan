@@ -8,6 +8,50 @@ import { expandAliases, normalizeQuery } from '../text/food_aliases';
 import { parseQuery, ParsedFacets } from '../text/parse';
 import { searchFoodByName, CanonicalSearchResult } from '@/lib/foodSearch';
 
+// --- BEGIN local helpers (generic detection + relevance) ---
+const _norm = (s?: string) =>
+  (s || '').toLowerCase().normalize('NFKD').replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
+const STOP = new Set([
+  'a','an','the','and','or','with','of','in','on','to',
+  'style','classic','premium','original','fresh','organic',
+  'grilled','baked','fried','roasted','boiled','steamed','sauteed','bbq','barbecue','smoked','raw','cooked'
+]);
+
+const coreNoun = (text?: string) => {
+  const t = _norm(text).split(' ').filter(Boolean).filter(x => !STOP.has(x));
+  return t.length ? t[t.length - 1] : _norm(text).split(' ').pop() || '';
+};
+
+const looksGeneric = (it: any): boolean => {
+  // Prefer explicit signals first
+  if (it?.isGeneric === true) return true;
+  if (it?.kind === 'generic' || it?.provider === 'generic') return true;
+  // Explicit brand signals → not generic
+  if (it?.brands || it?.brand) return false;
+  if (typeof it?.code === 'string' && it.code.length >= 8) return false; // EAN/UPC → brand
+  // Canonical key implies generic
+  if (typeof it?.canonicalKey === 'string' && it.canonicalKey.startsWith('generic_')) return true;
+  // Otherwise unknown → treat as NOT generic to be safe
+  return false;
+};
+
+const matchesQueryCore = (q: string, candidate: any): boolean => {
+  const qCore = coreNoun(q);
+  const nCore = coreNoun(candidate?.name);
+  if (!qCore || !nCore) return false;
+  // exact core match
+  if (qCore === nCore) return true;
+  // allow simple plural/singular mismatch
+  if (qCore.endsWith('s') && qCore.slice(0,-1) === nCore) return true;
+  if (nCore.endsWith('s') && nCore.slice(0,-1) === qCore) return true;
+  // class/slug match (when present)
+  if (candidate?.classId && typeof candidate.classId === 'string' && candidate.classId.includes(qCore)) return true;
+  if (candidate?.canonicalKey && typeof candidate.canonicalKey === 'string' && candidate.canonicalKey.includes(qCore)) return true;
+  return false;
+};
+// --- END local helpers ---
+
 export interface Candidate {
   id: string;
   name: string;
@@ -443,26 +487,23 @@ export async function getFoodCandidates(
     const generics = sortedCandidates.filter(c => c.kind === 'generic');
     const brands = sortedCandidates.filter(c => c.kind === 'brand');
     
-    // Promote generic if top result is brand but #2 is generic with near score
-    if (brands.length > 0 && generics.length > 0) {
-      const topBrand = brands[0];
-      const topGeneric = generics[0];
-      
-      // Check if top candidate is brand without nutrients and second is generic with nutrients
-      if (sortedCandidates[0].kind === 'brand' && 
-          sortedCandidates.length > 1 &&
-          sortedCandidates[1].kind === 'generic' &&
-          (topBrand.score - topGeneric.score) < 0.15) {
-        
-        // Log the promotion
-        console.log('[CANDIDATES][PROMOTE_GENERIC]', {
-          originalTop: { name: topBrand.name, score: topBrand.score, kind: 'brand' },
-          promoted: { name: topGeneric.name, score: topGeneric.score, kind: 'generic' },
-          scoreDiff: topBrand.score - topGeneric.score
+    // Only promote when the second item is truly generic AND relevant to the query core noun/class.
+    if ((source === 'manual' || source === 'speech') && sortedCandidates.length >= 2) {
+      const top = sortedCandidates[0];
+      const second = sortedCandidates[1];
+      const scoreDiff = (top.score || 0) - (second.score || 0);
+
+      const topIsBrand = !!((top as any)?.brands || (top as any)?.brand || (typeof (top as any)?.code === 'string' && (top as any).code.length >= 8));
+      const secondIsGeneric = looksGeneric(second);
+      const secondMatchesQuery = matchesQueryCore(normalizedQuery, second);
+
+      if (topIsBrand && secondIsGeneric && secondMatchesQuery && scoreDiff < 0.15) {
+        console.log('[CANDIDATES][PROMOTE_GENERIC_SAFE]', {
+          demoted: top?.name,
+          promoted: second?.name,
+          scoreDiff
         });
-        
-        // Reorder to promote the generic
-        sortedCandidates = [topGeneric, ...sortedCandidates.filter(c => c.id !== topGeneric.id)];
+        [sortedCandidates[0], sortedCandidates[1]] = [sortedCandidates[1], sortedCandidates[0]];
       }
     }
     
