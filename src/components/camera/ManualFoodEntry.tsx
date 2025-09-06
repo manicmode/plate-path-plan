@@ -70,18 +70,21 @@ const looksGeneric = (it: any): boolean => {
   const useTightLabeling = (import.meta.env.VITE_MANUAL_ENTRY_LABEL_TIGHT ?? '1') === '1';
   
   if (useTightLabeling) {
-    // Tight predicate: Generic iff explicit indicators AND no brand evidence
+    // 1) explicit generic markers
     if (it?.isGeneric === true) return true;
-    if (it?.canonicalKey?.startsWith('generic_')) return true;
-    
-    // Check for brand evidence (overrides generic)
-    const hasBrandEvidence = !!(it?.brand || it?.brands || (it?.code && typeof it.code === 'string' && it.code.length >= 8));
-    if (hasBrandEvidence) return false;
-    
-    // Only allow generic if kind/provider says so AND no brand evidence
+    if (typeof it?.canonicalKey === 'string' && it.canonicalKey.startsWith('generic_')) return true;
+
+    // 2) name heuristic (UI-only safeguard)
+    if (/^generic[\s-]/i.test(it?.name || '')) return true;
+
+    // 3) search-side kind/provider… but ONLY if no brand evidence
+    const hasBrandEvidence = !!(it?.brand || it?.brands || (it?.code && String(it.code).length >= 8));
     if ((it?.kind === 'generic' || it?.provider === 'generic') && !hasBrandEvidence) return true;
-    
-    // Default to Brand (safer when uncertain)
+
+    // 4) hard override: if we *do* have brand evidence, it's Brand
+    if (hasBrandEvidence) return false;
+
+    // 5) default: unknown = Brand (conservative)
     return false;
   } else {
     // Legacy behavior 
@@ -130,6 +133,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const [mealType, setMealType] = useState<MealType>('');
   const [notes, setNotes] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showMoreCandidates, setShowMoreCandidates] = useState(false);
   const [recentItems, setRecentItems] = useState<string[]>([]);
 
   // Refs
@@ -195,7 +199,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         const legacyAlts = items.length > 1 ? items.slice(1) : [];
 
         const rawAlts = [...v3Alts, ...legacyAlts];
-        const filteredAlts = rawAlts.filter((c: any) => sharesCore(c?.name, primary?.name)).slice(0, 5);
+        const filteredAlts = rawAlts.filter((c: any) => sharesCore(c?.name, primary?.name)).slice(0, 8);
 
         filteredAlts.forEach((c: any, i: number) => {
           list.push({
@@ -264,6 +268,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                 name: titleCase(core),
                 source: 'manual',
                 isGeneric: true,
+                kind: 'generic',
+                canonicalKey: `generic_${core.toLowerCase()}`,
                 servingG: defaultG
               }
             });
@@ -293,10 +299,12 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       }
 
       // FINAL relevance sieve: drop off-topic items (e.g., "Quaker Rolled Oats" for "california roll")
-      const relevant = list.filter(c => matchesQueryCore(query, c.data));
+      const strictCoreNounFilter = (import.meta.env.VITE_CORE_NOUN_STRICT ?? '0') === '1';
+      const relevant = strictCoreNounFilter ? list.filter(c => matchesQueryCore(query, c.data)) : list;
 
-      // If nothing survives, fall back to the original list to avoid empty UI (rare).
-      const finalList = relevant.length ? relevant : list;
+      // Ensure minimum choices fallback - if strict filter leaves < 3 items, use broader list
+      const MIN_CHOICES = 3;
+      const finalList = relevant.length >= MIN_CHOICES ? relevant : list.slice(0, MIN_CHOICES);
 
       // Generics first
       finalList.sort((a, b) => (a.isGeneric === b.isGeneric ? 0 : a.isGeneric ? -1 : 1));
@@ -501,6 +509,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       setMealType('');
       setNotes('');
       setShowAdvanced(false);
+      setShowMoreCandidates(false);
     }, 200);
   };
 
@@ -672,10 +681,25 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                 className="mb-6"
               >
                 <CandidateList
-                  candidates={candidates}
+                  candidates={showMoreCandidates ? candidates : candidates.slice(0, 6)}
                   selectedCandidate={selectedCandidate}
                   onSelect={handleCandidateSelect}
                 />
+                
+                {/* Show More Button */}
+                {candidates.length > 6 && (
+                  <div className="mt-3 text-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowMoreCandidates(!showMoreCandidates)}
+                      className="text-slate-400 hover:text-white text-xs"
+                    >
+                      {showMoreCandidates ? 'Show Less' : `Show ${candidates.length - 6} More Results`}
+                      {showMoreCandidates ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+                    </Button>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
