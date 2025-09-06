@@ -189,7 +189,8 @@ function scoreFoodCandidate(
   item: CanonicalSearchResult,
   source: Candidate['source'],
   facets: ParsedFacets,
-  kind: 'generic' | 'brand'
+  kind: 'generic' | 'brand',
+  searchSource?: string
 ): { score: number; confidence: number; explanation: string } {
   let score = 0;
   const explanationParts: string[] = [];
@@ -235,6 +236,18 @@ function scoreFoodCandidate(
   score -= brandPenalty;
   if (brandPenalty > 0) {
     explanationParts.push(`Brand penalty: -${brandPenalty}pts`);
+  }
+  
+  // Manual-only brand penalty (additional 0.10 deduction)
+  if (searchSource === 'manual') {
+    const hasBrand = item.brand && item.brand.trim().length > 0;
+    const hasBarcode = item.barcode && item.barcode.length >= 8;
+    
+    if (hasBrand || hasBarcode) {
+      const manualBrandPenalty = 10; // 0.10 * 100 = 10 points
+      score -= manualBrandPenalty;
+      explanationParts.push(`Manual brand penalty: -${manualBrandPenalty}pts`);
+    }
   }
   
   // Alias exact match bonus (0-10 points)
@@ -311,7 +324,8 @@ async function aliasSearch(query: string, limit: number = 10): Promise<Canonical
 export async function getFoodCandidates(
   rawQuery: string,
   facets: ParsedFacets,
-  opts?: CandidateOpts
+  opts?: CandidateOpts,
+  source?: string
 ): Promise<Candidate[]> {
   const options = {
     preferGeneric: true,
@@ -343,7 +357,8 @@ export async function getFoodCandidates(
         result, 
         'lexical', 
         facets, 
-        kind
+        kind,
+        source
       );
       
       candidates.set(result.id, {
@@ -388,7 +403,8 @@ export async function getFoodCandidates(
         result, 
         'alias', 
         facets, 
-        kind
+        kind,
+        source
       );
       
       // Only add if not exists or has better score
@@ -475,6 +491,75 @@ export async function getFoodCandidates(
   }
   
   const finalCandidates = sortedCandidates.slice(0, 6);
+  
+  // Manual-only guaranteed generic candidate injection
+  const isManual = source === 'manual';
+  const hasGenericTop = finalCandidates[0] && 
+    finalCandidates[0].kind === 'generic' &&
+    !(finalCandidates[0] as any).brand &&
+    !(finalCandidates[0] as any).barcode;
+
+  if (isManual && !hasGenericTop && finalCandidates.length > 0) {
+    // Try to infer class/canonical using existing logic
+    const inferredClassId = finalCandidates[0]?.classId || null;
+    const inferredCanonical = null; // No canonical key logic in current implementation
+    
+    // Build a safe generic label
+    const queryLower = normalizedQuery.toLowerCase();
+    let genericName = 'Generic food';
+    
+    if (queryLower.includes('grill')) {
+      genericName = 'Grilled chicken';
+    } else if (inferredClassId) {
+      genericName = inferredClassId.replace(/_/g, ' ');
+      // Capitalize first letter of each word
+      genericName = genericName.replace(/\b\w/g, l => l.toUpperCase());
+    } else {
+      // Try to extract a reasonable generic name from the query
+      const cleanQuery = normalizedQuery.replace(/\b(the|a|an|with|and|or)\b/gi, '').trim();
+      if (cleanQuery) {
+        genericName = `Generic ${cleanQuery}`;
+      }
+    }
+    
+    const topScore = finalCandidates[0]?.score ?? 70;
+    const genericScore = Math.min(96, topScore + 5);
+    
+    const genericCandidate: Candidate = {
+      id: `generic-${Date.now()}`,
+      name: genericName,
+      kind: 'generic',
+      classId: inferredClassId || undefined,
+      score: genericScore,
+      confidence: genericScore / 100,
+      explanation: 'Generic candidate injection for manual entry',
+      source: 'lexical',
+      servingGrams: 100,
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      sodium: 0,
+    };
+    
+    // Only inject if it isn't already present by name
+    const duplicate = finalCandidates.some(c => 
+      c.name.toLowerCase() === genericCandidate.name.toLowerCase()
+    );
+    
+    if (!duplicate) {
+      finalCandidates.unshift(genericCandidate);
+      console.log('[CANDIDATES][GENERIC_INJECT]', { 
+        q: normalizedQuery, 
+        name: genericCandidate.name 
+      });
+      
+      // Keep only top 6 after injection
+      finalCandidates.splice(6);
+    }
+  }
   
   console.log('[CANDIDATES] Final results:', {
     count: finalCandidates.length,

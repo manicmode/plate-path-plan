@@ -74,7 +74,7 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
       preferGeneric: true,
       requireCoreToken: true,
       maxPerFamily: 1
-    });
+    }, source);
 
     if (FOOD_TEXT_DEBUG) {
       console.log('[TEXT][CANDIDATES] top6=', candidates.slice(0, 6).map(c => ({
