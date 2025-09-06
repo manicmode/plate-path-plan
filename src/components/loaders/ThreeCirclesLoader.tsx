@@ -39,7 +39,7 @@ export function ThreeCirclesLoader({}: ThreeCirclesLoaderProps) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="fixed inset-0 z-[99999] bg-slate-900/[0.99] backdrop-blur-lg flex items-center justify-center"
+      className="fixed inset-0 z-[99999] bg-slate-900/[0.85] backdrop-blur-md flex items-center justify-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="tcl-title"
