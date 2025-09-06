@@ -14,13 +14,15 @@ interface SpeakToLogModalProps {
   onClose: () => void;
   onResults: (items: any[]) => void;
   onOpenManualEntry?: () => void;
+  onShowLoading?: () => void;
 }
 
 export const SpeakToLogModal: React.FC<SpeakToLogModalProps> = ({
   isOpen,
   onClose,
   onResults,
-  onOpenManualEntry
+  onOpenManualEntry,
+  onShowLoading
 }) => {
   // Use V2 experience when enabled
   if (ENABLE_SPEAK_UI_V2) {
@@ -30,6 +32,7 @@ export const SpeakToLogModal: React.FC<SpeakToLogModalProps> = ({
         onClose={onClose}
         onResults={onResults}
         onOpenManualEntry={onOpenManualEntry}
+        onShowLoading={onShowLoading}
       />
     );
   }

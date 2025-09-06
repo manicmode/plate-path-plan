@@ -29,6 +29,7 @@ interface SpeakToLogModalV2Props {
   onClose: () => void;
   onResults: (items: any[]) => void;
   onOpenManualEntry?: () => void;
+  onShowLoading?: () => void;
 }
 
 type ModalState = 'idle' | 'listening' | 'processing' | 'result' | 'error' | 'permission-denied';
@@ -60,7 +61,8 @@ export const SpeakToLogModalV2: React.FC<SpeakToLogModalV2Props> = ({
   isOpen,
   onClose,
   onResults,
-  onOpenManualEntry
+  onOpenManualEntry,
+  onShowLoading
 }) => {
   // States
   const [state, setState] = useState<ModalState>('idle');
@@ -332,6 +334,8 @@ export const SpeakToLogModalV2: React.FC<SpeakToLogModalV2Props> = ({
   };
 
   const handleConfirm = () => {
+    // Trigger loading state in parent
+    onShowLoading?.();
     onResults(results);
     handleClose();
   };
