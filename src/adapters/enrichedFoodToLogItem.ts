@@ -11,7 +11,13 @@ export function enrichedFoodToLogItem(x: EnrichedFood, portionGrams: number = 10
     source: 'enriched', // Use 'enriched' as the main source type
     sourceId: x.source_id,
     confidence: x.confidence,
-    ingredients: x.ingredients ?? [],
+    
+    // Map ingredients with proper structure
+    ingredients: (x.ingredients ?? []).map(i => ({
+      name: i.name,
+      grams: i.grams,
+      amount: i.amount
+    })),
     
     // Scaled macros for the specified portion size
     calories: Math.round((per100.calories ?? 0) * scale),

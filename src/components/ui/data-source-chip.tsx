@@ -1,6 +1,7 @@
 import React from 'react';
 import { Badge } from './badge';
 import { Database, Globe, Beaker, Sparkles, CheckCircle } from 'lucide-react';
+import { sourceBadge } from '@/utils/helpers/sourceBadge';
 
 interface DataSourceChipProps {
   source: "FDC" | "EDAMAM" | "NUTRITIONIX" | "CURATED" | "ESTIMATED";
@@ -22,13 +23,13 @@ const SOURCE_CONFIG = {
     description: 'Edamam Food Database'
   },
   NUTRITIONIX: {
-    label: 'Nutritionix',
+    label: 'Brand',
     icon: CheckCircle,
     color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
     description: 'Nutritionix Database'
   },
   CURATED: {
-    label: 'Curated',
+    label: 'Generic',
     icon: CheckCircle,
     color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
     description: 'Manually Curated Data'
@@ -43,6 +44,7 @@ const SOURCE_CONFIG = {
 
 export function DataSourceChip({ source, confidence, className }: DataSourceChipProps) {
   const config = SOURCE_CONFIG[source];
+  const badgeInfo = sourceBadge(source);
   const Icon = config.icon;
   
   const isLowConfidence = confidence !== undefined && confidence < 0.7;
@@ -55,7 +57,7 @@ export function DataSourceChip({ source, confidence, className }: DataSourceChip
         title={config.description}
       >
         <Icon className="w-3 h-3 mr-1" />
-        {config.label}
+        {badgeInfo.label}
       </Badge>
       
       {confidence !== undefined && (

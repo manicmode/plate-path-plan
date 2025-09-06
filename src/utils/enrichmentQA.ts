@@ -7,11 +7,11 @@ import { supabase } from '@/lib/supabase';
 
 export async function testEnrichmentFlow() {
   const testQueries = [
+    'club sandwich',    // Should hit Nutritionix (brand data) and show parsed ingredients
     'pollo con rajas',  // Mexican chicken dish
     'yakisoba',         // Japanese stir-fried noodles  
     'aloo gobi',        // Indian potato cauliflower curry
     'shakshuka',        // Middle Eastern egg dish
-    'club sandwich'     // American sandwich
   ];
   
   console.log('[ENRICH][QA] Starting enrichment tests...');
@@ -46,6 +46,15 @@ export async function testEnrichmentFlow() {
           hasConfidence,
           valid: hasIngredients && hasPer100g && hasSource && hasConfidence
         });
+
+        // Specific tests for different sources
+        if (query === 'club sandwich' && data.source === 'NUTRITIONIX') {
+          console.log(`[ENRICH][NUTRITIONIX_TEST] Ingredients parsed:`, data.ingredients.map(i => i.name));
+        }
+        
+        if (data.ingredients && data.ingredients.length > 0) {
+          console.log(`[ENRICH][INGREDIENTS] First 3:`, data.ingredients.slice(0, 3).map(i => i.name));
+        }
       } else {
         console.log(`[ENRICH][MISS] ${query}: No data returned`);
       }

@@ -21,6 +21,8 @@ import { FOOD_TEXT_DEBUG } from '@/lib/flags';
 import { ThreeCirclesLoader } from '@/components/loaders/ThreeCirclesLoader';
 import { useManualFoodEnrichment, enrichedToFoodItem } from '@/hooks/useManualFoodEnrichment';
 import { DataSourceChip } from '@/components/ui/data-source-chip';
+import { sanitizeName } from '@/utils/helpers/sanitizeName';
+import { sourceBadge } from '@/utils/helpers/sourceBadge';
 
 interface ManualFoodEntryProps {
   isOpen: boolean;
@@ -190,14 +192,14 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         // Convert to candidate format
         const enrichedCandidate: Candidate = {
           id: 'enriched-primary',
-          name: enriched.name,
+          name: sanitizeName(enriched.name),
           isGeneric: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7,
           portionHint: enriched.perServing ? `${enriched.perServing.serving_grams}g serving` : '100g',
           defaultPortion: { 
             amount: enriched.perServing?.serving_grams || 100, 
             unit: 'g' 
           },
-          provider: enriched.source.toLowerCase(),
+          provider: sourceBadge(enriched.source).label.toLowerCase(),
           data: enrichedToFoodItem(enriched, 100)
         };
 
@@ -220,7 +222,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           // Primary
           list.push({
             id: 'candidate-0',
-            name: primary.name,
+            name: sanitizeName(primary.name),
             isGeneric: looksGeneric(primary),
             portionHint: primary.servingText || `${primary.servingGrams || 100}g default`,
             defaultPortion: { amount: primary.servingGrams || 100, unit: 'g' },
@@ -242,7 +244,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           filteredAlts.slice(0, 8).forEach((c: any, i: number) => {
             list.push({
               id: `candidate-alt-${i}`,
-              name: c.name,
+              name: sanitizeName(c.name),
               isGeneric: looksGeneric(c),
               portionHint: `${c.servingG || 100}g default`,
               defaultPortion: { amount: c.servingG || 100, unit: 'g' },
@@ -262,7 +264,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             if (rescue) {
               list.push({
                 id: `candidate-alt-rescue`,
-                name: rescue?.name ?? 'Option',
+                name: sanitizeName(rescue?.name ?? 'Option'),
                 isGeneric: true,
                 portionHint: `${rescue?.servingG || primary?.servingGrams || 100}g default`,
                 defaultPortion: { amount: rescue?.servingG || primary?.servingGrams || 100, unit: 'g' },

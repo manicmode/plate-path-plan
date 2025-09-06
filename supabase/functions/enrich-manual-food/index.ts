@@ -198,6 +198,18 @@ const searchEdamam = async (query: string): Promise<EnrichedFood | null> => {
   }
 };
 
+// Parse Nutritionix ingredients
+const parseIngredients = (raw?: string) => {
+  if (!raw) return [];
+  return raw
+    .split(/[,;]+/g)
+    .map(x => x.replace(/\(.*?\)/g, ''))   // drop parentheticals
+    .map(x => x.trim())
+    .filter(Boolean)
+    .slice(0, 40)
+    .map(name => ({ name }));
+};
+
 // Nutritionix API integration
 const searchNutritionix = async (query: string): Promise<EnrichedFood | null> => {
   const appId = Deno.env.get('NUTRITIONIX_APP_ID');
@@ -247,16 +259,18 @@ const searchNutritionix = async (query: string): Promise<EnrichedFood | null> =>
     
     const sanitized = validateEnergy(per100g);
     
+    // Parse ingredients from nf_ingredient_statement
+    const rawIngredients = food.nf_ingredient_statement as string | undefined;
+    const ingredients = parseIngredients(rawIngredients);
+    
     return {
       name: food.food_name || query,
       aliases: [food.food_name, food.brand_name].filter(Boolean),
       locale: 'auto',
-      ingredients: [{
-        name: food.food_name || query
-      }],
+      ingredients: ingredients.length > 0 ? ingredients : [{ name: food.food_name || query }],
       per100g: sanitized,
       perServing: {
-        ...per100g,
+        ...sanitized,
         serving_grams: servingGrams
       },
       source: 'NUTRITIONIX',

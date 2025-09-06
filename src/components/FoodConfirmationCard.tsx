@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Progress } from '@/components/ui/progress';
-import { Edit, Edit3, Trash2, AlertTriangle, Info, CheckCircle, X, MinusCircle, FileText, Plus, ChevronDown, ChevronUp, Award, Search } from 'lucide-react';
+import { Edit, Edit3, Trash2, AlertTriangle, Info, CheckCircle, X, MinusCircle, FileText, Plus, ChevronDown, ChevronUp, Award, Search, ClipboardList } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import FoodEditScreen from './FoodEditScreen';
 import { ReminderToggle } from './reminder/ReminderToggle';
@@ -32,6 +32,7 @@ import { extractName } from '@/lib/debug/extractName';
 import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
 import { DialogTitle } from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { sanitizeName } from '@/utils/helpers/sanitizeName';
 
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -412,7 +413,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   
   // Normalize name at render level with extractName utility
   const rawName = currentFoodItem?.name ?? 'Unknown Product';
-  const title = extractName({ name: rawName }) || (isBarcodeItem ? `Product ${(currentFoodItem as any)?.barcode || 'Unknown'}` : 'Unknown Product');
+  const normalizedName = extractName({ name: rawName }) || (isBarcodeItem ? `Product ${(currentFoodItem as any)?.barcode || 'Unknown'}` : 'Unknown Product');
+  const title = sanitizeName(normalizedName);
 
   // Serving grams and label
   const servingG = preferItem
