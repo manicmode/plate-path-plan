@@ -19,7 +19,8 @@ import { CandidateList } from '@/components/food/CandidateList';
 import { PortionUnitField } from '@/components/food/PortionUnitField';
 import { FOOD_TEXT_DEBUG } from '@/lib/flags';
 import { ThreeCirclesLoader } from '@/components/loaders/ThreeCirclesLoader';
-import { useManualFoodEnrichment, enrichedToFoodItem } from '@/hooks/useManualFoodEnrichment';
+import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
+import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
 import { DataSourceChip } from '@/components/ui/data-source-chip';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import { sourceBadge } from '@/utils/helpers/sourceBadge';
@@ -200,7 +201,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             unit: 'g' 
           },
           provider: sourceBadge(enriched.source).label.toLowerCase(),
-          data: enrichedToFoodItem(enriched, 100)
+          data: enrichedFoodToLogItem(enriched, 100)
         };
 
         setCandidates([enrichedCandidate]);

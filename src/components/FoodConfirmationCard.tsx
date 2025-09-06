@@ -1236,10 +1236,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
                     {displayName}
                   </h3>
-                  {(currentFoodItem as any)?.enrichmentSource && (
+                  {(currentFoodItem?.source || (currentFoodItem as any)?.enrichmentSource) && (
                     <DataSourceChip 
-                      source={(currentFoodItem as any).enrichmentSource}
-                      confidence={(currentFoodItem as any).enrichmentConfidence}
+                      source={(currentFoodItem?.source as any) || (currentFoodItem as any)?.enrichmentSource}
+                      confidence={currentFoodItem?.confidence || (currentFoodItem as any)?.enrichmentConfidence}
                       className="ml-2"
                     />
                   )}

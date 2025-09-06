@@ -31,6 +31,7 @@ interface EnrichedFood {
   source: "FDC" | "EDAMAM" | "NUTRITIONIX" | "CURATED" | "ESTIMATED";
   source_id?: string;
   confidence: number;
+  ingredient_source?: "FDC" | "EDAMAM" | "NUTRITIONIX" | "CURATED" | "ESTIMATED"; // Track ingredient source separately
 }
 
 // SHA256 utility
@@ -210,7 +211,7 @@ const parseIngredients = (raw?: string) => {
     .map(name => ({ name }));
 };
 
-// Nutritionix API integration
+// Nutritionix API integration with deep-fetch
 const searchNutritionix = async (query: string): Promise<EnrichedFood | null> => {
   const appId = Deno.env.get('NUTRITIONIX_APP_ID');
   const apiKey = Deno.env.get('NUTRITIONIX_API_KEY');
@@ -218,6 +219,120 @@ const searchNutritionix = async (query: string): Promise<EnrichedFood | null> =>
 
   try {
     console.log(`[ENRICH][NUTRITIONIX] Searching: ${query}`);
+    
+    // Step 1: Instant search to get candidates
+    const instantResponse = await withTimeout(
+      fetch(`https://trackapi.nutritionix.com/v2/search/instant?query=${encodeURIComponent(query)}`, {
+        headers: {
+          'x-app-id': appId,
+          'x-app-key': apiKey
+        }
+      }),
+      1000
+    );
+
+    if (!instantResponse.ok) {
+      console.log(`[ENRICH][NUTRITIONIX] Instant search failed: ${instantResponse.status}`);
+      return null;
+    }
+    
+    const instantData = await instantResponse.json();
+    const branded = instantData.branded || [];
+    const common = instantData.common || [];
+    
+    // Prefer branded items for ingredients, fall back to common
+    const candidates = [...branded, ...common];
+    if (candidates.length === 0) {
+      console.log(`[ENRICH][NUTRITIONIX] No candidates found`);
+      return null;
+    }
+    
+    const topCandidate = candidates[0];
+    const nixItemId = topCandidate.nix_item_id || topCandidate.tag_id;
+    
+    if (!nixItemId) {
+      console.log(`[ENRICH][NUTRITIONIX] No item ID found for deep fetch`);
+      return null;
+    }
+
+    // Step 2: Deep fetch item details for ingredients
+    console.log(`[ENRICH][NUTRITIONIX] Deep fetch: ${nixItemId}`);
+    const itemResponse = await withTimeout(
+      fetch(`https://trackapi.nutritionix.com/v2/search/item?nix_item_id=${nixItemId}`, {
+        headers: {
+          'x-app-id': appId,
+          'x-app-key': apiKey
+        }
+      }),
+      1000
+    );
+
+    if (!itemResponse.ok) {
+      console.log(`[ENRICH][NUTRITIONIX] Item fetch failed: ${itemResponse.status}`);
+      // Fallback to natural/nutrients
+      return await searchNutritionixNatural(query, appId, apiKey);
+    }
+    
+    const itemData = await itemResponse.json();
+    const foods = itemData.foods || [];
+    
+    if (foods.length === 0) {
+      console.log(`[ENRICH][NUTRITIONIX] No detailed food data`);
+      return await searchNutritionixNatural(query, appId, apiKey);
+    }
+    
+    const food = foods[0];
+    
+    // Convert to per 100g (Nutritionix gives per serving)
+    const servingGrams = food.serving_weight_grams || 100;
+    const scale = 100 / servingGrams;
+    
+    const per100g: Nutrients = {
+      calories: Math.round((food.nf_calories || 0) * scale),
+      protein: Math.round((food.nf_protein || 0) * scale * 10) / 10,
+      fat: Math.round((food.nf_total_fat || 0) * scale * 10) / 10,
+      carbs: Math.round((food.nf_total_carbohydrate || 0) * scale * 10) / 10,
+      fiber: food.nf_dietary_fiber ? Math.round(food.nf_dietary_fiber * scale * 10) / 10 : undefined,
+      sugar: food.nf_sugars ? Math.round(food.nf_sugars * scale * 10) / 10 : undefined,
+      sodium: food.nf_sodium ? Math.round(food.nf_sodium * scale) : undefined,
+      potassium: food.nf_potassium ? Math.round(food.nf_potassium * scale) : undefined,
+      saturated_fat: food.nf_saturated_fat ? Math.round(food.nf_saturated_fat * scale * 10) / 10 : undefined
+    };
+    
+    const sanitized = validateEnergy(per100g);
+    
+    // Parse ingredients from nf_ingredient_statement (key benefit of deep fetch)
+    const rawIngredients = food.nf_ingredient_statement as string | undefined;
+    const ingredients = parseIngredients(rawIngredients);
+    
+    const result = {
+      name: food.food_name || topCandidate.food_name || query,
+      aliases: [food.food_name, food.brand_name, topCandidate.food_name].filter(Boolean),
+      locale: 'auto',
+      ingredients: ingredients.length > 0 ? ingredients : [{ name: food.food_name || query }],
+      per100g: sanitized,
+      perServing: {
+        ...sanitized,
+        serving_grams: servingGrams
+      },
+      source: 'NUTRITIONIX' as const,
+      source_id: nixItemId,
+      confidence: 0.75
+    };
+
+    console.log(`[ENRICH][NUTRITIONIX] Deep fetch success: ${ingredients.length} ingredients`);
+    return result;
+    
+  } catch (error) {
+    console.log(`[ENRICH][NUTRITIONIX] Failed: ${error.message}`);
+    return null;
+  }
+};
+
+// Fallback to natural/nutrients API
+const searchNutritionixNatural = async (query: string, appId: string, apiKey: string): Promise<EnrichedFood | null> => {
+  try {
+    console.log(`[ENRICH][NUTRITIONIX] Fallback to natural/nutrients`);
     
     const response = await withTimeout(
       fetch('https://trackapi.nutritionix.com/v2/natural/nutrients', {
@@ -279,7 +394,7 @@ const searchNutritionix = async (query: string): Promise<EnrichedFood | null> =>
     };
     
   } catch (error) {
-    console.log(`[ENRICH][NUTRITIONIX] Failed: ${error.message}`);
+    console.log(`[ENRICH][NUTRITIONIX] Natural fallback failed: ${error.message}`);
     return null;
   }
 };
@@ -471,6 +586,25 @@ serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Step 4: Ingredient backfill safety
+    // If winning source has no ingredients, backfill from GPT estimation
+    if (result.ingredients.length <= 1 && result.source !== 'ESTIMATED') {
+      try {
+        console.log(`[ENRICH][BACKFILL] Attempting ingredient backfill for ${result.source}`);
+        const gptResult = await estimateWithGPT(query);
+        
+        if (gptResult && gptResult.ingredients.length > 1) {
+          console.log(`[ENRICH][BACKFILL] Success: ${gptResult.ingredients.length} ingredients from GPT`);
+          // Keep nutrition from trusted source, use ingredients from GPT
+          result.ingredients = gptResult.ingredients;
+          result.ingredient_source = 'ESTIMATED'; // Mark ingredient source
+        }
+      } catch (error) {
+        console.log(`[ENRICH][BACKFILL] Failed: ${error.message}`);
+        // Continue with original result
+      }
     }
 
     // B) Log what the edge function returns before cache write/return
