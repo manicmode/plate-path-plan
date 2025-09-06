@@ -2,6 +2,31 @@
  * Feature flags for food search and text analysis
  */
 
+// New flag helper system (default ON if undefined, except DIAG)
+export const flag = (name: string, onByDefault = true) => {
+  const v = (import.meta as any).env?.[name];
+  if (v === undefined || v === null) return onByDefault;
+  if (typeof v === 'string') return v === '1' || v.toLowerCase() === 'true';
+  return !!v;
+};
+
+export const intFlag = (name: string, def = 3) => {
+  const v = (import.meta as any).env?.[name];
+  const n = Number(v);
+  return Number.isFinite(n) ? n : def;
+};
+
+// Defaults ON unless explicitly set off
+export const F = {
+  MANUAL_ENTRY_LABEL_TIGHT: flag('VITE_MANUAL_ENTRY_LABEL_TIGHT', true),
+  MANUAL_INJECT_GENERIC:    flag('VITE_MANUAL_INJECT_GENERIC', true),
+  CANDIDATE_CLASSIFIER_SAFE:flag('VITE_CANDIDATE_CLASSIFIER_SAFE', true),
+  V3_ALT_BRAND_FIELDS:      flag('VITE_V3_ALT_BRAND_FIELDS', true),
+  CORE_NOUN_STRICT:         flag('VITE_CORE_NOUN_STRICT', true),
+  MANUAL_ENTRY_DIAG:        flag('VITE_MANUAL_ENTRY_DIAG', false),
+  MIN_MANUAL_CHOICES:       intFlag('VITE_MIN_MANUAL_CHOICES', 3),
+};
+
 export const ENABLE_FOOD_TEXT_V3 = 
   import.meta.env.VITE_FOOD_TEXT_V3 !== '0'; // default on unless explicitly 0
 

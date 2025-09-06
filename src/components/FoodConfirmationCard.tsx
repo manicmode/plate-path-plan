@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
 import { withSafeCancel } from '@/lib/ui/withSafeCancel';
 import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
@@ -147,6 +147,32 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [prevItem, setPrevItem] = useState<any | null>(null);
+  
+  // Prompt B: Reversible Confirm choice - stable candidate options with initial item at index 0
+  const [selectedCandidateIndex, setSelectedCandidateIndex] = useState(0);
+  
+  // Build stable candidateOptions array (initial item + alternates)
+  const candidateOptions = useMemo(() => {
+    if (!foodItem) return [];
+    
+    const options = [foodItem]; // Initial item at index 0
+    
+    // Add alternates from __altCandidates (v3) or candidates prop
+    const rawAlts = (foodItem as any)?.__altCandidates ?? [];
+    const filteredAlts = rawAlts.filter((alt: any) => isRelevantAlt(alt, foodItem));
+    const altCandidates = filteredAlts.length > 0 ? filteredAlts : (candidates || []);
+    
+    // Add alternates (excluding duplicates by name)
+    const existingNames = new Set([foodItem.name]);
+    altCandidates.forEach((alt: any) => {
+      if (!existingNames.has(alt.name)) {
+        options.push(alt);
+        existingNames.add(alt.name);
+      }
+    });
+    
+    return options;
+  }, [foodItem, candidates]);
   
   const { toast } = useToast();
 
@@ -482,9 +508,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   }, [imgUrl, displayName, isOpen, currentFoodItem]);
 
   // Stabilize: directly sync from prop without null flip
+  // Reset state when foodItem changes
   useEffect(() => {
     setCurrentFoodItem(foodItem);
-    setSelectedCandidate(null); // Reset candidate selection when food item changes
+    setSelectedCandidate(null);
+    setSelectedCandidateIndex(0); // Reset to initial item
   }, [foodItem]);
 
   // Trigger coach response when flagged ingredients are detected
@@ -572,55 +600,40 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     }
   }, [currentFoodItem?.id, currentFoodItem?.name, isManualVoiceSource, perGramReady]);
 
-  // Handle candidate selection with logging and hydration
-  const handleCandidateSelect = async (candidate: any, index: number) => {
-    console.log('[CONFIRM][ALT:SELECT]', {
-      from: currentFoodItem?.name,
-      to: candidate.name,
-      index
+  // Prompt B: Handle candidate chip selection - preserves serving grams and slider position
+  const handleCandidateChipSelect = (index: number) => {
+    if (index === selectedCandidateIndex) return; // Already selected
+    
+    const candidate = candidateOptions[index];
+    if (!candidate) return;
+    
+    console.log('[CONFIRM][CHIP:SELECT]', {
+      from_index: selectedCandidateIndex,
+      to_index: index,
+      from: candidateOptions[selectedCandidateIndex]?.name,
+      to: candidate.name
     });
     
-    setPrevItem(currentFoodItem); // remember current
-    setSelectedCandidate(candidate);
+    setSelectedCandidateIndex(index);
     
-    // For v3 candidates, use their pre-calculated values
-    if (candidate.servingG) {
-      console.log('[CONFIRM][ALT:HYDRATE:READY]', {
-        name: candidate.name,
-        servingG: candidate.servingG
-      });
-      
+    // Re-bind foodItem to selected candidate while preserving portion state
+    if ((candidate as any).servingG || candidate.portionGrams) {
+      // Use pre-calculated values from v3 candidates
+      const servingGrams = (candidate as any).servingG || candidate.portionGrams || 100;
       setCurrentFoodItem({
-        ...currentFoodItem!,
-        name: candidate.name,
-        calories: candidate.calories,
-        protein: candidate.protein,
-        carbs: candidate.carbs,
-        fat: candidate.fat,
-        fiber: candidate.fiber,
-        sugar: candidate.sugar,
-        sodium: candidate.sodium,
-        imageUrl: candidate.imageUrl,
-        portionGrams: candidate.servingG
+        ...candidate,
+        portionGrams: servingGrams,
+        // Preserve portion adjustment
+        calories: Math.round((candidate.calories || 0) * (portionPercentage[0] / 100)),
+        protein: Math.round(((candidate.protein || 0) * (portionPercentage[0] / 100)) * 10) / 10,
+        carbs: Math.round(((candidate.carbs || 0) * (portionPercentage[0] / 100)) * 10) / 10,
+        fat: Math.round(((candidate.fat || 0) * (portionPercentage[0] / 100)) * 10) / 10,
       });
     } else {
-      // Fallback for legacy candidates - would need hydration
-      const portionEstimate = originalText ? 
-        inferPortion(candidate.name, originalText, undefined, candidate.classId) :
-        { grams: 100, unit: 'portion', displayText: '100g portion', source: 'custom_amount' as const };
-      
+      // Fallback - use candidate as-is
       setCurrentFoodItem({
-        ...currentFoodItem!,
-        name: candidate.name,
-        calories: candidate.calories,
-        protein: candidate.protein,
-        carbs: candidate.carbs,
-        fat: candidate.fat,
-        fiber: candidate.fiber,
-        sugar: candidate.sugar,
-        sodium: candidate.sodium,
-        imageUrl: candidate.imageUrl,
-        portionGrams: portionEstimate.grams
+        ...candidate,
+        portionGrams: candidate.portionGrams || 100
       });
     }
   };
@@ -1150,12 +1163,48 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </h1>
             </div>
 
-            {/* Food Candidates Picker for Manual/Voice with __altCandidates */}
-            {(() => {
+            {/* Prompt B: Food Candidates Chip Row for Reversible Choice */}
+            {candidateOptions.length > 1 && (
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Choose the right match:
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {candidateOptions.slice(0, 6).map((candidate: any, index: number) => (
+                    <button
+                      key={`chip-${index}-${candidate.id || candidate.name}`}
+                      onClick={() => handleCandidateChipSelect(index)}
+                      className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
+                        index === selectedCandidateIndex
+                          ? 'bg-emerald-500 text-white shadow-lg'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-300'
+                      }`}
+                    >
+                      <span className="truncate max-w-[120px] inline-block">
+                        {candidate.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                {selectedCandidateIndex !== 0 && (
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      className="text-xs text-gray-500 hover:text-gray-700 underline"
+                      onClick={() => handleCandidateChipSelect(0)}
+                    >
+                      ← Back to original
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Legacy Food Candidates Picker (kept for backward compatibility) */}
+            {candidateOptions.length <= 1 && (() => {
               const rawAlts = (currentFoodItem as any)?.__altCandidates ?? [];
               const filteredAlts = rawAlts.filter((alt: any) => isRelevantAlt(alt, currentFoodItem));
               const showAltStrip = filteredAlts.length >= 1;
-              console.log(showAltStrip ? '[SWAP][STRIP][SHOW]' : '[SWAP][STRIP][HIDE]', { count: filteredAlts.length });
               
               return (candidates && candidates.length > 1) || showAltStrip;
             })() && (
@@ -1189,7 +1238,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     return candidateList.slice(0, 6).map((candidate: any, index: number) => (
                       <button
                         key={candidate.id}
-                        onClick={() => handleCandidateSelect(candidate, index)}
+                        onClick={() => handleCandidateChipSelect(candidateList.findIndex(c => c === candidate))}
                         className={`p-3 rounded-lg border-2 text-left transition-all ${
                           index === 0 
                             ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' 

@@ -17,7 +17,7 @@ import confetti from 'canvas-confetti';
 import { submitTextLookup } from '@/lib/food/textLookup';
 import { CandidateList } from '@/components/food/CandidateList';
 import { PortionUnitField } from '@/components/food/PortionUnitField';
-import { FOOD_TEXT_DEBUG } from '@/lib/flags';
+import { FOOD_TEXT_DEBUG, F } from '@/lib/flags';
 import { ThreeCirclesLoader } from '@/components/loaders/ThreeCirclesLoader';
 import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
 import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
@@ -71,9 +71,7 @@ const coreNoun = (text?: string) => {
   return t.length ? t[t.length - 1] : _norm(text).split(' ').pop() || '';
 };
 const looksGeneric = (it: any): boolean => {
-  const useTightLabeling = (import.meta.env.VITE_MANUAL_ENTRY_LABEL_TIGHT ?? '1') === '1';
-  
-  if (useTightLabeling) {
+  if (F.MANUAL_ENTRY_LABEL_TIGHT) {
     // 1) explicit generic markers
     if (it?.isGeneric === true) return true;
     if (typeof it?.canonicalKey === 'string' && it.canonicalKey.startsWith('generic_')) return true;
@@ -277,7 +275,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           }
 
           // Flag: VITE_MANUAL_INJECT_GENERIC (default ON) - Synthetic generic injection
-          const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '1') === '1';
+          const shouldInjectGeneric = F.MANUAL_INJECT_GENERIC;
           
           if (shouldInjectGeneric) {
             const hasGeneric = list.some(c => c.isGeneric);
@@ -327,16 +325,16 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           }
 
           // FINAL relevance sieve: drop off-topic items (e.g., "Quaker Rolled Oats" for "california roll")
-          const strictCoreNounFilter = (import.meta.env.VITE_CORE_NOUN_STRICT ?? '0') === '1';
+          const strictCoreNounFilter = F.CORE_NOUN_STRICT;
           const relevant = strictCoreNounFilter ? list.filter(c => matchesQueryCore(query, c.data)) : list;
 
           // Ensure minimum choices fallback
-          const MIN_CHOICES = Number(import.meta.env.VITE_MIN_MANUAL_CHOICES ?? '3') || 3;
+          const MIN_CHOICES = F.MIN_MANUAL_CHOICES;
           let finalList = relevant.length >= MIN_CHOICES ? relevant : list.slice(0, MIN_CHOICES);
           
           // If we still don't have enough choices and need more synthetic generics
           if (finalList.length < MIN_CHOICES) {
-            const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '1') === '1';
+            const shouldInjectGeneric = F.MANUAL_INJECT_GENERIC;
             
             if (shouldInjectGeneric) {
               const titleCase = (s: string) => s.replace(/\b\w/g, m => m.toUpperCase());
@@ -375,7 +373,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           setState(finalList.length > 0 ? 'candidates' : 'idle');
           
           // Diagnostic logging
-          if ((import.meta.env.VITE_MANUAL_ENTRY_DIAG ?? '0') === '1') {
+          if (F.MANUAL_ENTRY_DIAG) {
             finalList.forEach((item, idx) => {
               console.log('[MANUAL_DIAG][LABEL]', {
                 q: query,
@@ -760,13 +758,13 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                 className="mb-6"
               >
                 <CandidateList
-                candidates={showMoreCandidates ? candidates : candidates.slice(0, Math.max(6, Number(import.meta.env.VITE_MIN_MANUAL_CHOICES ?? '3') || 3))}
+                candidates={showMoreCandidates ? candidates : candidates.slice(0, Math.max(6, F.MIN_MANUAL_CHOICES))}
                   selectedCandidate={selectedCandidate}
                   onSelect={handleCandidateSelect}
                 />
                 
                 {/* Show More Button */}
-                {candidates.length > Math.max(6, Number(import.meta.env.VITE_MIN_MANUAL_CHOICES ?? '3') || 3) && (
+                {candidates.length > Math.max(6, F.MIN_MANUAL_CHOICES) && (
                   <div className="mt-3 text-center">
                     <Button
                       variant="ghost"
@@ -774,7 +772,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                       onClick={() => setShowMoreCandidates(!showMoreCandidates)}
                       className="text-slate-400 hover:text-white text-xs"
                     >
-                      {showMoreCandidates ? 'Show Less' : `Show ${candidates.length - Math.max(6, Number(import.meta.env.VITE_MIN_MANUAL_CHOICES ?? '3') || 3)} More Results`}
+                      {showMoreCandidates ? 'Show Less' : `Show ${candidates.length - Math.max(6, F.MIN_MANUAL_CHOICES)} More Results`}
                       {showMoreCandidates ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
                     </Button>
                   </div>
