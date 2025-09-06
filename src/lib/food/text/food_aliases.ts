@@ -3,6 +3,28 @@
  * Maps common food names/terms to canonical forms for improved search
  */
 
+// Negative alias rules to prevent off-topic matches
+export const NEGATIVE_ALIAS_RULES = {
+  /**
+   * If query contains "roll" + sushi signals, ban grain/oats candidates
+   */
+  sushi_roll_vs_oats: {
+    queryPattern: /\broll\b/,
+    queryRequires: /\b(california|sushi|maki|nori|wasabi|soy|salmon|tuna|avocado)\b/,
+    banPattern: /\b(oat|oatmeal|rolled oats|grain|cereal)\b/,
+    banClassIds: ['grain', 'oat', 'cereal']
+  },
+  
+  /**
+   * Only allow "roll" -> "rolled oats" when query explicitly includes oat/oatmeal
+   */
+  roll_oats_context: {
+    queryPattern: /\broll\b/,
+    queryExcludes: /\b(oat|oatmeal)\b/,
+    banPattern: /\b(rolled oats|oatmeal)\b/
+  }
+};
+
 export const FOOD_ALIASES = {
   // Proteins
   'chicken breast': ['grilled chicken', 'chicken fillet', 'chicken cutlet'],

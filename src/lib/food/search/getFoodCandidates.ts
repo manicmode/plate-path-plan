@@ -13,6 +13,9 @@ export interface Candidate {
   name: string;
   kind: 'generic' | 'brand';
   classId?: string;        // used for portion defaults
+  canonicalKey?: string;   // for family matching
+  coreNouns?: string[];    // tokenized nouns from candidate name
+  coreOverlap?: number;    // intersection count with query core nouns
   facets?: Record<string, string[]>;
   score: number;
   confidence: number;
@@ -43,6 +46,96 @@ const CORE_NOUNS = [
   'sandwich', 'salad', 'soup', 'sushi', 'taco', 'burrito', 'oatmeal', 
   'pasta', 'bread', 'fries', 'cookie'
 ];
+
+/**
+ * Extracts core nouns from a food name
+ */
+function extractCoreNouns(foodName: string): string[] {
+  const words = foodName.toLowerCase().split(/\s+/);
+  const coreNouns = [];
+  
+  for (const word of words) {
+    // Check if word matches core nouns
+    if (CORE_NOUNS.includes(word) || CORE_NOUNS.some(noun => word.includes(noun))) {
+      coreNouns.push(word);
+    }
+  }
+  
+  return coreNouns;
+}
+
+/**
+ * Calculates overlap between two sets of core nouns
+ */
+function calculateCoreOverlap(candidateNouns: string[], queryNouns: string[]): number {
+  const candidateSet = new Set(candidateNouns);
+  const querySet = new Set(queryNouns);
+  const intersection = new Set([...candidateSet].filter(x => querySet.has(x)));
+  return intersection.size;
+}
+
+/**
+ * Generates a canonical key for family matching
+ */
+function generateCanonicalKey(name: string, classId?: string): string | undefined {
+  if (classId) {
+    const baseClass = classId.split(':')[0];
+    return `${baseClass}:${name.toLowerCase().split(' ')[0]}`;
+  }
+  return undefined;
+}
+
+/**
+ * Checks if a candidate should be banned based on negative alias rules
+ */
+function shouldBanCandidate(query: string, candidate: CanonicalSearchResult, classId?: string): boolean {
+  const queryLower = query.toLowerCase();
+  const nameLower = candidate.name.toLowerCase();
+  
+  // Ban rule: "roll" query with sushi signals should not match grain/oats
+  if (queryLower.includes('roll')) {
+    const hasSushiSignals = /\b(california|sushi|maki|nori|wasabi|soy|salmon|tuna|avocado)\b/.test(queryLower);
+    const isGrainOats = /\b(oat|oatmeal|rolled oats|grain|cereal)\b/.test(nameLower) || 
+                      (classId && /grain|oat|cereal/.test(classId));
+    
+/**
+ * Checks if a candidate should be banned based on negative alias rules
+ */
+function shouldBanCandidate(query: string, candidate: CanonicalSearchResult, classId?: string): boolean {
+  const queryLower = query.toLowerCase();
+  const nameLower = candidate.name.toLowerCase();
+  
+  // Ban rule: "roll" query with sushi signals should not match grain/oats
+  if (queryLower.includes('roll')) {
+    const hasSushiSignals = /\b(california|sushi|maki|nori|wasabi|soy|salmon|tuna|avocado)\b/.test(queryLower);
+    const isGrainOats = /\b(oat|oatmeal|rolled oats|grain|cereal)\b/.test(nameLower) || 
+                      (classId && /grain|oat|cereal/.test(classId));
+    
+    if (hasSushiSignals && isGrainOats) {
+      console.log('[CANDIDATES][BAN]', { 
+        query, 
+        candidate: candidate.name, 
+        reason: 'sushi_roll_vs_oats' 
+      });
+      return true;
+    }
+  }
+  
+  // Allow "roll" -> "rolled oats" only when query explicitly includes oat/oatmeal
+  if (queryLower.includes('roll') && !queryLower.match(/\boat|\boatmeal\b/)) {
+    const isRolledOats = /rolled oats|oatmeal/.test(nameLower);
+    if (isRolledOats) {
+      console.log('[CANDIDATES][BAN]', { 
+        query, 
+        candidate: candidate.name, 
+        reason: 'roll_without_oat_context' 
+      });
+      return true;
+    }
+  }
+  
+  return false;
+}
 
 /**
  * Checks if a food name contains core noun tokens
@@ -324,6 +417,9 @@ export async function getFoodCandidates(
   console.log(`[CANDIDATES] Starting search for "${rawQuery}" -> "${normalizedQuery}"`);
   console.log('[CANDIDATES] Facets:', facets);
   
+  // Extract core nouns from query for overlap calculation
+  const queryCoreNouns = extractCoreNouns(normalizedQuery);
+  
   const candidates = new Map<string, Candidate>();
   
   // Strategy 1: Lexical search
@@ -337,6 +433,13 @@ export async function getFoodCandidates(
         continue;
       }
       
+      const classId = inferClassId(result.name, facets);
+      
+      // Apply ban logic
+      if (shouldBanCandidate(normalizedQuery, result, classId)) {
+        continue;
+      }
+      
       const kind = classifyItemKind(result);
       const { score, confidence, explanation } = scoreFoodCandidate(
         normalizedQuery, 
@@ -346,11 +449,19 @@ export async function getFoodCandidates(
         kind
       );
       
+      // Calculate metadata for filtering
+      const coreNouns = extractCoreNouns(result.name);
+      const coreOverlap = calculateCoreOverlap(coreNouns, queryCoreNouns);
+      const canonicalKey = generateCanonicalKey(result.name, classId);
+      
       candidates.set(result.id, {
         id: result.id,
         name: result.name,
         kind,
-        classId: inferClassId(result.name, facets),
+        classId,
+        canonicalKey,
+        coreNouns,
+        coreOverlap,
         score,
         confidence,
         explanation,
@@ -382,6 +493,13 @@ export async function getFoodCandidates(
       }
       
       const existing = candidates.get(result.id);
+      const classId = inferClassId(result.name, facets);
+      
+      // Apply ban logic
+      if (shouldBanCandidate(normalizedQuery, result, classId)) {
+        continue;
+      }
+      
       const kind = classifyItemKind(result);
       const { score, confidence, explanation } = scoreFoodCandidate(
         normalizedQuery, 
@@ -393,11 +511,19 @@ export async function getFoodCandidates(
       
       // Only add if not exists or has better score
       if (!existing || score > existing.score) {
+        // Calculate metadata for filtering
+        const coreNouns = extractCoreNouns(result.name);
+        const coreOverlap = calculateCoreOverlap(coreNouns, queryCoreNouns);
+        const canonicalKey = generateCanonicalKey(result.name, classId);
+        
         candidates.set(result.id, {
           id: result.id,
           name: result.name,
           kind,
-          classId: inferClassId(result.name, facets),
+          classId,
+          canonicalKey,
+          coreNouns,
+          coreOverlap,
           score,
           confidence,
           explanation,
@@ -505,6 +631,7 @@ export async function getFoodCandidates(
   }
   
   return finalCandidates;
+}
 }
 
 /**

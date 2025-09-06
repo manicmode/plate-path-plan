@@ -158,9 +158,27 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     s => (foodId ? s.byId[foodId] : undefined)
   );
 
-  // Optional helpers (no new hooks below guards) 
-  const perGram = storeAnalysis?.perGram || {};
-  const perGramSum = Object.values(perGram).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
+  // Reset alt candidates when item changes (prevent stale carry-over)
+  useEffect(() => {
+    const altCands = (currentFoodItem as any)?.__altCandidates ?? [];
+    setLocalAltCandidates(altCands);
+  }, [currentFoodItem?.id, (currentFoodItem as any)?.rev]);
+
+  // Calculate good alternatives with filtering
+  const rawAlts = localAltCandidates || candidates || [];
+  const goodAlts = filterGoodAlternatives(rawAlts, currentFoodItem!, originalText);
+  const showSwapStrip = goodAlts.length >= 2;
+
+  // Telemetry logging for swap strip
+  useEffect(() => {
+    if (isOpen && currentFoodItem) {
+      if (showSwapStrip) {
+        console.log('[SWAP][STRIP][SHOW]', { count: goodAlts.length });
+      } else {
+        console.log('[SWAP][STRIP][HIDE]', { reason: 'insufficient_or_offtopic', available: rawAlts.length });
+      }
+    }
+  }, [isOpen, currentFoodItem?.id, showSwapStrip, goodAlts.length, rawAlts.length]);
 
   // Detect barcode immediately from stable signals present on first render
   const isBarcodeSource = !!(
@@ -1102,20 +1120,19 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </h1>
             </div>
 
-            {/* Food Candidates Picker for Manual/Voice with __altCandidates */}
-            {(candidates && candidates.length > 1) || ((currentFoodItem as any)?.__altCandidates?.length > 0) && (
+            {/* Food Candidates Picker - Only show when multiple relevant alternatives exist */}
+            {showSwapStrip && (
               <div className="mb-6">
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Select the correct food:
+                  Not right? Try a different match:
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
-                  {/* Show v3 alt candidates if available, otherwise use prop candidates */}
-                  {(((currentFoodItem as any)?.__altCandidates || candidates || []).slice(0, 6)).map((candidate: any, index: number) => (
+                  {goodAlts.map((candidate: any, index: number) => (
                     <button
                       key={candidate.id}
                       onClick={() => handleCandidateSelect(candidate, index)}
                       className={`p-3 rounded-lg border-2 text-left transition-all ${
-                        index === 0 
+                        candidate.id === currentFoodItem?.id
                           ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' 
                           : 'border-gray-200 dark:border-gray-600 hover:border-emerald-300'
                       }`}

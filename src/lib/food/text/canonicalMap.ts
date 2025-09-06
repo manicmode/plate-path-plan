@@ -1,66 +1,65 @@
 /**
- * Canonical nutrition mapping for common generic food items
- * Maps core nouns to standardized nutrition keys
+ * Canonical food mapping utilities for family matching
+ * Helps identify related foods for better alt-candidate filtering
  */
 
-export type CanonicalKey =
-  | 'generic_hot_dog'
-  | 'generic_pizza_slice'
-  | 'generic_teriyaki_chicken_bowl'
-  | 'generic_california_roll'
-  | 'generic_white_rice_cooked'
-  | 'generic_egg_large'
-  | 'generic_oatmeal_dry'
-  | 'generic_chicken_grilled'
-  | 'generic_salmon_grilled'
-  | 'generic_pasta_cooked'
-  | 'generic_bread_slice'
-  | 'generic_banana'
-  | 'generic_apple'
-  | 'generic_milk_whole'
-  | 'generic_yogurt_plain';
+export interface CanonicalMapping {
+  canonical: string;
+  aliases: string[];
+  family: string;
+}
 
-export const CANONICAL_BY_CORE_NOUN: Record<string, CanonicalKey> = {
-  'hot_dog': 'generic_hot_dog',
-  'hotdog': 'generic_hot_dog',
-  'pizza': 'generic_pizza_slice',
-  'hawaii_pizza': 'generic_pizza_slice',
-  'hawaiian_pizza': 'generic_pizza_slice',
-  'teriyaki_bowl': 'generic_teriyaki_chicken_bowl',
-  'teriyaki_chicken': 'generic_teriyaki_chicken_bowl',
-  'california_roll': 'generic_california_roll',
-  'sushi_roll': 'generic_california_roll',
-  'rice_cooked': 'generic_white_rice_cooked',
-  'rice': 'generic_white_rice_cooked',
-  'egg': 'generic_egg_large',
-  'eggs': 'generic_egg_large',
-  'oatmeal': 'generic_oatmeal_dry',
-  'chicken_grilled': 'generic_chicken_grilled',
-  'grilled_chicken': 'generic_chicken_grilled',
-  'salmon_grilled': 'generic_salmon_grilled',
-  'grilled_salmon': 'generic_salmon_grilled',
-  'pasta': 'generic_pasta_cooked',
-  'bread': 'generic_bread_slice',
-  'banana': 'generic_banana',
-  'apple': 'generic_apple',
-  'milk': 'generic_milk_whole',
-  'yogurt': 'generic_yogurt_plain'
+// Canonical food families for better matching
+export const CANONICAL_FAMILIES: Record<string, CanonicalMapping> = {
+  'pizza': {
+    canonical: 'pizza',
+    aliases: ['pizza slice', 'pizza pie', 'flatbread'],
+    family: 'pizza'
+  },
+  'sushi': {
+    canonical: 'sushi',
+    aliases: ['roll', 'maki', 'nigiri', 'sashimi'],
+    family: 'sushi'
+  },
+  'burger': {
+    canonical: 'burger',
+    aliases: ['hamburger', 'cheeseburger', 'sandwich'],  
+    family: 'burger'
+  },
+  'oats': {
+    canonical: 'oatmeal',
+    aliases: ['rolled oats', 'steel cut oats', 'porridge'],
+    family: 'grains'
+  },
+  'rice': {
+    canonical: 'rice',
+    aliases: ['fried rice', 'rice bowl', 'pilaf'],
+    family: 'grains'
+  }
 };
 
 /**
- * Get canonical nutrition key for a core noun with optional facet context
+ * Get canonical family for a food name
  */
-export function canonicalFor(coreNoun: string, facets?: Record<string, any>): CanonicalKey | null {
-  if (!coreNoun) return null;
+export function canonicalFor(foodName: string): string | undefined {
+  const nameLower = foodName.toLowerCase();
   
-  // Simple mapping first; can grow smarter with facets later
-  const normalized = coreNoun.toLowerCase().replace(/[^a-z_]/g, '_');
-  return CANONICAL_BY_CORE_NOUN[normalized] ?? null;
+  for (const [key, mapping] of Object.entries(CANONICAL_FAMILIES)) {
+    if (nameLower.includes(mapping.canonical) || 
+        mapping.aliases.some(alias => nameLower.includes(alias))) {
+      return mapping.family;
+    }
+  }
+  
+  return undefined;
 }
 
 /**
- * Check if a canonical key exists in our mapping
+ * Check if two foods belong to the same canonical family
  */
-export function isCanonicalKey(key: string): key is CanonicalKey {
-  return Object.values(CANONICAL_BY_CORE_NOUN).includes(key as CanonicalKey);
+export function sameCanonicalFamily(foodA: string, foodB: string): boolean {
+  const familyA = canonicalFor(foodA);
+  const familyB = canonicalFor(foodB);
+  
+  return !!(familyA && familyB && familyA === familyB);
 }
