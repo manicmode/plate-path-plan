@@ -831,13 +831,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Map technical source names to user-friendly labels
   const getFriendlySourceLabel = (source: string) => {
     switch (source.toLowerCase()) {
-      case 'branded-database':
-      case 'branded_database':
-        return 'Branded database';
-      case 'usda':
-      case 'openfoodfacts':
-      case 'open_food_facts':
-        return 'Food database';
       case 'gpt-individual':
       case 'gpt-fallback':
       case 'ai-estimate':
@@ -845,7 +838,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       case 'multi-ai-fallback':
         return 'AI estimate';
       default:
-        return 'Database lookup';
+        return '';
     }
   };
 
@@ -1336,16 +1329,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </TabsList>
               
               <TabsContent value="nutrition" className="space-y-3 mt-4">
-                {/* Data Source Badge */}
-                {currentFoodItem?.dataSource && (
-                  <div className="flex justify-center mb-3">
-                    <Badge variant="secondary" className="text-xs">
-                      {currentFoodItem.dataSource === 'canonical' ? 'Database lookup' : 
-                       currentFoodItem.dataSource === 'Estimated' ? 'Estimated' : 
-                       'Database lookup'}
-                    </Badge>
-                  </div>
-                )}
                 
                 {/* Show skeleton when nutrition is loading */}
                 {(!isNutritionReady && useHydration && !skipNutritionGuard) ? (
@@ -1405,20 +1388,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                       </div>
                     </div>
 
-                    {/* Nutrition Source Display - User-friendly labels, no confidence % */}
-                    {currentFoodItem.source && (
-                      <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
-                          📊 Data source: <span className="font-medium text-blue-600 dark:text-blue-400">{getFriendlySourceLabel(currentFoodItem.source)}</span>
-                          {/* Show estimated badge if data is estimated */}
-                          {currentFoodItem.dataSource === 'Estimated' && (
-                            <Badge variant="secondary" className="ml-2 text-xs">
-                              Estimated
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </>
                 )}
               </TabsContent>

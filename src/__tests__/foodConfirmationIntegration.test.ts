@@ -105,8 +105,8 @@ describe('FoodConfirmationCard Manual Entry Integration', () => {
     expect(container.textContent).toContain('41g'); // carbs  
     expect(container.textContent).toContain('13g'); // fat
 
-    // Should show database lookup badge when dataSource is canonical
-    expect(container.textContent).toContain('Database lookup');
+    // Database lookup badge should not be shown
+    expect(container.textContent).not.toContain('Database lookup');
 
     // Should NOT show infinite loading spinner
     expect(container.textContent).not.toContain('Loading nutrition data...');

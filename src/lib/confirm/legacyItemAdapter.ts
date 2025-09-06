@@ -235,7 +235,7 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
 
   const dataSourceLabel = raw.analysis?.dataSourceLabel
     ?? raw.meta?.dataSourceLabel
-    ?? (raw.source ? `${raw.source} lookup` : 'Database lookup');
+    ?? null;
 
   // Build basePer100 for FoodConfirmationCard portion scaling
   let basePer100 = null;

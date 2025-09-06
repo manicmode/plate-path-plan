@@ -299,7 +299,7 @@ const CameraPage = () => {
           item.perGram = res.perGram;
           item.perGramKeys = Object.keys(res.perGram);
           item.pgSum = 1; // truthy
-          item.dataSource = 'canonical'; // for the UI badge ("Database lookup")
+          item.dataSource = 'canonical';
           console.log('[NUTRITION][CANONICAL_SUCCESS]', { 
             key: (item as any).nutritionKey,
             perGramKeys: item.perGramKeys
