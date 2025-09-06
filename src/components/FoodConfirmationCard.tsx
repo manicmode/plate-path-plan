@@ -89,76 +89,29 @@ interface FoodItem {
   isGeneric?: boolean;
 }
 
-/**
- * Filters alternatives to show only relevant matches
- */
-function filterGoodAlternatives(altCandidates: any[], currentItem: FoodItem, query?: string): any[] {
-  if (!altCandidates || altCandidates.length === 0) return [];
-  
-  // Helper function to check family matching
-  const sameFamily = (a?: string, b?: string) =>
-    a && b ? a.split(':')[0] === b.split(':')[0] : true;
-  
-  const currentClassId = (currentItem as any)?.classId;
-  const currentCanonicalKey = (currentItem as any)?.canonicalKey;
-  
-  const goodAlts = altCandidates
-    .filter(candidate => {
-      // Don't show the same item
-      if (candidate.id === currentItem.id) {
-        return false;
-      }
-      
-      // Check same class if both have classId
-      if (currentClassId && candidate.classId && candidate.classId !== currentClassId) {
-        return false;
-      }
-      
-      // Or check same canonical family when available
-      if (!sameFamily(candidate.canonicalKey, currentCanonicalKey)) {
-        return false;
-      }
-      
-      // At least 1 core noun in common
-      const coreOverlap = candidate.coreOverlap ?? 0;
-      if (coreOverlap < 1) {
-        return false;
-      }
-      
-      // Confidence floor
-      const score = candidate.score ?? 0;
-      if (score < 0.55) {
-        return false;
-      }
-      
-      return true;
-    })
-    .slice(0, 4); // Limit to top 4
-  
-  return goodAlts;
+interface FoodConfirmationCardProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (foodItem: FoodItem) => void;
+  onSkip?: () => void; // Skip functionality (now "Don't Log")
+  onCancelAll?: () => void; // Cancel all items functionality
+  onCancel?: () => void; // NEW: Cancel handler for parent orchestration
+  foodItem: FoodItem | null;
+  showSkip?: boolean; // Whether to show "Don't Log" button
+  currentIndex?: number; // Current item index for multi-item flow
+  totalItems?: number; // Total items for multi-item flow
+  isProcessingFood?: boolean; // Whether the parent is processing the food item
+  onVoiceAnalyzingComplete?: () => void; // Callback to hide voice analyzing overlay
+  skipNutritionGuard?: boolean; // when true, allow render without perGram readiness
+  bypassHydration?: boolean; // NEW: bypass store hydration for barcode items
+  forceConfirm?: boolean; // NEW: force confirmation dialog to stay open (for manual/voice)
+  candidates?: Candidate[]; // NEW: alternative food candidates for manual/voice
+  originalText?: string; // NEW: original user input for portion inference
 }
 
 const CONFIRM_FIX_REV = "2025-08-31T15:43Z-r11";
 
-const FoodConfirmationCard: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (foodItem: FoodItem) => void;
-  onSkip?: () => void;
-  onCancelAll?: () => void;
-  onCancel?: () => void;
-  foodItem: FoodItem | null;
-  showSkip?: boolean;
-  currentIndex?: number;
-  totalItems?: number;
-  isProcessingFood?: boolean;
-  onVoiceAnalyzingComplete?: () => void;
-  skipNutritionGuard?: boolean;
-  bypassHydration?: boolean;
-  forceConfirm?: boolean;
-  candidates?: Candidate[];
-  originalText?: string;
-}> = ({
+const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   isOpen,
   onClose,
   onConfirm,
@@ -188,7 +141,6 @@ const FoodConfirmationCard: React.FC<{
   const [isEvaluatingQuality, setIsEvaluatingQuality] = useState(false);
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
-  const [localAltCandidates, setLocalAltCandidates] = useState<any[]>([]);
   
   const { toast } = useToast();
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
@@ -206,43 +158,9 @@ const FoodConfirmationCard: React.FC<{
     s => (foodId ? s.byId[foodId] : undefined)
   );
 
-  // Reset alt candidates when item changes (prevent stale carry-over)
-  useEffect(() => {
-    const altCands = (currentFoodItem as any)?.__altCandidates ?? [];
-    setLocalAltCandidates(altCands);
-  }, [currentFoodItem?.id, (currentFoodItem as any)?.rev]);
-
   // Optional helpers (no new hooks below guards) 
   const perGram = storeAnalysis?.perGram || {};
   const perGramSum = Object.values(perGram).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
-
-  // Reset alt candidates when item changes (prevent stale carry-over)
-  useEffect(() => {
-    const altCands = (currentFoodItem as any)?.__altCandidates ?? [];
-    setLocalAltCandidates(altCands);
-  }, [currentFoodItem?.id, (currentFoodItem as any)?.rev]);
-
-  // Calculate good alternatives with filtering
-  const rawAlts = (localAltCandidates || candidates || []) as any[];
-  const goodAlts = rawAlts.filter(candidate => {
-    if (!candidate || candidate.id === currentFoodItem?.id) return false;
-    const coreOverlap = candidate.coreOverlap ?? 0;
-    const score = candidate.score ?? 0;
-    return coreOverlap >= 1 && score >= 0.55;
-  }).slice(0, 4);
-  
-  const showSwapStrip = goodAlts.length >= 2;
-
-  // Telemetry logging for swap strip
-  useEffect(() => {
-    if (isOpen && currentFoodItem) {
-      if (showSwapStrip) {
-        console.log('[SWAP][STRIP][SHOW]', { count: goodAlts.length });
-      } else {
-        console.log('[SWAP][STRIP][HIDE]', { reason: 'insufficient_or_offtopic', available: rawAlts.length });
-      }
-    }
-  }, [isOpen, currentFoodItem?.id, showSwapStrip, goodAlts.length, rawAlts.length]);
 
   // Detect barcode immediately from stable signals present on first render
   const isBarcodeSource = !!(
@@ -1184,19 +1102,20 @@ const FoodConfirmationCard: React.FC<{
               </h1>
             </div>
 
-            {/* Food Candidates Picker - Only show when multiple relevant alternatives exist */}
-            {showSwapStrip && (
+            {/* Food Candidates Picker for Manual/Voice with __altCandidates */}
+            {(candidates && candidates.length > 1) || ((currentFoodItem as any)?.__altCandidates?.length > 0) && (
               <div className="mb-6">
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Not right? Try a different match:
+                  Select the correct food:
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
-                  {goodAlts.map((candidate: any, index: number) => (
+                  {/* Show v3 alt candidates if available, otherwise use prop candidates */}
+                  {(((currentFoodItem as any)?.__altCandidates || candidates || []).slice(0, 6)).map((candidate: any, index: number) => (
                     <button
                       key={candidate.id}
                       onClick={() => handleCandidateSelect(candidate, index)}
                       className={`p-3 rounded-lg border-2 text-left transition-all ${
-                        candidate.id === currentFoodItem?.id
+                        index === 0 
                           ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' 
                           : 'border-gray-200 dark:border-gray-600 hover:border-emerald-300'
                       }`}

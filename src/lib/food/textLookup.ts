@@ -96,7 +96,7 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
     const portionEstimate = inferPortion(primary.name, query, facets, primary.classId);
     
     // Attach canonical nutrition key for generics
-    const canonicalKey = canonicalFor(facets.core[0] || 'food');
+    const canonicalKey = canonicalFor(facets.core[0] || 'food', facets);
     
     const foodItem = {
       id: primary.id || `v3-${Date.now()}`,

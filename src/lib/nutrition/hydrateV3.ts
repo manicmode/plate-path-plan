@@ -139,11 +139,11 @@ async function performHydration(
     const canonicalKey = CANONICAL_BY_CORE_NOUN[coreNoun];
     if (canonicalKey) {
       try {
-        const result = await fetchMacrosByCanonicalKey(canonicalKey.canonical);
+        const result = await fetchMacrosByCanonicalKey(canonicalKey);
         if (signal?.aborted) throw new Error('Aborted');
         
         if (result?.perGram) {
-          console.log('[NUTR][V3][GENERIC_HIT]', { slug: canonicalKey.canonical, from: 'map' });
+          console.log('[NUTR][V3][GENERIC_HIT]', { slug: canonicalKey, from: 'map' });
           return {
             perGramKeys: Object.keys(result.perGram),
             fromStore: false,

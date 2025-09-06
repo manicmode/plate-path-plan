@@ -17,7 +17,6 @@ import confetti from 'canvas-confetti';
 import { submitTextLookup } from '@/lib/food/textLookup';
 import { CandidateList } from '@/components/food/CandidateList';
 import { PortionUnitField } from '@/components/food/PortionUnitField';
-import { SmartAnalyzeLoader } from '@/components/loaders/SmartAnalyzeLoader';
 import { FOOD_TEXT_DEBUG } from '@/lib/flags';
 
 interface ManualFoodEntryProps {
@@ -26,9 +25,8 @@ interface ManualFoodEntryProps {
   onResults?: (items: any[]) => void;
 }
 
-type ModalState = 'idle' | 'searching' | 'candidates' | 'loading' | 'success' | 'error';
+type ModalState = 'idle' | 'searching' | 'candidates' | 'loading' | 'error';
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | '';
-type LoaderPhase = 'detecting' | 'hydrating' | 'buildingReview';
 
 interface Candidate {
   id: string;
@@ -73,8 +71,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const [notes, setNotes] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [recentItems, setRecentItems] = useState<string[]>([]);
-  const [loaderPhase, setLoaderPhase] = useState<LoaderPhase>('detecting');
-  const [loaderDone, setLoaderDone] = useState(false);
 
   // Refs
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
@@ -182,8 +178,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
 
     setState('loading');
-    setLoaderPhase('detecting');
-    setLoaderDone(false);
     
     try {
       // Calculate portion scaling
@@ -196,10 +190,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         slider: amountEaten[0]
       });
 
-      // Simulate loader phases for better UX
-      setTimeout(() => setLoaderPhase('hydrating'), 800);
-      setTimeout(() => setLoaderPhase('buildingReview'), 1600);
-
       // Use existing text lookup with portion override
       const { items } = await submitTextLookup(foodName.trim(), {
         source: 'manual',
@@ -208,7 +198,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
       if (!items || items.length === 0) {
         setState('error');
-        setLoaderDone(false);
         toast.error('No nutrition data found. Try a different name or spelling.');
         return;
       }
@@ -228,25 +217,13 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         notes: notes.trim() || undefined
       }));
 
-      // Complete the loader
-      setLoaderDone(true);
-      
-      // Success animation - more prominent confetti
-      const fireConfetti = () => {
-        confetti({
-          particleCount: 30,
-          spread: 60,
-          origin: { y: 0.6 },
-          colors: ['#10b981', '#34d399', '#6ee7b7', '#22d3ee', '#38bdf8']
-        });
-      };
-      
-      fireConfetti();
-      // Keep confetti going for celebration
-      setTimeout(fireConfetti, 300);
-      setTimeout(fireConfetti, 600);
-
-      setState('success');
+      // Success animation
+      confetti({
+        particleCount: 12,
+        spread: 45,
+        origin: { y: 0.7 },
+        colors: ['#10b981', '#34d399', '#6ee7b7']
+      });
 
       // Show success toast
       toast.success(
@@ -256,17 +233,16 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         </div>
       );
 
-      // Pass results to parent and close after showing success
-      setTimeout(() => {
-        if (onResults) {
-          onResults(scaledItems);
-        }
-        handleClose();
-      }, 1200); // Keep success state visible longer
+      // Pass results to parent
+      if (onResults) {
+        onResults(scaledItems);
+      }
+
+      // Close and reset
+      handleClose();
 
     } catch (error) {
       setState('error');
-      setLoaderDone(false);
       logTelemetry('ERROR', { message: (error as Error).message });
       toast.error('Failed to add food. Please try again.');
     }
@@ -288,8 +264,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       setMealType('');
       setNotes('');
       setShowAdvanced(false);
-      setLoaderPhase('detecting');
-      setLoaderDone(false);
     }, 200);
   };
 
@@ -328,7 +302,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     searching: 'Searching for foods',
     candidates: `Found ${candidates.length} food options`,
     loading: 'Adding food item',
-    success: 'Food item added successfully',
     error: 'Search failed'
   }[state];
 
@@ -618,44 +591,15 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                   disabled={!foodName.trim() || state === 'loading'}
                   className="bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-500 hover:to-emerald-500 text-white font-medium px-6 focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {state === 'loading' ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-4 w-4 mr-2" />
-                      Add Item
-                    </>
-                  )}
+                  {state === 'loading' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  <Zap className="h-4 w-4 mr-2" />
+                  Add Item
                 </Button>
               </motion.div>
             </div>
           </div>
         </motion.div>
       </DialogContent>
-
-      {/* Smart Analyze Loader Overlay */}
-      <AnimatePresence>
-        {(state === 'loading' || state === 'success') && (
-          <SmartAnalyzeLoader
-            phase={loaderPhase}
-            done={loaderDone}
-            title="Processing your food..."
-            subtitle="Calculating nutrition and preparing confirmation"
-            onCancel={() => {
-              setState('idle');
-              setLoaderDone(false);
-            }}
-            labels={{
-              detecting: "Analyzing food name",
-              hydrating: "Loading nutrition data", 
-              buildingReview: "Preparing confirmation"
-            }}
-          />
-        )}
-      </AnimatePresence>
     </Dialog>
   );
 };
