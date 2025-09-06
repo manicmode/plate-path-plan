@@ -18,6 +18,7 @@ import { submitTextLookup } from '@/lib/food/textLookup';
 import { CandidateList } from '@/components/food/CandidateList';
 import { PortionUnitField } from '@/components/food/PortionUnitField';
 import { FOOD_TEXT_DEBUG, F } from '@/lib/flags';
+import { hasCoreTokNounMatchStrict } from '@/lib/food/search/getFoodCandidates';
 import { ThreeCirclesLoader } from '@/components/loaders/ThreeCirclesLoader';
 import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
 import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
@@ -96,6 +97,11 @@ const looksGeneric = (it: any): boolean => {
   }
 };
 const matchesQueryCore = (q: string, candidate: any): boolean => {
+  if (F.CORE_NOUN_STRICT) {
+    return hasCoreTokNounMatchStrict(q, candidate?.name || '');
+  }
+  
+  // Legacy core noun matching
   const qCore = coreNoun(q);
   const nCore = coreNoun(candidate?.name);
   if (!qCore || !nCore) return false;

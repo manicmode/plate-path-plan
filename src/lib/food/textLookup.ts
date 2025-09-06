@@ -2,11 +2,30 @@
 // Do not create new text-lookup functions; extend resolvers here.
 
 import { supabase } from '@/integrations/supabase/client';
-import { ENABLE_FOOD_TEXT_V3, FOOD_TEXT_DEBUG } from '@/lib/flags';
+import { ENABLE_FOOD_TEXT_V3, FOOD_TEXT_DEBUG, F } from '@/lib/flags';
 import { parseQuery } from '@/lib/food/text/parse';
 import { getFoodCandidates } from '@/lib/food/search/getFoodCandidates';
 import { inferPortion } from '@/lib/food/portion/inferPortion';
 import { canonicalFor } from '@/lib/food/text/canonicalMap';
+
+// Brand evidence helpers for v3 path
+const getCode = (h: any) =>
+  String(h.code ?? h.gtin14 ?? h.gtin13 ?? h.gtin12 ?? h.upc ?? '')
+    .replace(/\D/g, '') || null;
+
+const withBrandEvidence = (base: any, h: any) => F.V3_ALT_BRAND_FIELDS ? ({
+  ...base,
+  brand: h.brand ?? base.brand ?? null,
+  brands: h.brands ?? base.brands ?? null,
+  code: getCode(h),
+  canonicalKey: h.canonicalKey ?? base.canonicalKey ?? null,
+}) : base;
+
+function dedupeBy<T>(arr: T[], key: (x:T)=>string) {
+  const seen = new Set<string>(); const out: T[] = [];
+  for (const x of arr) { const k = key(x); if (!seen.has(k)) { seen.add(k); out.push(x); } }
+  return out;
+}
 
 // Feature flag for rollback capability
 export const FEATURE_TEXT_LOOKUP_V2 = true;
@@ -127,9 +146,6 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
       __altCandidates: candidates.slice(1, 6).map(c => {
         const altPortion = inferPortion(c.name, query, facets, c.classId);
         
-        // Flag: VITE_V3_ALT_BRAND_FIELDS (default ON) - Include brand fields for UI badge logic
-        const includeBrandFields = (import.meta.env.VITE_V3_ALT_BRAND_FIELDS ?? '1') === '1';
-        
         const baseAlt = {
           id: c.id || `alt-${Date.now()}-${Math.random()}`,
           name: c.name,
@@ -146,20 +162,8 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
           classId: c.classId
         };
         
-        // Include brand fields when flag is ON for proper UI badge logic
-        if (includeBrandFields) {
-          return {
-            ...baseAlt,
-            brand: (c as any).brand,
-            brands: (c as any).brands,
-            code: (c as any).code,
-            canonicalKey: (c as any).canonicalKey,
-            provider: (c as any).provider,
-            isGeneric: (c as any).isGeneric
-          };
-        }
-        
-        return baseAlt;
+        // Apply brand evidence when flag is ON for proper UI badge logic
+        return withBrandEvidence(baseAlt, c);
       }),
       __source: source === 'speech' ? 'voice' : 'manual',
       __originalText: query

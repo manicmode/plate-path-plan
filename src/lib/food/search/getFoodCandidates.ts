@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { expandAliases, normalizeQuery } from '../text/food_aliases';
 import { parseQuery, ParsedFacets } from '../text/parse';
 import { searchFoodByName, CanonicalSearchResult } from '@/lib/foodSearch';
+import { F } from '@/lib/flags';
 
 // --- BEGIN local helpers (generic detection + relevance) ---
 const _norm = (s?: string) =>
@@ -81,6 +82,11 @@ export interface CandidateOpts {
   maxPerFamily?: number;        // default 1
 }
 
+// Brand evidence helper
+const hasBrandEvidence = (it: any) =>
+  !!(it?.brand || (Array.isArray(it?.brands) && it.brands.length > 0) ||
+     (it?.code && String(it.code).replace(/\D/g,'').length >= 8));
+
 // Core noun tokens for filtering
 const CORE_NOUNS = [
   'pizza', 'roll', 'dog', 'bowl', 'rice', 'egg', 'chicken', 'burger', 
@@ -88,7 +94,15 @@ const CORE_NOUNS = [
   'pasta', 'bread', 'fries', 'cookie'
 ];
 
-function hasCoreTokNounMatch(query: string, candidateName: string): boolean {
+// Strict core noun match (avoid substring false-positives like "roll" vs "rolled")
+const escapeRx = (s:string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export function hasCoreTokNounMatchStrict(q:string, noun:string) {
+  if (!F.CORE_NOUN_STRICT) return hasCoreTokNounMatchLegacy(q, noun);
+  const rx = new RegExp(`\\b${escapeRx(noun)}\\b`, 'i');
+  return rx.test(q);
+}
+
+function hasCoreTokNounMatchLegacy(query: string, candidateName: string): boolean {
   // Extract potential noun from query (last significant word)
   const queryTokens = query.toLowerCase().split(/\s+/).filter(t => t.length > 2);
   if (queryTokens.length === 0) return true;
@@ -96,41 +110,36 @@ function hasCoreTokNounMatch(query: string, candidateName: string): boolean {
   const coreToken = queryTokens[queryTokens.length - 1];
   const candidateWords = candidateName.toLowerCase().split(/\s+/);
   
-  const useCoreNounStrict = (import.meta.env.VITE_CORE_NOUN_STRICT ?? '1') === '1';
+  // Legacy substring matching
+  return candidateWords.some(word => word.includes(coreToken));
+}
+
+function hasCoreTokNounMatch(query: string, candidateName: string): boolean {
+  return F.CORE_NOUN_STRICT 
+    ? hasCoreTokNounMatchStrict(query, candidateName)
+    : hasCoreTokNounMatchLegacy(query, candidateName);
+}
+
+export function classifyItemKindSafe(it: any): 'brand'|'generic'|'unknown' {
+  if (!F.CANDIDATE_CLASSIFIER_SAFE) return classifyItemKindLegacy(it);
+  if (hasBrandEvidence(it)) return 'brand';
+  if (it?.provider === 'generic' || it?.isGeneric || it?.canonicalKey?.startsWith?.('generic_')) return 'generic';
+  return 'unknown';
+}
+
+function classifyItemKindLegacy(item: any): 'generic' | 'brand' | 'unknown' {
+  // Legacy behavior
+  if (item.provider === 'generic') return 'generic';
+  if (item.kind === 'generic') return 'generic';
   
-  if (useCoreNounStrict) {
-    // Use word boundaries to avoid "roll" matching "rolled"
-    const coreRegex = new RegExp(`\\b${coreToken}s?\\b|\\b${coreToken.slice(0, -1)}s?\\b`); // Handle singular/plural
-    return candidateWords.some(word => coreRegex.test(word));
-  } else {
-    // Legacy substring matching
-    return candidateWords.some(word => word.includes(coreToken));
-  }
+  // Simple heuristic: short names (3 words or fewer) are often generic
+  const wordCount = (item.name || '').trim().split(/\s+/).length;
+  
+  return wordCount <= 3 ? 'generic' : 'brand';
 }
 
 function classifyItemKind(item: any): 'generic' | 'brand' | 'unknown' {
-  const useClassifierSafe = (import.meta.env.VITE_CANDIDATE_CLASSIFIER_SAFE ?? '1') === '1';
-  
-  if (useClassifierSafe) {
-    // Brand evidence overrides everything
-    const hasBrandEvidence = !!(item.brand || item.brands || (item.code && String(item.code).length >= 8));
-    if (hasBrandEvidence) return 'brand';
-    
-    // Explicit generic indicators
-    if (item.provider === 'generic' || item.isGeneric) return 'generic';
-    
-    // Default to unknown when ambiguous (no fallback to word count)
-    return 'unknown';
-  } else {
-    // Legacy behavior
-    if (item.provider === 'generic') return 'generic';
-    if (item.kind === 'generic') return 'generic';
-    
-    // Simple heuristic: short names (3 words or fewer) are often generic
-    const wordCount = (item.name || '').trim().split(/\s+/).length;
-    
-    return wordCount <= 3 ? 'generic' : 'brand';
-  }
+  return F.CANDIDATE_CLASSIFIER_SAFE ? classifyItemKindSafe(item) : classifyItemKindLegacy(item);
 }
 
 /**
@@ -376,7 +385,7 @@ export async function getFoodCandidates(
       const kind = classifyItemKind(result);
       
       // Instrumentation: VITE_MANUAL_ENTRY_DIAG=1 diagnostic logging
-      if (import.meta.env.VITE_MANUAL_ENTRY_DIAG === '1') {
+      if (F.MANUAL_ENTRY_DIAG) {
         console.log('[MANUAL_DIAG][CANDIDATE]', {
           q: normalizedQuery,
           name: result.name,
@@ -489,11 +498,7 @@ export async function getFoodCandidates(
       const topIsBrand = !!((top as any)?.brands || (top as any)?.brand || (typeof (top as any)?.code === 'string' && (top as any).code.length >= 8));
       
       // Tightened check: must be explicitly generic AND have no brand evidence
-      const useClassifierSafe = (import.meta.env.VITE_CANDIDATE_CLASSIFIER_SAFE ?? '1') === '1';
-      const secondIsGeneric = useClassifierSafe 
-        ? ((second as any)?.provider === 'generic' || (second as any)?.isGeneric) && 
-          !((second as any)?.brands || (second as any)?.brand || ((second as any)?.code && typeof (second as any).code === 'string' && (second as any).code.length >= 8))
-        : looksGeneric(second);
+      const secondIsGeneric = classifyItemKindSafe(second) === 'generic' && !hasBrandEvidence(second);
         
       const secondMatchesQuery = matchesQueryCore(normalizedQuery, second);
 
