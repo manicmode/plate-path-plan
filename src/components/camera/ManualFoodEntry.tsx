@@ -37,6 +37,7 @@ interface Candidate {
   defaultPortion?: { amount: number; unit: string };
   provider?: string;
   imageUrl?: string;
+  data?: any; // Store original data for later use
 }
 
 const SUGGESTION_PHRASES = [
@@ -104,38 +105,85 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     logTelemetry('SEARCH', { query });
 
     try {
-      const { items } = await submitTextLookup(query, { source: 'manual' });
+      const payload = await submitTextLookup(query, { source: 'manual' });
+      const items: any[] = Array.isArray(payload?.items) ? payload.items : [];
       
       // Check if this search result is still valid
       if (currentGen !== searchGenRef.current || searchLockedRef.current) {
         return; // Ignore stale results
       }
       
-      // Transform to candidate format
-      const candidateList: Candidate[] = (items || []).slice(0, 6).map((item: any, index: number) => ({
-        id: `candidate-${index}`,
-        name: item.name,
-        isGeneric: item.provider === 'generic' || item.kind === 'generic',
-        portionHint: item.servingText || `${item.servingGrams || 100}g default`,
-        defaultPortion: {
-          amount: item.servingGrams || 100,
-          unit: 'g'
-        },
-        provider: item.provider,
-        imageUrl: item.imageUrl,
-        data: item // Store original data for later use
-      }));
+      const list: Candidate[] = [];
 
-      // Sort Generic items first
-      candidateList.sort((a, b) => {
-        if (a.isGeneric && !b.isGeneric) return -1;
-        if (!a.isGeneric && b.isGeneric) return 1;
-        return 0;
-      });
+      if (items.length > 0) {
+        const primary = items[0];
 
-      setCandidates(candidateList);
-      setState(candidateList.length > 0 ? 'candidates' : 'idle');
-      logTelemetry('CANDIDATES', { count: candidateList.length });
+        const primaryIsGeneric =
+          Boolean(primary?.isGeneric) ||
+          primary?.provider === 'generic' ||
+          primary?.kind === 'generic';
+
+        list.push({
+          id: 'candidate-0',
+          name: primary?.name ?? 'Food',
+          isGeneric: primaryIsGeneric,
+          portionHint: primary?.servingText || `${primary?.servingGrams ?? 100}g default`,
+          defaultPortion: {
+            amount: primary?.servingGrams ?? 100,
+            unit: 'g',
+          },
+          provider: primary?.provider ?? primary?.kind,
+          imageUrl: primary?.imageUrl,
+          data: primary, // preserve original object for confirm
+        });
+
+        // v3 alt candidates (preferred)
+        const v3Alts = Array.isArray(primary?.__altCandidates)
+          ? primary.__altCandidates
+          : [];
+
+        // legacy "multiple items" fallback as alts
+        const legacyAlts = items.length > 1 ? items.slice(1) : [];
+
+        const alts = [...v3Alts, ...legacyAlts].slice(0, 5);
+
+        alts.forEach((c: any, i: number) => {
+          const isGeneric =
+            Boolean(c?.isGeneric) || c?.kind === 'generic' || c?.provider === 'generic';
+
+          list.push({
+            id: `candidate-alt-${i}`,
+            name: c?.name ?? 'Option',
+            isGeneric,
+            portionHint: `${c?.servingG ?? primary?.servingGrams ?? 100}g default`,
+            defaultPortion: {
+              amount: c?.servingG ?? primary?.servingGrams ?? 100,
+              unit: 'g',
+            },
+            provider: c?.provider ?? c?.kind,
+            imageUrl: c?.imageUrl,
+            data: c,
+          });
+        });
+      }
+
+      // Keep existing generics-first rule (stable within groups)
+      list.sort((a, b) => (a.isGeneric === b.isGeneric ? 0 : a.isGeneric ? -1 : 1));
+
+      setCandidates(list);
+      setState(list.length > 0 ? 'candidates' : 'idle');
+      
+      // optional: very light debug (leave in dev only if a flag exists)
+      if (FOOD_TEXT_DEBUG) {
+        console.log('[MANUAL_ENTRY][CANDS]', {
+          q: query,
+          total: list.length,
+          top: list[0]?.name,
+          topIsGeneric: list[0]?.isGeneric,
+        });
+      }
+      
+      logTelemetry('CANDIDATES', { count: list.length });
 
     } catch (error) {
       // Check if this error is still relevant
