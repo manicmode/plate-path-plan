@@ -14,6 +14,8 @@ import { toast } from 'sonner';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import confetti from 'canvas-confetti';
 import { submitTextLookup } from '@/lib/food/textLookup';
+import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
+import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
 import { useWaveform } from '@/hooks/useWaveform';
 import { useRotatingExamples } from '@/hooks/useRotatingExamples';
 import { useVAD } from '@/hooks/useVAD';
@@ -83,6 +85,7 @@ export const SpeakToLogModalV2: React.FC<SpeakToLogModalV2Props> = ({
     silenceDurationMs: 1500,
     onSilence: handleAutoStop
   });
+  const { enrich } = useManualFoodEnrichment();
   
   useWaveform(canvasRef, {
     analyser,
@@ -265,8 +268,34 @@ export const SpeakToLogModalV2: React.FC<SpeakToLogModalV2Props> = ({
     }
 
     try {
-      // Use unified text lookup
-      const { items } = await submitTextLookup(cleanTranscript, { source: 'speech' });
+      console.log('[ENRICH][REQ]', { q: cleanTranscript });
+      
+      // Try enrichment first for better nutrition data
+      let enrichedItems: any[] = [];
+      try {
+        const enriched = await enrich(cleanTranscript, 'auto');
+        if (enriched) {
+          console.log('[ENRICH][HIT]', { 
+            source: enriched.source, 
+            conf: enriched.confidence 
+          });
+          
+          const enrichedItem = enrichedFoodToLogItem(enriched, 100);
+          enrichedItem.source = 'speech'; // Preserve speech source for UI flow
+          enrichedItems = [enrichedItem];
+        }
+      } catch (enrichError) {
+        console.log('[ENRICH][ERROR]', enrichError);
+        // Continue to fallback
+      }
+      
+      // Fallback to existing text lookup if enrichment fails
+      let items = enrichedItems;
+      if (items.length === 0) {
+        console.log('[ENRICH][MISS] - falling back to legacy lookup');
+        const result = await submitTextLookup(cleanTranscript, { source: 'speech' });
+        items = result.items || [];
+      }
 
       // Complete all steps
       setProcessingSteps(prev => prev.map(s => ({ ...s, status: 'completed' as StepStatus })));

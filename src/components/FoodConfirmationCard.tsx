@@ -16,6 +16,7 @@ import FoodEditScreen from './FoodEditScreen';
 import { ReminderToggle } from './reminder/ReminderToggle';
 import { ManualIngredientEntry } from './camera/ManualIngredientEntry';
 import { useIngredientAlert } from '@/hooks/useIngredientAlert';
+import { DataSourceChip } from './ui/data-source-chip';
 import { useSmartCoachIntegration } from '@/hooks/useSmartCoachIntegration';
 import { useSound } from '@/hooks/useSound';
 import { SoundGate } from '@/lib/soundGate';
@@ -1215,12 +1216,27 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 <FallbackEmoji className="h-16 w-16 rounded-xl" />
               )}
               <div className="flex-1">
-                <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
-                  {displayName}
-                </h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
+                    {displayName}
+                  </h3>
+                  {(currentFoodItem as any)?.enrichmentSource && (
+                    <DataSourceChip 
+                      source={(currentFoodItem as any).enrichmentSource}
+                      confidence={(currentFoodItem as any).enrichmentConfidence}
+                      className="ml-2"
+                    />
+                  )}
+                </div>
                  <p className="text-sm text-gray-600 dark:text-gray-400">
                    {Number.isFinite(adjustedFood.calories) ? adjustedFood.calories : 0} calories
                  </p>
+                 {((currentFoodItem as any)?.enrichmentSource === "ESTIMATED" || 
+                   ((currentFoodItem as any)?.enrichmentConfidence && (currentFoodItem as any).enrichmentConfidence < 0.7)) && (
+                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                     Estimated — tap to adjust if needed
+                   </p>
+                 )}
               </div>
             </div>
 

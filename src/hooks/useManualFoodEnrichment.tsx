@@ -27,6 +27,8 @@ interface EnrichedFood {
   confidence: number;
 }
 
+export type { EnrichedFood };
+
 export interface EnrichmentResult {
   data: EnrichedFood | null;
   error: string | null;
