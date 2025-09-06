@@ -111,6 +111,7 @@ const ReportViewer = lazy(() => import('@/pages/ReportViewer'));
 const FirebaseSetup = lazy(() => import('@/pages/FirebaseSetup'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const QAPage = lazy(() => import('@/pages/qa'));
+const QaEnrichment = lazy(() => import('@/routes/QaEnrichment'));
 
 // Prefetch critical components after initial load
 const prefetchCriticalComponents = () => {
@@ -380,6 +381,15 @@ function AppContent() {
                      <Route path="/scan/saved-reports" element={
                        <ProtectedRoute>
                          <SavedReports />
+                       </ProtectedRoute>
+                     } />
+                     
+                     {/* QA Enrichment page - available in prod but guarded */}
+                     <Route path="/qa" element={
+                       <ProtectedRoute>
+                         <React.Suspense fallback={<div style={{ padding: 24 }}>Loading QA Tests…</div>}>
+                           <QaEnrichment />
+                         </React.Suspense>
                        </ProtectedRoute>
                      } />
                     
