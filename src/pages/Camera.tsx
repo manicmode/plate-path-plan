@@ -51,8 +51,6 @@ import { UnifiedLoggingTabs } from '@/components/camera/UnifiedLoggingTabs';
 import { ActivityLoggingSection } from '@/components/logging/ActivityLoggingSection';
 import { PhotoCaptureModal } from '@/components/scan/PhotoCaptureModal';
 import { SmartAnalyzeLoader } from '@/components/loaders/SmartAnalyzeLoader';
-import { ThreeCirclesLoader } from '@/components/loaders/ThreeCirclesLoader';
-import CelebrationPopup from '@/components/CelebrationPopup';
 import { useAnalyzeFlow } from '@/hooks/useAnalyzeFlow';
 import { analyzePhotoForLyfV1 } from '@/lyf_v1_frozen';
 import { looksFoodish } from '@/lyf_v1_frozen/filters';
@@ -368,15 +366,6 @@ const CameraPage = () => {
           
           setRecognizedFoods([item]);
           setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : 'photo');
-          
-          // Hide speak-to-log loading if it was shown
-          if (sourceHint === 'speech') {
-            setShowSpeakToLogLoading(false);
-            // Show celebration popup for speech input
-            setCelebrationMessage(`Found ${item.name}! 🎉`);
-            setShowSpeakToLogCelebration(true);
-          }
-          
           setShowConfirmation(true);
           setShowLogBarcodeScanner(false);
           setShowCamera(false);
@@ -395,15 +384,6 @@ const CameraPage = () => {
           // Still open confirmation even if hydration fails
           setRecognizedFoods([item]);
           setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : 'photo');
-          
-          // Hide speak-to-log loading if it was shown
-          if (sourceHint === 'speech') {
-            setShowSpeakToLogLoading(false);
-            // Show celebration popup for speech input even on error
-            setCelebrationMessage(`Found ${item.name}! 🎉`);
-            setShowSpeakToLogCelebration(true);
-          }
-          
           setShowConfirmation(true);
           setShowLogBarcodeScanner(false);
           setShowCamera(false);
@@ -499,11 +479,6 @@ const CameraPage = () => {
   // Smart analyze loader states
   const [showSmartLoader, setShowSmartLoader] = useState(false);
   const [analyzePhase, setAnalyzePhase] = useState<"uploading"|"preprocessing"|"detecting"|"hydrating"|"buildingReview"|undefined>(undefined);
-  
-  // Speak-to-log magic orb loading and celebration states
-  const [showSpeakToLogLoading, setShowSpeakToLogLoading] = useState(false);
-  const [showSpeakToLogCelebration, setShowSpeakToLogCelebration] = useState(false);
-  const [celebrationMessage, setCelebrationMessage] = useState('');
 
   // Pre-confirm UI blocking - prevents main UI flash before confirmation modal
   const hasPendingConfirm = !!recognizedFoods?.[0];
@@ -512,7 +487,6 @@ const CameraPage = () => {
     showVoiceAnalyzing ||
     showProcessingNextItem ||
     showSmartLoader ||
-    showSpeakToLogLoading ||
     hasPendingConfirm;
 
   // Telemetry for pre-confirm blocking
@@ -4028,8 +4002,6 @@ console.log('Global search enabled:', enableGlobalSearch);
         isOpen={showSpeakToLog}
         onClose={() => {
           setShowSpeakToLog(false);
-          setShowSpeakToLogLoading(false);
-          setShowSpeakToLogCelebration(false);
           // Ensure main "Log Your Food" interface is visible when closing speak to log
           setActiveTab('main');
           setSelectedImage(null);
@@ -4043,7 +4015,6 @@ console.log('Global search enabled:', enableGlobalSearch);
           setShowSmartLoader(false); // Make sure loader doesn't hide the main UI
         }}
         onResults={(items) => routeRecognizedItems(items, 'speech')}
-        onShowLoading={() => setShowSpeakToLogLoading(true)}
       />
       {/* Debug Panel - Dev only */}
       <DebugPanel
@@ -4129,16 +4100,6 @@ console.log('Global search enabled:', enableGlobalSearch);
             />
           </div>
         )}
-
-        {/* Speak-to-Log Magic Orb Loading */}
-        {showSpeakToLogLoading && <ThreeCirclesLoader />}
-
-        {/* Speak-to-Log Celebration Popup */}
-        <CelebrationPopup 
-          show={showSpeakToLogCelebration} 
-          message={celebrationMessage}
-          onClose={() => setShowSpeakToLogCelebration(false)}
-        />
       
       </div>
     );
