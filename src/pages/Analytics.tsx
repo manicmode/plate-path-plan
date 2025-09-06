@@ -48,52 +48,55 @@ export default function Analytics() {
   // Auto-scroll on tab change (Coach pattern + top re-assert). Skip initial mount.
   const firstTabRun = useRef(true);
   const userInteracting = useRef(false);
+  
   useEffect(() => {
-    if (firstTabRun.current) { firstTabRun.current = false; return; }
-
-    const y0 =
-      window.pageYOffset ??
-      document.scrollingElement?.scrollTop ??
-      document.documentElement.scrollTop ??
-      0;
-    if (y0 <= 8) return; // already near top → avoid jiggle
-
-    const behavior: ScrollBehavior =
-      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
-        ? "auto"
-        : "smooth";
-
+    if (firstTabRun.current) {
+      firstTabRun.current = false;
+      return;
+    }
+    
+    const currentY = window.scrollY;
+    if (currentY <= 8) return; // Already near top
+    
+    let rafId: number | undefined;
+    let t1: ReturnType<typeof setTimeout> | undefined;
+    let t2: ReturnType<typeof setTimeout> | undefined;
+    let t3: ReturnType<typeof setTimeout> | undefined;
+    
     const snapTop = () => {
-      if (userInteracting.current) return; // don't fight the user
-      const y =
-        window.pageYOffset ??
-        document.scrollingElement?.scrollTop ??
-        document.documentElement.scrollTop ??
-        0;
-      if (y > 1) window.scrollTo({ top: 0, behavior: "auto" }); // invisible final snap
+      if (!userInteracting.current && window.scrollY > 0) {
+        window.scrollTo({ top: 0, behavior: "auto" });
+      }
     };
-
-    const onUser = () => {
-      userInteracting.current = true;
-      // clear the flag shortly after any user gesture
-      setTimeout(() => (userInteracting.current = false), 400);
-    };
-    window.addEventListener("wheel", onUser, { passive: true, capture: true });
-    window.addEventListener("touchstart", onUser, { passive: true, capture: true });
-
-    // Run after tab focus/DOM settles, then re-assert to eliminate short-stop
-    const r1 = requestAnimationFrame(() => {
+    
+    const onFocusIn = () => setTimeout(snapTop, 16);
+    const onUserStart = () => { userInteracting.current = true; };
+    const onUserEnd = () => { userInteracting.current = false; };
+    
+    rafId = requestAnimationFrame(() => {
+      const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
       window.scrollTo({ top: 0, behavior });
-      const t1 = setTimeout(snapTop, 120);
-      const t2 = setTimeout(snapTop, 240); // iOS Safari safety
-      // cleanup
-      return () => { clearTimeout(t1); clearTimeout(t2); };
+      
+      // Triple re-assert to outlast focus/layout adjustments
+      t1 = setTimeout(snapTop, 120);
+      t2 = setTimeout(snapTop, 240);
+      t3 = setTimeout(snapTop, 400);
     });
-
+    
+    document.addEventListener('focusin', onFocusIn, { capture: true });
+    document.addEventListener('wheel', onUserStart, { passive: true });
+    document.addEventListener('touchstart', onUserStart, { passive: true });
+    document.addEventListener('touchend', onUserEnd, { passive: true });
+    
     return () => {
-      cancelAnimationFrame(r1);
-      window.removeEventListener("wheel", onUser, { capture: true } as any);
-      window.removeEventListener("touchstart", onUser, { capture: true } as any);
+      if (rafId) cancelAnimationFrame(rafId);
+      if (t1) clearTimeout(t1);
+      if (t2) clearTimeout(t2);
+      if (t3) clearTimeout(t3);
+      document.removeEventListener('focusin', onFocusIn, { capture: true });
+      document.removeEventListener('wheel', onUserStart);
+      document.removeEventListener('touchstart', onUserStart);
+      document.removeEventListener('touchend', onUserEnd);
     };
   }, [activeTab]);
 
