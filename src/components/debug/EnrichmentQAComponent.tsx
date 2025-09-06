@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
 import { supabase } from '@/integrations/supabase/client';
+import { DirectEnrichmentTest } from './DirectEnrichmentTest';
 
 const TEST_QUERIES = [
   'club sandwich',
@@ -152,6 +153,8 @@ export function EnrichmentQAComponent() {
 
   return (
     <div className="space-y-6">
+      <DirectEnrichmentTest />
+      
       <Card>
         <CardHeader>
           <CardTitle>Food Enrichment QA Testing</CardTitle>

@@ -1,87 +1,42 @@
 /**
- * QA Test Suite for Enrichment Integration
- * Run these tests to verify the enrichment system is working correctly
+ * QA utilities for testing food enrichment
  */
+import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
 
-import { supabase } from '@/lib/supabase';
+const TEST_QUERIES = [
+  'club sandwich',
+  'club sandwich on wheat', 
+  'yakisoba',
+  'aloo gobi',
+  'pollo con rajas'
+];
 
 export async function testEnrichmentFlow() {
-  const testQueries = [
-    'club sandwich',    // Should hit Nutritionix (brand data) and show parsed ingredients
-    'pollo con rajas',  // Mexican chicken dish
-    'yakisoba',         // Japanese stir-fried noodles  
-    'aloo gobi',        // Indian potato cauliflower curry
-    'shakshuka',        // Middle Eastern egg dish
-  ];
+  console.log('[QA] Starting enrichment flow test...');
   
-  console.log('[ENRICH][QA] Starting enrichment tests...');
+  const { enrich } = useManualFoodEnrichment();
   
-  for (const query of testQueries) {
+  for (const query of TEST_QUERIES) {
     try {
-      console.log(`[ENRICH][REQ] q="${query}"`);
+      console.log(`[QA] Testing: "${query}"`);
       
-      const { data, error } = await supabase.functions.invoke('enrich-manual-food', { 
-        body: { query, locale: 'auto' } 
-      });
+      const result = await enrich(query);
       
-      if (error) {
-        console.log(`[ENRICH][ERROR] ${query}:`, error);
-        continue;
-      }
-      
-      if (data) {
-        console.log(`[ENRICH][HIT] ${query}: source=${data.source}, conf=${data.confidence}`);
-        console.log(`[ENRICH][DATA] ingredients=${data.ingredients?.length || 0}, macros=${!!data.per100g}`);
-        
-        // Check expected results
-        const hasIngredients = Array.isArray(data.ingredients) && data.ingredients.length > 0;
-        const hasPer100g = data.per100g && typeof data.per100g.calories === 'number';
-        const hasSource = ['FDC', 'EDAMAM', 'NUTRITIONIX', 'CURATED', 'ESTIMATED'].includes(data.source);
-        const hasConfidence = typeof data.confidence === 'number' && data.confidence >= 0 && data.confidence <= 1;
-        
-        console.log(`[ENRICH][VALIDATION] ${query}:`, {
-          hasIngredients,
-          hasPer100g, 
-          hasSource,
-          hasConfidence,
-          valid: hasIngredients && hasPer100g && hasSource && hasConfidence
-        });
-
-        // Specific tests for different sources
-        if (query === 'club sandwich' && data.source === 'NUTRITIONIX') {
-          console.log(`[ENRICH][NUTRITIONIX_TEST] Ingredients parsed:`, data.ingredients.map(i => i.name));
-        }
-        
-        if (data.ingredients && data.ingredients.length > 0) {
-          console.log(`[ENRICH][INGREDIENTS] First 3:`, data.ingredients.slice(0, 3).map(i => i.name));
-        }
+      if (result) {
+        console.log(`[QA] ✅ ${query}: ${result.source}, ${result.ingredients?.length || 0} ingredients`);
       } else {
-        console.log(`[ENRICH][MISS] ${query}: No data returned`);
+        console.log(`[QA] ❌ ${query}: No result`);
       }
       
+      // Small delay between requests
+      await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error) {
-      console.log(`[ENRICH][ERROR] ${query}:`, error);
+      console.error(`[QA] ❌ ${query}: Error -`, error);
     }
   }
-  
-  console.log('[ENRICH][QA] Tests completed.');
 }
 
-// Test feature flag functionality
-export function testFeatureFlag() {
-  // Test disabling the feature
-  localStorage.setItem('FEATURE_ENRICH_MANUAL_FOOD', 'false');
-  console.log('[ENRICH][FLAG] Disabled enrichment feature');
-  
-  // Re-enable
-  setTimeout(() => {
-    localStorage.setItem('FEATURE_ENRICH_MANUAL_FOOD', 'true');
-    console.log('[ENRICH][FLAG] Re-enabled enrichment feature');
-  }, 2000);
-}
-
-// Add to window for easy console access
+// Expose to global for easy testing
 if (typeof window !== 'undefined') {
   (window as any).testEnrichment = testEnrichmentFlow;
-  (window as any).testFeatureFlag = testFeatureFlag;
 }

@@ -20,6 +20,7 @@ import "./constants/version"; // Initialize version checking
 import "./utils/gpt5FunctionTests"; // Initialize function testing utilities
 import "./scripts/shipV2Globally"; // Load V2 global rollout
 import "./utils/portionKillSwitch"; // Emergency kill switches
+import "./utils/enrichmentQA"; // QA testing utilities
 import "./lib/camera/featureFlags"; // Initialize camera feature flags
 // REMOVED: import "./lib/camera/cameraGuardian"; // Legacy guardian disabled
 import { installCameraGuardianWire } from "./lib/camera/guardianWire";
@@ -79,6 +80,16 @@ console.log(`[BCF][TEST_INSTRUCTIONS]
      const { data } = await supabase.auth.getUser();
      console.log('[AUTH_CHECK]', { userId: data?.user?.id ?? null, isLoggedIn: !!data?.user?.id });
    })()`);
+
+// Enable enrichment feature for QA runs
+if (typeof window !== 'undefined' && window.location.search.includes('QA_ENRICH=1')) {
+  try { 
+    localStorage.setItem('FEATURE_ENRICH_MANUAL_FOOD','true'); 
+    console.log('[QA] Feature flag enabled for enrichment testing');
+  } catch (e) {
+    console.warn('[QA] Failed to set feature flag:', e);
+  }
+}
 
 // Initialize feature flags
 (window as any).__featureFlags = (window as any).__featureFlags || {};

@@ -519,7 +519,13 @@ serve(async (req) => {
       .single();
 
     if (cached) {
-      console.log(`[ENRICH][CACHE HIT] ${cached.source}`);
+      console.log(`[ENRICH][CACHE HIT]`, {
+        q: normalizedQuery,
+        source: cached.source,
+        conf: cached.confidence,
+        ingLen: cached.response_data?.ingredients?.length ?? 0,
+        perServingG: cached.response_data?.perServing?.serving_grams
+      });
       return new Response(JSON.stringify(cached.response_data), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
