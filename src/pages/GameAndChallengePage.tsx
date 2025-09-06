@@ -192,13 +192,23 @@ function GameAndChallengeContent() {
   // Use the scroll-to-top hook
   useScrollToTop();
 
-  // Auto-scroll to top when switching challenge modes (offset-aware)
+  // Auto-scroll to top when switching challenge modes (stable, offset-neutralized)
+  const firstRunMode = useRef(true);
   useEffect(() => {
+    if (firstRunMode.current) { firstRunMode.current = false; return; }
     const el = modeTopRef.current;
     if (!el) return;
+
+    const currentTop = window.pageYOffset ?? document.documentElement.scrollTop ?? 0;
+    if (currentTop <= 8) return;
+
+    const appH = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue("--app-header-height") || "0"
+    ) || 0;
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        scrollToAlignTop(el, { offsetTop: 0 });
+        scrollToAlignTop(el, { offsetTop: -appH });
       });
     });
   }, [challengeMode]);

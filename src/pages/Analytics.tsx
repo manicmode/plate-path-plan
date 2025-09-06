@@ -47,14 +47,27 @@ export default function Analytics() {
   // Initialize milestone tracking to check for new achievements
   useMilestoneTracker();
 
-  // Auto-scroll to top when switching tabs (offset-aware, safe for sticky headers)
+  // Auto-scroll to top when switching tabs (stable, offset-neutralized)
+  const firstRun = useRef(true);
   useEffect(() => {
+    // Skip initial mount to avoid racing with layout/router scrolls
+    if (firstRun.current) { firstRun.current = false; return; }
     const el = topRef.current;
     if (!el) return;
-    // wait two frames so content is mounted/measured
+
+    // If already at/near top, do nothing (prevents micro-jiggle)
+    const currentTop = window.pageYOffset ?? document.documentElement.scrollTop ?? 0;
+    if (currentTop <= 8) return;
+
+    // Neutralize helper's global header subtraction since anchor is already under page header
+    const appH = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue("--app-header-height") || "0"
+    ) || 0;
+
+    // Wait 2 frames so tab content settles, then align
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        scrollToAlignTop(el, { offsetTop: 0 });
+        scrollToAlignTop(el, { offsetTop: -appH });
       });
     });
   }, [activeTab]);
