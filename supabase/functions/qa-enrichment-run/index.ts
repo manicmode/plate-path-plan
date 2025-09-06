@@ -32,6 +32,19 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Check QA authorization header
+  const qaKey = Deno.env.get("QA_ENRICH_KEY") ?? "";
+  const hdr = req.headers.get("X-QA-KEY") ?? "";
+  if (qaKey && hdr !== qaKey) {
+    return new Response(
+      JSON.stringify({ error: "unauthorized" }), 
+      { 
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+  }
+
   try {
     console.log('[QA][ENRICHMENT] Starting QA enrichment run...');
     
