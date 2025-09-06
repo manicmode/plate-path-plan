@@ -1,3 +1,4 @@
+// redeploy: 2025-01-09T12:30:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
@@ -35,6 +36,12 @@ serve(async (req) => {
   // Check QA authorization header
   const expected = Deno.env.get("QA_ENRICH_KEY") ?? "";
   const got = req.headers.get("X-QA-KEY") ?? "";
+  
+  console.log('[QA][AUTH]', {
+    expLen: (Deno.env.get('QA_ENRICH_KEY') ?? '').length,
+    gotLen: (req.headers.get('X-QA-KEY') ?? '').length
+  });
+  
   if (expected && got !== expected) {
     return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
   }
