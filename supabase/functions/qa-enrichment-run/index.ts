@@ -33,16 +33,10 @@ serve(async (req) => {
   }
 
   // Check QA authorization header
-  const qaKey = Deno.env.get("QA_ENRICH_KEY") ?? "";
-  const hdr = req.headers.get("X-QA-KEY") ?? "";
-  if (qaKey && hdr !== qaKey) {
-    return new Response(
-      JSON.stringify({ error: "unauthorized" }), 
-      { 
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+  const expected = Deno.env.get("QA_ENRICH_KEY") ?? "";
+  const got = req.headers.get("X-QA-KEY") ?? "";
+  if (expected && got !== expected) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
   }
 
   try {
