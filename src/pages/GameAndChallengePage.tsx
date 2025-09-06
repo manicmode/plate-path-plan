@@ -3,7 +3,7 @@ import ArenaPanel from '@/components/arena/ArenaPanel';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link, useNavigate } from 'react-router-dom';
-import { getScrollableAncestor } from '@/utils/scroll';
+// Removed getScrollableAncestor import
 import { ArrowLeft } from 'lucide-react';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { ChallengeProvider } from '@/contexts/ChallengeContext';
@@ -97,35 +97,7 @@ function applyDomainFilter<T extends { category?: string }>(
   return items.filter(item => (item.category ?? '').toLowerCase() === domain);
 }
 
-// Helper function to scroll to top of the nearest scrollable container
-function scrollTopOfNearestScroller(el: HTMLElement | null) {
-  const scrollerAny = getScrollableAncestor(el);
-  // normalize to either window or an HTMLElement
-  const scroller = scrollerAny === window ? window : (scrollerAny as HTMLElement);
-
-  // read current scrollTop from the *same* scroller
-  const currentTop =
-    scroller === window
-      ? (window.pageYOffset ?? document.scrollingElement?.scrollTop ?? document.documentElement.scrollTop ?? 0)
-      : (scroller as HTMLElement).scrollTop;
-
-  // skip only if truly at top (prevents micro-jiggle)
-  if (currentTop <= 8) return;
-
-  const opts: ScrollToOptions = { top: 0, behavior: "smooth" };
-
-  // wait for content to mount/paint so sticky headers measure correctly
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (scroller === window) {
-        // iOS Safari fallback if smooth not supported
-        try { window.scrollTo(opts); } catch { window.scrollTo(0, 0); }
-      } else {
-        try { (scroller as HTMLElement).scrollTo(opts); } catch { (scroller as HTMLElement).scrollTo(0, 0); }
-      }
-    });
-  });
-}
+// Removed scrollTopOfNearestScroller function
 
 // Types
 interface ChatMessage {
@@ -173,7 +145,7 @@ function GameAndChallengeContent() {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const pageRef = useRef<HTMLDivElement>(null);
+  const modeTopRef = useRef<HTMLDivElement>(null);
   
   const queryClient = useQueryClient();
 
@@ -221,13 +193,9 @@ function GameAndChallengeContent() {
 
   // Auto-scroll to top when challenge mode changes
   useEffect(() => {
-    // Check for modal (common patterns)
-    const hasModal = document.querySelector('[aria-hidden="true"]') || 
-                    document.querySelector('[data-modal-open="true"]') ||
-                    document.body.classList.contains('modal-open');
-    if (hasModal) return;
-
-    scrollTopOfNearestScroller(pageRef.current);
+    requestAnimationFrame(() => {
+      modeTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+    });
   }, [challengeMode]);
 
   // A. page-level heartbeat (fires once on page render)
@@ -438,7 +406,7 @@ function GameAndChallengeContent() {
   ];
 
   return (
-    <div ref={pageRef}>
+    <>
       {/* Sticky Header - Outside overflow container */}
       <div id="gaming-sticky-header" className="sticky top-0 z-[60] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="w-full max-w-none px-4 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-4">
@@ -543,6 +511,9 @@ function GameAndChallengeContent() {
           </>
         )}
       </div>
+      
+      {/* Anchor directly under header + toggle */}
+      <div ref={modeTopRef} data-scroll-anchor="gac" />
 
       {/* Main Content Container */}
       <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5 w-full max-w-full relative">
@@ -653,9 +624,9 @@ function GameAndChallengeContent() {
         )}
 
         
-        {/* Smart Team-Up Prompts */}
-        <SmartTeamUpPrompt />
-      </div>
-    </div>
-  );
+         {/* Smart Team-Up Prompts */}
+         <SmartTeamUpPrompt />
+       </div>
+     </>
+   );
 }
