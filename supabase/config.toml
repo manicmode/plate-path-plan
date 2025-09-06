@@ -1,8 +1,5 @@
 project_id = "uzoiiijqtahohfafqirm"
 
-[functions.enrich-manual-food]
-verify_jwt = false
-
 [functions.dispatchHabitReminders]
 verify_jwt = false
 
