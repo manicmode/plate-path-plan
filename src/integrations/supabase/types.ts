@@ -2513,6 +2513,42 @@ export type Database = {
           },
         ]
       }
+      food_enrichment_cache: {
+        Row: {
+          confidence: number
+          created_at: string
+          expires_at: string | null
+          id: string
+          query: string
+          query_hash: string
+          response_data: Json
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          query: string
+          query_hash: string
+          response_data: Json
+          source: string
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          query?: string
+          query_hash?: string
+          response_data?: Json
+          source?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       food_recognitions: {
         Row: {
           confidence_scores: number[] | null
@@ -9777,10 +9813,8 @@ export type Database = {
               _limit?: number
             }
         Returns: {
-          avatar_url: string
           body: string
           created_at: string
-          display_name: string
           id: string
           user_id: string
         }[]
@@ -9830,7 +9864,6 @@ export type Database = {
           avatar_url: string
           display_name: string
           points: number
-          rank: number
           streak: number
           user_id: string
         }[]
