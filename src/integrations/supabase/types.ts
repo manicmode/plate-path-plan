@@ -4755,6 +4755,48 @@ export type Database = {
         }
         Relationships: []
       }
+      qa_enrichment_results: {
+        Row: {
+          cache_was_hit: boolean | null
+          confidence: number | null
+          created_at: string
+          id: string
+          ingredients_len: number | null
+          kcal_100g: number | null
+          pass_fail: string | null
+          query: string
+          run_id: string
+          serving_grams: number | null
+          source: string | null
+        }
+        Insert: {
+          cache_was_hit?: boolean | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          ingredients_len?: number | null
+          kcal_100g?: number | null
+          pass_fail?: string | null
+          query: string
+          run_id: string
+          serving_grams?: number | null
+          source?: string | null
+        }
+        Update: {
+          cache_was_hit?: boolean | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          ingredients_len?: number | null
+          kcal_100g?: number | null
+          pass_fail?: string | null
+          query?: string
+          run_id?: string
+          serving_grams?: number | null
+          source?: string | null
+        }
+        Relationships: []
+      }
       rank20_billboard_messages: {
         Row: {
           author_id: string | null
