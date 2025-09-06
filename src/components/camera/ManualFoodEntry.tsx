@@ -56,6 +56,42 @@ const MEAL_TYPE_CHIPS = [
   { value: 'snack', label: 'Snack', emoji: '🍿' }
 ];
 
+// Very small, local helpers (UI-only)
+const _norm = (s?: string) =>
+  (s || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const _tokens = (s?: string) =>
+  _norm(s).split(' ').filter(Boolean);
+
+// Words we ignore when extracting a "core noun"
+const STOP = new Set([
+  'a','an','the','and','or','with','of','in','on','to',
+  // prep / style words
+  'grilled','baked','fried','roasted','boiled','steamed','sauteed','bbq','barbecue','smoked','raw','cooked',
+  // misc adjectives
+  'fresh','organic','low','reduced','classic','premium','style'
+]);
+
+// best-effort head noun picker from a name, falling back safely
+const coreNoun = (name?: string) => {
+  const t = _tokens(name).filter(x => !STOP.has(x));
+  // prefer the last non-stop token (often the noun: "grilled chicken" -> "chicken")
+  return t.length ? t[t.length - 1] : _tokens(name).pop() || '';
+};
+
+// checks whether candidate name shares the primary's core noun
+const sharesCore = (candidateName?: string, primaryName?: string) => {
+  const core = coreNoun(primaryName);
+  if (!core) return true; // be permissive if we can't infer
+  const cand = _norm(candidateName);
+  return cand.includes(core);
+};
+
 export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   isOpen,
   onClose,
@@ -145,9 +181,10 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         // legacy "multiple items" fallback as alts
         const legacyAlts = items.length > 1 ? items.slice(1) : [];
 
-        const alts = [...v3Alts, ...legacyAlts].slice(0, 5);
+        const rawAlts = [...v3Alts, ...legacyAlts];
+        const filteredAlts = rawAlts.filter((c: any) => sharesCore(c?.name, primary?.name)).slice(0, 5);
 
-        alts.forEach((c: any, i: number) => {
+        filteredAlts.forEach((c: any, i: number) => {
           const isGeneric =
             Boolean(c?.isGeneric) || c?.kind === 'generic' || c?.provider === 'generic';
 
@@ -165,6 +202,27 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             data: c,
           });
         });
+
+        // fallback: if filtering removed everything and we had raw alts,
+        // allow the single best generic that shares the query token exactly
+        if (list.length === 1 && rawAlts.length > 0) {
+          const qCore = coreNoun(query);
+          const rescue = rawAlts.find((c: any) => _norm(c?.name).includes(qCore) && (
+            Boolean(c?.isGeneric) || c?.kind === 'generic' || c?.provider === 'generic'
+          ));
+          if (rescue) {
+            list.push({
+              id: `candidate-alt-rescue`,
+              name: rescue?.name ?? 'Option',
+              isGeneric: true,
+              portionHint: `${rescue?.servingG ?? primary?.servingGrams ?? 100}g default`,
+              defaultPortion: { amount: rescue?.servingG ?? primary?.servingGrams ?? 100, unit: 'g' },
+              provider: rescue?.provider ?? rescue?.kind,
+              imageUrl: rescue?.imageUrl,
+              data: rescue,
+            });
+          }
+        }
       }
 
       // Keep existing generics-first rule (stable within groups)
