@@ -10,22 +10,10 @@ interface ThreeCirclesLoaderProps {}
 export function ThreeCirclesLoader({}: ThreeCirclesLoaderProps) {
   return (
     <div
-      className="fixed z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center"
+      className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="tcl-title"
-      style={{ 
-        position: 'fixed',
-        top: '0px !important',
-        left: '0px !important',
-        right: '0px !important', 
-        bottom: '0px !important',
-        width: '100vw',
-        height: '100vh',
-        margin: '0',
-        padding: '0',
-        zIndex: 9999
-      }}
     >
       <span id="tcl-title" className="sr-only">Loading</span>
 
