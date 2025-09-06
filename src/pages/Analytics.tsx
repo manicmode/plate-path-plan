@@ -35,7 +35,19 @@ import { getScrollableAncestor } from '@/utils/scroll';
 
 // Helper function to scroll to top of the nearest scrollable container
 function scrollTopOfNearestScroller(el: HTMLElement | null) {
-  const scroller = getScrollableAncestor(el); // can be window or an element
+  const scrollerAny = getScrollableAncestor(el);
+  // normalize to either window or an HTMLElement
+  const scroller = scrollerAny === window ? window : (scrollerAny as HTMLElement);
+
+  // read current scrollTop from the *same* scroller
+  const currentTop =
+    scroller === window
+      ? (window.pageYOffset ?? document.scrollingElement?.scrollTop ?? document.documentElement.scrollTop ?? 0)
+      : (scroller as HTMLElement).scrollTop;
+
+  // skip only if truly at top (prevents micro-jiggle)
+  if (currentTop <= 8) return;
+
   const opts: ScrollToOptions = { top: 0, behavior: "smooth" };
 
   // wait for content to mount/paint so sticky headers measure correctly
@@ -67,10 +79,6 @@ export default function Analytics() {
 
   // Auto-scroll to top when tab changes
   useEffect(() => {
-    // Guards: skip if already near top or modal is open
-    const currentScrollTop = window.scrollY || document.documentElement.scrollTop;
-    if (currentScrollTop <= 8) return;
-    
     // Check for modal (common patterns)
     const hasModal = document.querySelector('[aria-hidden="true"]') || 
                     document.querySelector('[data-modal-open="true"]') ||
