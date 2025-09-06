@@ -45,21 +45,56 @@ export default function Analytics() {
   // Initialize milestone tracking to check for new achievements
   useMilestoneTracker();
 
-  // Auto-scroll on tab change (Coach pattern). Skip initial mount.
+  // Auto-scroll on tab change (Coach pattern + top re-assert). Skip initial mount.
   const firstTabRun = useRef(true);
+  const userInteracting = useRef(false);
   useEffect(() => {
     if (firstTabRun.current) { firstTabRun.current = false; return; }
-    const y =
+
+    const y0 =
       window.pageYOffset ??
       document.scrollingElement?.scrollTop ??
       document.documentElement.scrollTop ??
       0;
-    if (y <= 8) return; // already near top → avoid jiggle
+    if (y0 <= 8) return; // already near top → avoid jiggle
+
     const behavior: ScrollBehavior =
       window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
         ? "auto"
         : "smooth";
-    window.scrollTo({ top: 0, behavior });
+
+    const snapTop = () => {
+      if (userInteracting.current) return; // don't fight the user
+      const y =
+        window.pageYOffset ??
+        document.scrollingElement?.scrollTop ??
+        document.documentElement.scrollTop ??
+        0;
+      if (y > 1) window.scrollTo({ top: 0, behavior: "auto" }); // invisible final snap
+    };
+
+    const onUser = () => {
+      userInteracting.current = true;
+      // clear the flag shortly after any user gesture
+      setTimeout(() => (userInteracting.current = false), 400);
+    };
+    window.addEventListener("wheel", onUser, { passive: true, capture: true });
+    window.addEventListener("touchstart", onUser, { passive: true, capture: true });
+
+    // Run after tab focus/DOM settles, then re-assert to eliminate short-stop
+    const r1 = requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior });
+      const t1 = setTimeout(snapTop, 120);
+      const t2 = setTimeout(snapTop, 240); // iOS Safari safety
+      // cleanup
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    });
+
+    return () => {
+      cancelAnimationFrame(r1);
+      window.removeEventListener("wheel", onUser, { capture: true } as any);
+      window.removeEventListener("touchstart", onUser, { capture: true } as any);
+    };
   }, [activeTab]);
 
   return (

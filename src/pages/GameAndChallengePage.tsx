@@ -187,21 +187,53 @@ function GameAndChallengeContent() {
   // Use the scroll-to-top hook
   useScrollToTop();
 
-  // Auto-scroll on mode change (Coach pattern). Skip initial mount.
+  // Auto-scroll on mode change (Coach pattern + top re-assert). Skip initial mount.
   const firstModeRun = useRef(true);
+  const userInteractingMode = useRef(false);
   useEffect(() => {
     if (firstModeRun.current) { firstModeRun.current = false; return; }
-    const y =
+
+    const y0 =
       window.pageYOffset ??
       document.scrollingElement?.scrollTop ??
       document.documentElement.scrollTop ??
       0;
-    if (y <= 8) return; // already near top
+    if (y0 <= 8) return;
+
     const behavior: ScrollBehavior =
       window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
         ? "auto"
         : "smooth";
-    window.scrollTo({ top: 0, behavior });
+
+    const snapTop = () => {
+      if (userInteractingMode.current) return;
+      const y =
+        window.pageYOffset ??
+        document.scrollingElement?.scrollTop ??
+        document.documentElement.scrollTop ??
+        0;
+      if (y > 1) window.scrollTo({ top: 0, behavior: "auto" });
+    };
+
+    const onUser = () => {
+      userInteractingMode.current = true;
+      setTimeout(() => (userInteractingMode.current = false), 400);
+    };
+    window.addEventListener("wheel", onUser, { passive: true, capture: true });
+    window.addEventListener("touchstart", onUser, { passive: true, capture: true });
+
+    const r1 = requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior });
+      const t1 = setTimeout(snapTop, 120);
+      const t2 = setTimeout(snapTop, 240);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    });
+
+    return () => {
+      cancelAnimationFrame(r1);
+      window.removeEventListener("wheel", onUser, { capture: true } as any);
+      window.removeEventListener("touchstart", onUser, { capture: true } as any);
+    };
   }, [challengeMode]);
 
   // A. page-level heartbeat (fires once on page render)
