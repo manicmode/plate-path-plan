@@ -351,12 +351,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       {/* Three Circles Loader - Full screen overlay during loading */}
       <AnimatePresence>
         {state === 'loading' && (
-          <ThreeCirclesLoader
-            onCancel={() => {
-              setState('idle');
-              toast.error('Search cancelled');
-            }}
-          />
+          <ThreeCirclesLoader />
         )}
       </AnimatePresence>
 

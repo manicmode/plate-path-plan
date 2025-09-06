@@ -1,15 +1,13 @@
 import * as React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-interface ThreeCirclesLoaderProps {
-  onCancel?: () => void;
-}
+interface ThreeCirclesLoaderProps {}
 
 /**
  * Simple three concentric circles loader for manual entry
  * Matches the clean design from image reference
  */
-export function ThreeCirclesLoader({ onCancel }: ThreeCirclesLoaderProps) {
+export function ThreeCirclesLoader({}: ThreeCirclesLoaderProps) {
   return (
     <div
       className="fixed inset-0 z-[600] bg-black/90 backdrop-blur-sm flex items-center justify-center"
@@ -38,16 +36,6 @@ export function ThreeCirclesLoader({ onCancel }: ThreeCirclesLoaderProps) {
             Searching brands • generics • restaurants...
           </h3>
         </div>
-
-        {/* Cancel button */}
-        {onCancel && (
-          <button
-            onClick={onCancel}
-            className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full border border-white/20 transition-colors"
-          >
-            Cancel
-          </button>
-        )}
       </div>
 
       <style>{`
