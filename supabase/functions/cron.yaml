@@ -31,3 +31,9 @@ jobs:
     schedule: "0 9 * * *"  # Every day at 9:00 AM UTC
     function: "body-scan-reminder-cron"
     payload: {}
+    
+  # Clean up expired food enrichment cache entries daily at 2:00 AM UTC
+  - name: "cleanup-expired-cache"
+    schedule: "0 2 * * *"  # Every day at 2:00 AM UTC
+    function: "cleanup-expired-cache"
+    payload: {}
