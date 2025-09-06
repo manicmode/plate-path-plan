@@ -18,6 +18,7 @@ import { submitTextLookup } from '@/lib/food/textLookup';
 import { CandidateList } from '@/components/food/CandidateList';
 import { PortionUnitField } from '@/components/food/PortionUnitField';
 import { FOOD_TEXT_DEBUG } from '@/lib/flags';
+import { SmartAnalyzeLoader } from '@/components/loaders/SmartAnalyzeLoader';
 
 interface ManualFoodEntryProps {
   isOpen: boolean;
@@ -306,11 +307,31 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   }[state];
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent 
-        showCloseButton={false}
-        className="max-w-md mx-auto bg-slate-900/70 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl/20 p-0 overflow-hidden max-h-[90vh] overflow-y-auto"
-      >
+    <>
+      {/* Smart Analyze Loader - Full screen overlay during loading */}
+      <AnimatePresence>
+        {state === 'loading' && (
+          <SmartAnalyzeLoader
+            title="Searching brands • generics • restaurants..."
+            subtitle="Finding the best nutrition match for your food"
+            onCancel={() => {
+              setState('idle');
+              toast.error('Search cancelled');
+            }}
+            labels={{
+              detecting: "Searching brands",
+              hydrating: "Loading generics", 
+              buildingReview: "Checking restaurants"
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+        <DialogContent 
+          showCloseButton={false}
+          className="max-w-md mx-auto bg-slate-900/70 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl/20 p-0 overflow-hidden max-h-[90vh] overflow-y-auto"
+        >
         <VisuallyHidden>
           <DialogTitle>Add Food Manually</DialogTitle>
         </VisuallyHidden>
@@ -591,7 +612,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                   disabled={!foodName.trim() || state === 'loading'}
                   className="bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-500 hover:to-emerald-500 text-white font-medium px-6 focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {state === 'loading' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   <Zap className="h-4 w-4 mr-2" />
                   Add Item
                 </Button>
@@ -601,5 +621,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         </motion.div>
       </DialogContent>
     </Dialog>
+    </>
   );
 };
