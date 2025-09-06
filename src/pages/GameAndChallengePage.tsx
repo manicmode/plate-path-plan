@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { scrollToAlignTop } from '@/utils/scroll';
+import React, { useState, useEffect } from 'react';
 import ArenaPanel from '@/components/arena/ArenaPanel';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link, useNavigate } from 'react-router-dom';
-// Removed getScrollableAncestor import
 import { ArrowLeft } from 'lucide-react';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { ChallengeProvider } from '@/contexts/ChallengeContext';
@@ -98,8 +96,6 @@ function applyDomainFilter<T extends { category?: string }>(
   return items.filter(item => (item.category ?? '').toLowerCase() === domain);
 }
 
-// Removed scrollTopOfNearestScroller function
-
 // Types
 interface ChatMessage {
   id: number;
@@ -146,7 +142,6 @@ function GameAndChallengeContent() {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const modeTopRef = useRef<HTMLDivElement>(null);
   
   const queryClient = useQueryClient();
 
@@ -191,27 +186,6 @@ function GameAndChallengeContent() {
   
   // Use the scroll-to-top hook
   useScrollToTop();
-
-  // Auto-scroll to top when switching challenge modes (stable, offset-neutralized)
-  const firstRunMode = useRef(true);
-  useEffect(() => {
-    if (firstRunMode.current) { firstRunMode.current = false; return; }
-    const el = modeTopRef.current;
-    if (!el) return;
-
-    const currentTop = window.pageYOffset ?? document.documentElement.scrollTop ?? 0;
-    if (currentTop <= 8) return;
-
-    const appH = parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue("--app-header-height") || "0"
-    ) || 0;
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        scrollToAlignTop(el, { offsetTop: -appH });
-      });
-    });
-  }, [challengeMode]);
 
   // A. page-level heartbeat (fires once on page render)
   useEffect(() => {
@@ -526,9 +500,6 @@ function GameAndChallengeContent() {
           </>
         )}
       </div>
-      
-      {/* Anchor directly under header + toggle */}
-      <div ref={modeTopRef} data-scroll-anchor="gac" />
 
       {/* Main Content Container */}
       <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5 w-full max-w-full relative">
@@ -639,9 +610,9 @@ function GameAndChallengeContent() {
         )}
 
         
-         {/* Smart Team-Up Prompts */}
-         <SmartTeamUpPrompt />
-       </div>
-     </>
-   );
+        {/* Smart Team-Up Prompts */}
+        <SmartTeamUpPrompt />
+      </div>
+    </>
+  );
 }

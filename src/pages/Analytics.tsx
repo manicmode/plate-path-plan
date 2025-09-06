@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { scrollToAlignTop } from '@/utils/scroll';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { DailyProgressSection } from '@/components/analytics/sections/DailyProgressSection';
@@ -35,7 +34,6 @@ import { StickyHeader } from '@/components/ui/sticky-header';
 
 export default function Analytics() {
   const [activeTab, setActiveTab] = useState('nutrition');
-  const topRef = useRef<HTMLDivElement>(null);
   const {
     progress,
     weeklyAverage,
@@ -47,34 +45,8 @@ export default function Analytics() {
   // Initialize milestone tracking to check for new achievements
   useMilestoneTracker();
 
-  // Auto-scroll to top when switching tabs (stable, offset-neutralized)
-  const firstRun = useRef(true);
-  useEffect(() => {
-    // Skip initial mount to avoid racing with layout/router scrolls
-    if (firstRun.current) { firstRun.current = false; return; }
-    const el = topRef.current;
-    if (!el) return;
-
-    // If already at/near top, do nothing (prevents micro-jiggle)
-    const currentTop = window.pageYOffset ?? document.documentElement.scrollTop ?? 0;
-    if (currentTop <= 8) return;
-
-    // Neutralize helper's global header subtraction since anchor is already under page header
-    const appH = parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue("--app-header-height") || "0"
-    ) || 0;
-
-    // Wait 2 frames so tab content settles, then align
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        scrollToAlignTop(el, { offsetTop: -appH });
-      });
-    });
-  }, [activeTab]);
-
   return (
-    <>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-gray-50 dark:bg-gray-900 min-h-screen">
       <StickyHeader className="z-[60]">
         <div className="p-4 pb-0 text-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
@@ -93,10 +65,7 @@ export default function Analytics() {
           </TabsTrigger>
         </TabsList>
       </StickyHeader>
-      
-      {/* Anchor lives directly under the sticky header */}
-      <div ref={topRef} data-scroll-anchor="analytics" />
-      
+
       <div className="p-4 space-y-6 md:pb-[120px]">
         <TabsContent value="nutrition" className="space-y-6 mt-6">
           {/* Section 1: Today's Breakdown */}
@@ -222,7 +191,6 @@ export default function Analytics() {
         </TabsContent>
 
       </div>
-      </Tabs>
-    </>
+    </Tabs>
   );
 }

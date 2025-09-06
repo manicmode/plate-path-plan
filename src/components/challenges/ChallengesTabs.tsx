@@ -11,15 +11,9 @@ import { usePublicChallenges } from '@/hooks/usePublicChallenges';
 import { usePrivateChallenges } from '@/hooks/usePrivateChallenges';
 
 export const ChallengesTabs: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("my");
   const { data: myChallenges } = useMyChallenges();
   const { challenges: publicChallenges } = usePublicChallenges();
   const { challengesWithParticipation: privateChallenges } = usePrivateChallenges();
-
-  // Scroll to top when tab changes
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [activeTab]);
 
   // Log counts after mount for verification
   useEffect(() => {
@@ -32,7 +26,7 @@ export const ChallengesTabs: React.FC = () => {
   }, [myChallenges.length, publicChallenges.length, privateChallenges.length]);
 
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+    <Tabs defaultValue="my" className="w-full">
       <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger 
           value="my" 
