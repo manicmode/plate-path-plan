@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { DailyProgressSection } from '@/components/analytics/sections/DailyProgressSection';
@@ -44,6 +44,23 @@ export default function Analytics() {
 
   // Initialize milestone tracking to check for new achievements
   useMilestoneTracker();
+
+  // Auto-scroll on tab change (Coach pattern). Skip initial mount.
+  const firstTabRun = useRef(true);
+  useEffect(() => {
+    if (firstTabRun.current) { firstTabRun.current = false; return; }
+    const y =
+      window.pageYOffset ??
+      document.scrollingElement?.scrollTop ??
+      document.documentElement.scrollTop ??
+      0;
+    if (y <= 8) return; // already near top → avoid jiggle
+    const behavior: ScrollBehavior =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
+        ? "auto"
+        : "smooth";
+    window.scrollTo({ top: 0, behavior });
+  }, [activeTab]);
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-gray-50 dark:bg-gray-900 min-h-screen">

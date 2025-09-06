@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ArenaPanel from '@/components/arena/ArenaPanel';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -186,6 +186,23 @@ function GameAndChallengeContent() {
   
   // Use the scroll-to-top hook
   useScrollToTop();
+
+  // Auto-scroll on mode change (Coach pattern). Skip initial mount.
+  const firstModeRun = useRef(true);
+  useEffect(() => {
+    if (firstModeRun.current) { firstModeRun.current = false; return; }
+    const y =
+      window.pageYOffset ??
+      document.scrollingElement?.scrollTop ??
+      document.documentElement.scrollTop ??
+      0;
+    if (y <= 8) return; // already near top
+    const behavior: ScrollBehavior =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
+        ? "auto"
+        : "smooth";
+    window.scrollTo({ top: 0, behavior });
+  }, [challengeMode]);
 
   // A. page-level heartbeat (fires once on page render)
   useEffect(() => {
