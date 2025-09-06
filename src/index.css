@@ -5,6 +5,15 @@
   0% { transform: translateX(-200%) skewX(-12deg); }
   100% { transform: translateX(200%) skewX(-12deg); }
 }
+
+@keyframes longpress-progress {
+  from {
+    stroke-dashoffset: 301.6;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

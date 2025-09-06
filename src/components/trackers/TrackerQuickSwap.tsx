@@ -23,6 +23,28 @@ export function TrackerQuickSwap({
   const popoverRef = useRef<HTMLDivElement>(null);
   const eligibleTrackers = getEligibleTrackers(visibleKeys);
 
+  // Listen for changes to localStorage preferences and update eligibleTrackers
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleStorageChange = () => {
+      // Recalculate eligible trackers
+      const newEligible = getEligibleTrackers(visibleKeys);
+      // If no eligible trackers remain, close the modal
+      if (newEligible.length === 0) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('homeTrackerChanged', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('homeTrackerChanged', handleStorageChange);
+    };
+  }, [isOpen, visibleKeys, onClose]);
+
   // Focus trap and keyboard handling
   useEffect(() => {
     if (!isOpen) return;
@@ -135,10 +157,10 @@ export function TrackerQuickSwap({
                         "focus:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
                         "active:scale-[0.98]"
                       )}
-                      onClick={() => {
-                        onPick(trackerKey);
-                        onClose();
-                      }}
+                       onClick={() => {
+                         onPick(trackerKey);
+                         onClose();
+                       }}
                     >
                       <span className="text-lg">{tracker.emoji}</span>
                       <div className="flex-1 min-w-0">

@@ -326,17 +326,21 @@ const Home = () => {
       setPreferences(newPreferences);
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    
-    const interval = setInterval(() => {
+    const handleTrackerChange = () => {
       const newPreferences = loadUserPreferences();
       if (JSON.stringify(newPreferences) !== JSON.stringify(preferences)) {
         setPreferences(newPreferences);
       }
-    }, 1000);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('homeTrackerChanged', handleTrackerChange);
+    
+    const interval = setInterval(handleTrackerChange, 1000);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('homeTrackerChanged', handleTrackerChange);
       clearInterval(interval);
     };
   }, [preferences]);

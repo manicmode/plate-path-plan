@@ -1,9 +1,12 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Sparkles, MoreHorizontal } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { TrackerQuickSwap } from './TrackerQuickSwap';
 import { TrackerKey } from '@/lib/trackers/trackerRegistry';
 import { cn } from '@/lib/utils';
+import { track } from '@/lib/analytics';
+import { useHapticsPref } from '@/contexts/HapticsContext';
+import { useSound } from '@/contexts/SoundContext';
 
 // Feature flags with defaults
 const QUICKSWAP_ENABLED = (import.meta.env.VITE_TRACKER_QUICKSWAP ?? 'true') !== 'false';
@@ -34,7 +37,7 @@ interface TrackerTileProps {
   getMotivationalMessage: (percentage: number, type: string) => string;
 }
 
-function useLongPress(onLongPress: () => void, ms: number) {
+function useLongPress(onLongPress: () => void, ms: number, onProgressStart: () => void, onProgressEnd: () => void) {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLongPressRef = useRef(false);
   const startPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -42,6 +45,9 @@ function useLongPress(onLongPress: () => void, ms: number) {
   const startLongPress = useCallback((e: React.PointerEvent) => {
     isLongPressRef.current = false;
     startPosRef.current = { x: e.clientX, y: e.clientY };
+    
+    // Show progress ring
+    onProgressStart();
 
     if (DIAG_ENABLED) {
       console.debug('[QuickSwap] longpress start', performance.now());
@@ -57,7 +63,7 @@ function useLongPress(onLongPress: () => void, ms: number) {
         performance.mark('quickswap_longpress_trigger');
       }
     }, ms);
-  }, [onLongPress, ms]);
+  }, [onLongPress, ms, onProgressStart]);
 
   const cancelLongPress = useCallback(() => {
     if (timeoutRef.current) {
@@ -65,13 +71,16 @@ function useLongPress(onLongPress: () => void, ms: number) {
       timeoutRef.current = null;
     }
 
+    // Hide progress ring
+    onProgressEnd();
+
     if (DIAG_ENABLED && !isLongPressRef.current) {
       console.debug('[QuickSwap] longpress cancelled', performance.now());
     }
 
     isLongPressRef.current = false;
     startPosRef.current = null;
-  }, []);
+  }, [onProgressEnd]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!startPosRef.current) return;
@@ -104,41 +113,83 @@ export function TrackerTile({
   const isMobile = useIsMobile();
   const [isQuickSwapOpen, setIsQuickSwapOpen] = useState(false);
   const [isLongPressing, setIsLongPressing] = useState(false);
+  const [progressRingVisible, setProgressRingVisible] = useState(false);
   const tileRef = useRef<HTMLDivElement>(null);
+  const { enabled: hapticsEnabled } = useHapticsPref();
+  const { playProgressUpdate } = useSound();
 
   const handleLongPress = useCallback(() => {
     if (!QUICKSWAP_ENABLED || !onQuickSwap) return;
 
     setIsLongPressing(false);
+    setProgressRingVisible(false);
     setIsQuickSwapOpen(true);
 
     // Haptic feedback
-    if (HAPTIC_ENABLED && 'vibrate' in navigator) {
+    if (HAPTIC_ENABLED && hapticsEnabled && 'vibrate' in navigator) {
       navigator.vibrate(50);
     }
 
+    // Analytics
+    track('ui_quickswap_open', { 
+      pressedIndex: index, 
+      from: tracker.name.toLowerCase() 
+    });
+
     if (DIAG_ENABLED) {
-      console.debug('[QuickSwap] longpress open', { index, tracker: tracker.name });
+      console.debug('[QuickSwap] longpress open', { index, from: tracker.name.toLowerCase() });
       performance.mark('quickswap_open');
     }
-  }, [index, tracker.name, onQuickSwap]);
+  }, [index, tracker.name, onQuickSwap, hapticsEnabled]);
 
-  const longPressHandlers = useLongPress(handleLongPress, LONGPRESS_MS);
+  const longPressHandlers = useLongPress(
+    handleLongPress, 
+    LONGPRESS_MS,
+    () => setProgressRingVisible(true),
+    () => setProgressRingVisible(false)
+  );
 
-  const handleQuickSwapPick = useCallback((newKey: TrackerKey) => {
+  const handleQuickSwapPick = useCallback(async (newKey: TrackerKey) => {
     if (onQuickSwap) {
-      onQuickSwap(index, newKey);
+      const fromKey = tracker.name.toLowerCase();
+      
+      // Analytics
+      track('ui_quickswap_pick', { 
+        pressedIndex: index, 
+        from: fromKey, 
+        to: newKey 
+      });
+
+      try {
+        await onQuickSwap(index, newKey);
+        
+        // Success feedback
+        if (hapticsEnabled && 'vibrate' in navigator) {
+          navigator.vibrate([30, 100, 30]); // Success pattern
+        }
+        
+        try {
+          await playProgressUpdate();
+        } catch (soundError) {
+          // Sound errors are non-blocking
+          if (DIAG_ENABLED) {
+            console.debug('[QuickSwap] sound error (non-blocking):', soundError);
+          }
+        }
+      } catch (error) {
+        console.error('[QuickSwap] swap failed:', error);
+      }
       
       if (DIAG_ENABLED) {
         console.debug('[QuickSwap] pick', { 
           index, 
-          from: tracker.name.toLowerCase(), 
+          from: fromKey, 
           to: newKey 
         });
         performance.mark('quickswap_pick');
       }
     }
-  }, [index, tracker.name, onQuickSwap]);
+  }, [index, tracker.name, onQuickSwap, hapticsEnabled, playProgressUpdate]);
 
   const handleTileClick = useCallback((e: React.MouseEvent) => {
     if (longPressHandlers.isLongPress()) {
@@ -160,7 +211,7 @@ export function TrackerTile({
         ref={tileRef}
         className={cn(
           `border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl transition-all duration-500 cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`,
-          isLongPressing ? 'ring-2 ring-primary ring-offset-2' : 'hover:scale-105',
+          progressRingVisible ? 'ring-2 ring-primary ring-offset-2' : 'hover:scale-105',
           QUICKSWAP_ENABLED && 'select-none'
         )}
         onClick={handleTileClick}
@@ -207,6 +258,25 @@ export function TrackerTile({
         
         <div className="relative flex flex-col items-center justify-center h-full" style={{ zIndex: 10 }}>
           <div className={`relative ${isMobile ? 'w-24 h-24' : 'w-32 h-32'} flex items-center justify-center mb-3`}>
+            {/* Progress ring for long press */}
+            {progressRingVisible && (
+              <div className="absolute inset-0 rounded-full border-2 border-white/30">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                  <circle
+                    cx="50" cy="50" r="48" 
+                    fill="none" 
+                    stroke="white" 
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray="301.6"
+                    strokeDashoffset="301.6"
+                    style={{
+                      animation: `longpress-progress ${LONGPRESS_MS}ms linear forwards`
+                    }}
+                  />
+                </svg>
+              </div>
+            )}
             <svg className={`${isMobile ? 'w-24 h-24' : 'w-32 h-32'} enhanced-progress-ring`} viewBox="0 0 120 120">
               <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="4" />
               <circle
