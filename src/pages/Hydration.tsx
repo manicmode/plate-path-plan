@@ -107,7 +107,7 @@ const Hydration = () => {
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Back Navigation */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4 mb-2">
         <Button 
           variant="ghost" 
           onClick={() => navigate(-1)}
