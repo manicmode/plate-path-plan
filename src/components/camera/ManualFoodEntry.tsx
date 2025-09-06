@@ -18,7 +18,7 @@ import { submitTextLookup } from '@/lib/food/textLookup';
 import { CandidateList } from '@/components/food/CandidateList';
 import { PortionUnitField } from '@/components/food/PortionUnitField';
 import { FOOD_TEXT_DEBUG } from '@/lib/flags';
-import { SmartAnalyzeLoader } from '@/components/loaders/SmartAnalyzeLoader';
+import { ThreeCirclesLoader } from '@/components/loaders/ThreeCirclesLoader';
 
 interface ManualFoodEntryProps {
   isOpen: boolean;
@@ -308,20 +308,13 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
   return (
     <>
-      {/* Smart Analyze Loader - Full screen overlay during loading */}
+      {/* Three Circles Loader - Full screen overlay during loading */}
       <AnimatePresence>
         {state === 'loading' && (
-          <SmartAnalyzeLoader
-            title="Searching brands • generics • restaurants..."
-            subtitle="Finding the best nutrition match for your food"
+          <ThreeCirclesLoader
             onCancel={() => {
               setState('idle');
               toast.error('Search cancelled');
-            }}
-            labels={{
-              detecting: "Searching brands",
-              hydrating: "Loading generics", 
-              buildingReview: "Checking restaurants"
             }}
           />
         )}
