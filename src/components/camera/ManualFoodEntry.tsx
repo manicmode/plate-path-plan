@@ -223,6 +223,42 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             });
           }
         }
+
+        // If we ended up with no Generic candidate, synthesize a safe Generic option.
+        // This keeps the experience from being "Brand-only".
+        const hasGeneric = list.some(c => c.isGeneric === true);
+        if (!hasGeneric) {
+          const titleCase = (s: string) => s.replace(/\b\w/g, m => m.toUpperCase());
+
+          const core = coreNoun(query || primary?.name);
+          if (core) {
+            // Choose a sensible default grams:
+            //  - Prefer primary.servingGrams if present,
+            //  - else candidate.servingG from the first alt if present,
+            //  - else 100g.
+            const defaultG =
+              (primary?.servingGrams as number | undefined) ??
+              (list.find((c, i) => i > 0)?.defaultPortion?.amount as number | undefined) ??
+              100;
+
+            list.push({
+              id: 'candidate-generic-synthetic',
+              name: titleCase(core),          // e.g., "Chicken"
+              isGeneric: true,                // label as Generic
+              portionHint: `${defaultG}g default`,
+              defaultPortion: { amount: defaultG, unit: 'g' },
+              provider: 'generic',
+              imageUrl: undefined,
+              // Minimal data that confirm can hydrate by name (no store coupling).
+              data: {
+                name: titleCase(core),
+                source: 'manual',
+                isGeneric: true,
+                servingG: defaultG
+              }
+            });
+          }
+        }
       }
 
       // Keep existing generics-first rule (stable within groups)
