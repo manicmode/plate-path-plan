@@ -59,17 +59,30 @@ export default function Analytics() {
     if (currentY <= 8) return; // Already near top
     
     let rafId: number | undefined;
-    let t1: ReturnType<typeof setTimeout> | undefined;
-    let t2: ReturnType<typeof setTimeout> | undefined;
-    let t3: ReturnType<typeof setTimeout> | undefined;
+    let stopAt = 0;
+    let lastY: number | null = null;
+    let stableCount = 0;
     
-    const snapTop = () => {
-      if (!userInteracting.current && window.scrollY > 0) {
+    const tick = () => {
+      if (userInteracting.current || performance.now() > stopAt) return;
+      
+      const y = window.scrollY;
+      if (y > 0) {
         window.scrollTo({ top: 0, behavior: "auto" });
+      }
+      
+      if (lastY === 0 && y === 0) {
+        stableCount++;
+      } else {
+        stableCount = 0;
+      }
+      lastY = y;
+      
+      if (stableCount < 2) {
+        requestAnimationFrame(tick);
       }
     };
     
-    const onFocusIn = () => setTimeout(snapTop, 16);
     const onUserStart = () => { userInteracting.current = true; };
     const onUserEnd = () => { userInteracting.current = false; };
     
@@ -77,23 +90,17 @@ export default function Analytics() {
       const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
       window.scrollTo({ top: 0, behavior });
       
-      // Triple re-assert to outlast focus/layout adjustments
-      t1 = setTimeout(snapTop, 120);
-      t2 = setTimeout(snapTop, 240);
-      t3 = setTimeout(snapTop, 400);
+      // Start pin-to-top loop with 600ms max duration
+      stopAt = performance.now() + 600;
+      requestAnimationFrame(tick);
     });
     
-    document.addEventListener('focusin', onFocusIn, { capture: true });
     document.addEventListener('wheel', onUserStart, { passive: true });
     document.addEventListener('touchstart', onUserStart, { passive: true });
     document.addEventListener('touchend', onUserEnd, { passive: true });
     
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
-      if (t1) clearTimeout(t1);
-      if (t2) clearTimeout(t2);
-      if (t3) clearTimeout(t3);
-      document.removeEventListener('focusin', onFocusIn, { capture: true });
       document.removeEventListener('wheel', onUserStart);
       document.removeEventListener('touchstart', onUserStart);
       document.removeEventListener('touchend', onUserEnd);
