@@ -141,8 +141,45 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [isEvaluatingQuality, setIsEvaluatingQuality] = useState(false);
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [prevItem, setPrevItem] = useState<any | null>(null);
   
   const { toast } = useToast();
+
+  // Minimal tokenization with tiny stopword set (inline, local only)
+  const STOP = new Set(['the','a','an','with','and','of']);
+  const tokenize = (s?: string) =>
+    new Set((s ?? '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w && !STOP.has(w)));
+
+  // Canonical "family" check: 'pizza:slice' and 'pizza:pepperoni' share 'pizza'
+  const sameFamily = (a?: string, b?: string) => {
+    if (!a || !b) return false;
+    const ra = a.split(':')[0], rb = b.split(':')[0];
+    return !!ra && !!rb && ra === rb;
+  };
+
+  // Very small, defensive relevance check. No external dependencies.
+  function isRelevantAlt(alt: any, cur: any): boolean {
+    if (!alt || !cur) return false;
+    if (alt.id && cur.id && alt.id === cur.id) return false;
+
+    // If both have classId and they differ, treat as not relevant.
+    if (alt.classId && cur.classId && alt.classId !== cur.classId) return false;
+
+    // If both have canonicalKey and families differ, treat as not relevant.
+    if (alt.canonicalKey && cur.canonicalKey && !sameFamily(alt.canonicalKey, cur.canonicalKey)) {
+      return false;
+    }
+
+    // Token overlap as a fallback when classId/canonicalKey missing
+    const a = tokenize(alt.name);
+    const b = tokenize(cur.name);
+    const hasOverlap = [...a].some(w => b.has(w));
+
+    // Confidence floor (reuse existing score field if present)
+    const scoreOK = (alt.score ?? 0) >= 0.55;
+
+    return hasOverlap && scoreOK;
+  }
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
   const { playFoodLogConfirm } = useSound();
@@ -526,6 +563,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       index
     });
     
+    setPrevItem(currentFoodItem); // remember current
     setSelectedCandidate(candidate);
     
     // For v3 candidates, use their pre-calculated values
@@ -1103,37 +1141,66 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             </div>
 
             {/* Food Candidates Picker for Manual/Voice with __altCandidates */}
-            {(candidates && candidates.length > 1) || ((currentFoodItem as any)?.__altCandidates?.length > 0) && (
+            {(() => {
+              const rawAlts = (currentFoodItem as any)?.__altCandidates ?? [];
+              const filteredAlts = rawAlts.filter((alt: any) => isRelevantAlt(alt, currentFoodItem));
+              const showAltStrip = filteredAlts.length >= 1;
+              console.log(showAltStrip ? '[SWAP][STRIP][SHOW]' : '[SWAP][STRIP][HIDE]', { count: filteredAlts.length });
+              
+              return (candidates && candidates.length > 1) || showAltStrip;
+            })() && (
               <div className="mb-6">
+                {prevItem && (
+                  <div className="mt-2 text-xs">
+                    <button
+                      type="button"
+                      className="underline text-gray-500 hover:text-gray-700"
+                      onClick={() => {
+                        // revert to previous, then clear
+                        setCurrentFoodItem(prevItem);
+                        setPrevItem(null);
+                        console.log('[SWAP][REVERT]', { to: prevItem?.name });
+                      }}
+                    >
+                      ← Back to "{prevItem?.name ?? 'previous'}"
+                    </button>
+                  </div>
+                )}
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Select the correct food:
+                  Not right? Try another match:
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
-                  {/* Show v3 alt candidates if available, otherwise use prop candidates */}
-                  {(((currentFoodItem as any)?.__altCandidates || candidates || []).slice(0, 6)).map((candidate: any, index: number) => (
-                    <button
-                      key={candidate.id}
-                      onClick={() => handleCandidateSelect(candidate, index)}
-                      className={`p-3 rounded-lg border-2 text-left transition-all ${
-                        index === 0 
-                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' 
-                          : 'border-gray-200 dark:border-gray-600 hover:border-emerald-300'
-                      }`}
-                    >
-                      <div className="font-medium text-sm text-gray-900 dark:text-white truncate">
-                        {candidate.name}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
-                        <span>{candidate.calories} cal</span>
-                        {candidate.kind === 'generic' && (
-                          <span className="text-green-600 dark:text-green-400 text-xs">Generic</span>
-                        )}
-                        {candidate.kind === 'brand' && (
-                          <span className="text-orange-600 dark:text-orange-400 text-xs">Brand</span>
-                        )}
-                      </div>
-                    </button>
-                  ))}
+                  {/* Show filtered v3 alt candidates if available, otherwise use prop candidates */}
+                  {(() => {
+                    const rawAlts = (currentFoodItem as any)?.__altCandidates ?? [];
+                    const filteredAlts = rawAlts.filter((alt: any) => isRelevantAlt(alt, currentFoodItem));
+                    const candidateList = filteredAlts.length > 0 ? filteredAlts : (candidates || []);
+                    
+                    return candidateList.slice(0, 6).map((candidate: any, index: number) => (
+                      <button
+                        key={candidate.id}
+                        onClick={() => handleCandidateSelect(candidate, index)}
+                        className={`p-3 rounded-lg border-2 text-left transition-all ${
+                          index === 0 
+                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' 
+                            : 'border-gray-200 dark:border-gray-600 hover:border-emerald-300'
+                        }`}
+                      >
+                        <div className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                          {candidate.name}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
+                          <span>{candidate.calories} cal</span>
+                          {candidate.kind === 'generic' && (
+                            <span className="text-green-600 dark:text-green-400 text-xs">Generic</span>
+                          )}
+                          {candidate.kind === 'brand' && (
+                            <span className="text-orange-600 dark:text-orange-400 text-xs">Brand</span>
+                          )}
+                        </div>
+                      </button>
+                    ));
+                  })()}
                 </div>
               </div>
             )}
