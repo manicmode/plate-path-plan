@@ -45,6 +45,9 @@ import { LevelProgressBar } from '@/components/level/LevelProgressBar';
 import { useNudgeScheduler } from '@/hooks/useNudgeScheduler';
 import { HomeDailyCheckInTab } from '@/components/home/HomeDailyCheckInTab';
 import { InfluencerHubCTA } from '@/components/InfluencerHubCTA';
+import { TrackerTile } from '@/components/trackers/TrackerTile';
+import { setHomeTrackerAt, getHomeTrackers } from '@/store/userPrefs';
+import { TrackerKey } from '@/lib/trackers/trackerRegistry';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 
 import { RecentFoodsTab } from '@/components/camera/RecentFoodsTab';
@@ -688,6 +691,24 @@ const Home = () => {
   // Get the three selected tracker configs
   const displayedTrackers = selectedTrackers.map(trackerId => allTrackerConfigs[trackerId]).filter(Boolean);
 
+  // Handle quick swap
+  const handleQuickSwap = async (index: 0 | 1 | 2, newKey: TrackerKey) => {
+    try {
+      await setHomeTrackerAt(index, newKey);
+      
+      // Success feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate([30, 100, 30]);
+      }
+    } catch (error) {
+      toast({
+        title: "Swap Failed",
+        description: error instanceof Error ? error.message : "Couldn't switch tracker. Try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getMotivationalMessage = (percentage: number, type: string) => {
     if (percentage >= 100) return `${type} goal crushed! Amazing! 🎉`;
     if (percentage >= 80) return `Almost there! Just ${100 - Math.round(percentage)}% to go! 💪`;
@@ -1093,91 +1114,14 @@ const Home = () => {
       {/* Dynamic Tracker Cards based on user selection */}
       <div className={`grid grid-cols-3 ${isMobile ? 'gap-3 mx-2' : 'gap-4 mx-4'} animate-scale-in items-stretch relative z-10`}>
         {displayedTrackers.map((tracker, index) => (
-          <div 
+          <TrackerTile
             key={tracker.name}
-            className={`border-0 ${isMobile ? 'h-48 p-3' : 'h-52 p-4'} rounded-3xl hover:scale-105 transition-all duration-500 cursor-pointer group relative overflow-hidden ${tracker.shadow} z-20`}
-            onClick={tracker.onClick}
-            title={getMotivationalMessage(tracker.percentage, tracker.name)}
-            style={{ 
-              background: `linear-gradient(135deg, ${tracker.color.replace('from-', '').replace('via-', '').replace('to-', '').split(' ').join(', ')})`,
-              position: 'relative',
-              zIndex: 20
-            }}
-          >
-            <div className={`absolute inset-0 bg-gradient-to-br ${tracker.color} backdrop-blur-sm`} style={{ zIndex: 1 }}></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" style={{ zIndex: 2 }}></div>
-            <div className="relative flex flex-col items-center justify-center h-full" style={{ zIndex: 10 }}>
-              <div className={`relative ${isMobile ? 'w-24 h-24' : 'w-32 h-32'} flex items-center justify-center mb-3`}>
-                <svg className={`${isMobile ? 'w-24 h-24' : 'w-32 h-32'} enhanced-progress-ring`} viewBox="0 0 120 120">
-                  <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="4" />
-                  <circle
-                    cx="60" cy="60" r="50" fill="none" stroke={`url(#${tracker.gradient})`} strokeWidth="6"
-                    strokeLinecap="round" strokeDasharray={314} strokeDashoffset={314 - (tracker.percentage / 100) * 314}
-                    className="transition-all duration-2000 ease-out filter drop-shadow-lg"
-                  />
-                  <defs>
-                    <linearGradient id={tracker.gradient} x1="0%" y1="0%" x2="100%" y2="100%">
-                      {tracker.name === 'Calories' && (
-                        <>
-                          <stop offset="0%" stopColor="#FF6B35" />
-                          <stop offset="50%" stopColor="#F7931E" />
-                          <stop offset="100%" stopColor="#FF4500" />
-                        </>
-                      )}
-                      {tracker.name === 'Protein' && (
-                        <>
-                          <stop offset="0%" stopColor="#3B82F6" />
-                          <stop offset="50%" stopColor="#1E40AF" />
-                          <stop offset="100%" stopColor="#1E3A8A" />
-                        </>
-                      )}
-                      {tracker.name === 'Carbs' && (
-                        <>
-                          <stop offset="0%" stopColor="#FBBF24" />
-                          <stop offset="50%" stopColor="#F59E0B" />
-                          <stop offset="100%" stopColor="#D97706" />
-                        </>
-                      )}
-                      {tracker.name === 'Fat' && (
-                        <>
-                          <stop offset="0%" stopColor="#10B981" />
-                          <stop offset="50%" stopColor="#059669" />
-                          <stop offset="100%" stopColor="#047857" />
-                        </>
-                      )}
-                      {tracker.name === 'Hydration' && (
-                        <>
-                          <stop offset="0%" stopColor="#00D4FF" />
-                          <stop offset="50%" stopColor="#0099CC" />
-                          <stop offset="100%" stopColor="#006699" />
-                        </>
-                      )}
-                      {tracker.name === 'Supplements' && (
-                        <>
-                          <stop offset="0%" stopColor="#DA44BB" />
-                          <stop offset="50%" stopColor="#9333EA" />
-                          <stop offset="100%" stopColor="#7C3AED" />
-                        </>
-                      )}
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className={`${isMobile ? 'text-2xl' : 'text-3xl'} mb-1 group-hover:scale-110 transition-transform filter drop-shadow-md`}>{tracker.emoji}</span>
-                  <span className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold ${tracker.textColor} drop-shadow-lg leading-none`}>
-                    {Math.round(tracker.percentage)}%
-                  </span>
-                  {tracker.percentage >= 100 && <Sparkles className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-white animate-pulse mt-1`} />}
-                </div>
-              </div>
-              <div className="text-center">
-                <p className={`${isMobile ? 'text-sm' : 'text-base'} font-bold ${tracker.textColor} drop-shadow-md mb-1`}>{tracker.name}</p>
-                <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${tracker.textColorSecondary} drop-shadow-sm`}>
-                  {tracker.current.toFixed(0)}{tracker.unit}/{tracker.target}{tracker.unit}
-                </p>
-              </div>
-            </div>
-          </div>
+            tracker={tracker}
+            index={index as 0 | 1 | 2}
+            visibleTrackers={selectedTrackers as TrackerKey[]}
+            onQuickSwap={handleQuickSwap}
+            getMotivationalMessage={getMotivationalMessage}
+          />
         ))}
       </div>
 
