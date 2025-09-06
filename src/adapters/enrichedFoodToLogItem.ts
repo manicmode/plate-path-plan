@@ -12,12 +12,14 @@ export function enrichedFoodToLogItem(x: EnrichedFood, portionGrams: number = 10
     sourceId: x.source_id,
     confidence: x.confidence,
     
-    // Map ingredients with proper structure
+    // Ingredients for FoodConfirmationCard compatibility
     ingredients: (x.ingredients ?? []).map(i => ({
       name: i.name,
       grams: i.grams,
       amount: i.amount
     })),
+    ingredientsAvailable: (x.ingredients ?? []).length > 0,
+    ingredientsText: (x.ingredients ?? []).map(i => i.name).join(', '),
     
     // Scaled macros for the specified portion size
     calories: Math.round((per100.calories ?? 0) * scale),
@@ -49,8 +51,8 @@ export function enrichedFoodToLogItem(x: EnrichedFood, portionGrams: number = 10
     // Per-serving data if available
     perServing: x.perServing, // may be undefined; card handles it
     
-    // Enrichment metadata  
-    enrichmentSource: x.source,
+    // Map enrichment metadata
+    enrichmentSource: x.source, // Pass raw source (NUTRITIONIX, EDAMAM, etc.)
     enrichmentConfidence: x.confidence,
     
     // Legacy compatibility fields

@@ -140,7 +140,7 @@ const searchFDC = async (query: string): Promise<EnrichedFood | null> => {
   }
 };
 
-// Edamam API integration
+// Edamam API integration with ingredients parsing
 const searchEdamam = async (query: string): Promise<EnrichedFood | null> => {
   const appId = Deno.env.get('EDAMAM_APP_ID');
   const appKey = Deno.env.get('EDAMAM_APP_KEY');
@@ -180,13 +180,15 @@ const searchEdamam = async (query: string): Promise<EnrichedFood | null> => {
     
     const sanitized = validateEnergy(per100g);
     
+    // Parse ingredients from foodContentsLabel if available
+    const rawIngredients = food.foodContentsLabel as string | undefined;
+    const ingredients = parseIngredients(rawIngredients);
+    
     return {
       name: food.label || query,
       aliases: [food.label, food.brand].filter(Boolean),
       locale: 'auto',
-      ingredients: [{
-        name: food.label || query
-      }],
+      ingredients: ingredients.length > 0 ? ingredients : [{ name: food.label || query }],
       per100g: sanitized,
       source: 'EDAMAM',
       source_id: food.foodId,
@@ -199,7 +201,7 @@ const searchEdamam = async (query: string): Promise<EnrichedFood | null> => {
   }
 };
 
-// Parse Nutritionix ingredients
+// Parse ingredients from various sources (Nutritionix, Edamam, etc.)
 const parseIngredients = (raw?: string) => {
   if (!raw) return [];
   return raw
@@ -207,7 +209,7 @@ const parseIngredients = (raw?: string) => {
     .map(x => x.replace(/\(.*?\)/g, ''))   // drop parentheticals
     .map(x => x.trim())
     .filter(Boolean)
-    .slice(0, 40)
+    .slice(0, 60) // increased cap
     .map(name => ({ name }));
 };
 
@@ -531,54 +533,59 @@ serve(async (req) => {
       });
     }
 
-    // Resolver cascade - prioritize Nutritionix for complex queries
+    // Provider priority (deterministic)
     let result: EnrichedFood | null = null;
     
-    // Detect if query is complex (multiple words) suggesting a composed dish
-    const isComplexQuery = normalizedQuery.split(' ').length >= 2;
+    // Detect if query has multiple words (≥2 words)
+    const isMultiWord = normalizedQuery.includes(' ');
     
-    if (isComplexQuery) {
-      // 1. Try Nutritionix first for complex queries (better ingredients)
+    if (isMultiWord) {
+      // Multi-word: try Nutritionix → Edamam → FDC → Estimated
+      console.log(`[ENRICH][MULTI-WORD] Priority: NUTRITIONIX → EDAMAM → FDC → ESTIMATED`);
+      
       result = await searchNutritionix(query);
       if (result) {
         console.log(`[ENRICH][HIT source=NUTRITIONIX] confidence=${result.confidence}`);
       }
       
-      // 2. Try FDC if Nutritionix failed or low confidence
-      if (!result || result.confidence < 0.7) {
-        const fdcResult = await searchFDC(query);
-        if (fdcResult && (!result || fdcResult.confidence > result.confidence)) {
-          result = fdcResult;
+      if (!result) {
+        result = await searchEdamam(query);
+        if (result) {
+          console.log(`[ENRICH][HIT source=EDAMAM] confidence=${result.confidence}`);
+        }
+      }
+      
+      if (!result) {
+        result = await searchFDC(query);
+        if (result) {
           console.log(`[ENRICH][HIT source=FDC] confidence=${result.confidence}`);
         }
       }
     } else {
-      // 1. Try FDC first for simple queries (single ingredients)
+      // Single word: try FDC → Edamam → Nutritionix → Estimated
+      console.log(`[ENRICH][SINGLE-WORD] Priority: FDC → EDAMAM → NUTRITIONIX → ESTIMATED`);
+      
       result = await searchFDC(query);
       if (result) {
         console.log(`[ENRICH][HIT source=FDC] confidence=${result.confidence}`);
       }
       
-      // 2. Try Nutritionix if FDC failed or low confidence
-      if (!result || result.confidence < 0.7) {
-        const nutritionixResult = await searchNutritionix(query);
-        if (nutritionixResult && (!result || nutritionixResult.confidence > result.confidence)) {
-          result = nutritionixResult;
+      if (!result) {
+        result = await searchEdamam(query);
+        if (result) {
+          console.log(`[ENRICH][HIT source=EDAMAM] confidence=${result.confidence}`);
+        }
+      }
+      
+      if (!result) {
+        result = await searchNutritionix(query);
+        if (result) {
           console.log(`[ENRICH][HIT source=NUTRITIONIX] confidence=${result.confidence}`);
         }
       }
     }
     
-    // 3. Try Edamam if still low confidence
-    if (!result || result.confidence < 0.7) {
-      const edamamResult = await searchEdamam(query);
-      if (edamamResult && (!result || edamamResult.confidence > result.confidence)) {
-        result = edamamResult;
-        console.log(`[ENRICH][HIT source=EDAMAM] confidence=${result.confidence}`);
-      }
-    }
-    
-    // 4. GPT fallback
+    // Final fallback: GPT estimation
     if (!result) {
       result = await estimateWithGPT(query);
       if (result) {
