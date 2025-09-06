@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { scrollToAlignTop } from '@/utils/scroll';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { DailyProgressSection } from '@/components/analytics/sections/DailyProgressSection';
@@ -46,11 +47,15 @@ export default function Analytics() {
   // Initialize milestone tracking to check for new achievements
   useMilestoneTracker();
 
-  // Auto-scroll to top when tab changes
+  // Auto-scroll to top when switching tabs (offset-aware, safe for sticky headers)
   useEffect(() => {
-    // next paint ensures the tab content has mounted
+    const el = topRef.current;
+    if (!el) return;
+    // wait two frames so content is mounted/measured
     requestAnimationFrame(() => {
-      topRef.current?.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+      requestAnimationFrame(() => {
+        scrollToAlignTop(el, { offsetTop: 0 });
+      });
     });
   }, [activeTab]);
 

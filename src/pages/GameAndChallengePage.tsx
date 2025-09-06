@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { scrollToAlignTop } from '@/utils/scroll';
 import ArenaPanel from '@/components/arena/ArenaPanel';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -191,10 +192,14 @@ function GameAndChallengeContent() {
   // Use the scroll-to-top hook
   useScrollToTop();
 
-  // Auto-scroll to top when challenge mode changes
+  // Auto-scroll to top when switching challenge modes (offset-aware)
   useEffect(() => {
+    const el = modeTopRef.current;
+    if (!el) return;
     requestAnimationFrame(() => {
-      modeTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+      requestAnimationFrame(() => {
+        scrollToAlignTop(el, { offsetTop: 0 });
+      });
     });
   }, [challengeMode]);
 
