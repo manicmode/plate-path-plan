@@ -13,6 +13,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider } from "./contexts/auth";
 import { NutritionProvider } from "./contexts/NutritionContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
+import { HealthScanEnrichmentBootstrap } from "./components/bootstrap/HealthScanEnrichmentBootstrap";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { applySecurityHeaders } from "./lib/securityHeaders";
 import { logActiveCSP, validateSupabaseCSP } from "./lib/cspUtils";
@@ -267,6 +268,7 @@ root.render(
       <QueryClientProvider client={queryClient}>
         <NutritionProvider>
           <NotificationProvider>
+            <HealthScanEnrichmentBootstrap />
             {isMobile ? (
               <App />
             ) : (

@@ -3,7 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
-import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Settings } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/auth';
+import { notify } from '@/lib/notify';
 
 interface QAResult {
   query: string;
@@ -47,7 +50,9 @@ export default function QAPage() {
   const [healthScanResults, setHealthScanResults] = useState<QAResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [isRunningHealthScan, setIsRunningHealthScan] = useState(false);
+  const [isTogglingEnrichment, setIsTogglingEnrichment] = useState(false);
   const { enrich } = useManualFoodEnrichment();
+  const { isAuthenticated, user } = useAuth();
 
   const runEnrichmentTest = async () => {
     setIsRunning(true);
@@ -145,6 +150,46 @@ export default function QAPage() {
     setIsRunningHealthScan(false);
   };
 
+  const toggleHealthScanEnrichment = async (enabled: boolean) => {
+    if (!isAuthenticated || !user) {
+      notify.error('Please sign in to manage feature flags.');
+      return;
+    }
+
+    setIsTogglingEnrichment(true);
+    try {
+      const value = {
+        enabled,
+        sample_pct: enabled ? 1 : 0,
+        timeout_ms: 1200
+      };
+
+      console.log('[FLAGS][USER] QA setting HS_ENRICH', value);
+
+      const { error } = await supabase.rpc('set_user_feature_flag_jsonb', {
+        flag_key_param: 'FEATURE_ENRICH_HEALTHSCAN',
+        value_param: value
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const message = enabled 
+        ? 'Health-scan enrichment enabled for your account (100%).'
+        : 'Health-scan enrichment disabled for your account.';
+      
+      notify.success(message);
+      console.log('[FLAGS][USER] QA HS_ENRICH set successfully', value);
+
+    } catch (error) {
+      console.error('[FLAGS][USER] QA HS_ENRICH RPC failed:', error);
+      notify.error(`Failed to ${enabled ? 'enable' : 'disable'} health-scan enrichment: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsTogglingEnrichment(false);
+    }
+  };
+
   const overallStatus = results.length > 0 && results.every(r => r.pass_fail === 'PASS') ? 'PASS' : 'FAIL';
   const healthScanOverallStatus = healthScanResults.length > 0 && healthScanResults.every(r => r.pass_fail === 'PASS') ? 'PASS' : 'FAIL';
 
@@ -200,6 +245,43 @@ export default function QAPage() {
                 'Run Health Scan QA'
               )}
             </Button>
+
+            {/* Health-Scan Enrichment Toggle Buttons */}
+            <div className="flex gap-2 ml-4 mb-4">
+              <Button
+                onClick={() => toggleHealthScanEnrichment(true)}
+                disabled={isTogglingEnrichment || !isAuthenticated}
+                variant="default"
+                size="sm"
+              >
+                {isTogglingEnrichment ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Settings className="w-4 h-4 mr-2" />
+                )}
+                Enable Health-Scan (100%)
+              </Button>
+              
+              <Button
+                onClick={() => toggleHealthScanEnrichment(false)}
+                disabled={isTogglingEnrichment || !isAuthenticated}
+                variant="destructive"
+                size="sm"
+              >
+                {isTogglingEnrichment ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Settings className="w-4 h-4 mr-2" />
+                )}
+                Disable Health-Scan
+              </Button>
+            </div>
+
+            {!isAuthenticated && (
+              <p className="text-sm text-muted-foreground mb-4 ml-4">
+                Sign in to enable/disable Health-Scan enrichment for your account.
+              </p>
+            )}
 
             {results.length > 0 && (
               <div className="mt-6">
