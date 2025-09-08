@@ -234,6 +234,13 @@ function AppContent() {
                         <RecoveryPlayer />
                       </ProtectedRoute>
                     } />
+
+                    {/* QA page - fullscreen, no layout, URL-only discovery */}
+                    <Route path="/qa" element={
+                      <React.Suspense fallback={<div style={{ padding: 24 }}>Loading QA Tests…</div>}>
+                        <QAPage />
+                      </React.Suspense>
+                    } />
                     
                     {/* Regular pages with Layout */}
                     <Route path="*" element={
@@ -384,12 +391,6 @@ function AppContent() {
                        </ProtectedRoute>
                      } />
                      
-                      {/* QA Enrichment page - URL only discovery */}
-                      <Route path="/qa" element={
-                        <React.Suspense fallback={<div style={{ padding: 24 }}>Loading QA Tests…</div>}>
-                          {React.createElement(React.lazy(() => import('@/pages/qa')))}
-                        </React.Suspense>
-                      } />
                     
                     <Route path="/health-scan-photo" element={
                       FF.FEATURE_HEALTH_SCAN_PHOTO ? (

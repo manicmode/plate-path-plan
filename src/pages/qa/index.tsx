@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';  
@@ -42,17 +42,19 @@ export default function QAIndex() {
   const [isRunningEnrichment, setIsRunningEnrichment] = useState(false);
   const [isRunningHealthScan, setIsRunningHealthScan] = useState(false);
 
-  // Check if QA is enabled via URL parameter
+  const navigate = useNavigate();
+
+  // Check if QA is enabled via URL parameter - redirect if not
   const qaEnabled = new URLSearchParams(location.search).get('QA_ENRICH') === '1';
 
+  useEffect(() => {
+    if (!qaEnabled) {
+      navigate('/home');
+    }
+  }, [qaEnabled, navigate]);
+
   if (!qaEnabled) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center p-6">
-          <p className="text-muted-foreground">QA is hidden. Append ?QA_ENRICH=1 to use.</p>
-        </div>
-      </div>
-    );
+    return null; // Will redirect
   }
 
   const runEnrichmentQA = async () => {
@@ -251,6 +253,16 @@ export default function QAIndex() {
                 ) : (
                   'Run Health-Scan QA'
                 )}
+              </Button>
+
+              <Button 
+                onClick={() => {
+                  localStorage.setItem('FEATURE_ENRICH_MANUAL_FOOD', 'true');
+                  console.log('[QA] Manual enrichment enabled locally');
+                }}
+                variant="secondary"
+              >
+                Enable Manual Enrichment Locally
               </Button>
             </div>
 
