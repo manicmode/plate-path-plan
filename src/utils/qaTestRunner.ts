@@ -4,6 +4,7 @@
 
 import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
 import { submitTextLookup } from '@/lib/food/textLookup';
+import { supabase } from '@/integrations/supabase/client';
 
 interface QAResult {
   query: string;
@@ -21,6 +22,35 @@ const TEST_QUERIES = [
   'aloo gobi',
   'pollo con rajas'
 ];
+
+// Clear QA test queries from enrichment cache for fresh testing
+export async function clearQACache(): Promise<boolean> {
+  try {
+    console.log('[QA] Clearing enrichment cache for test queries...');
+    
+    const { error } = await supabase.rpc('cleanup_food_enrichment_cache');
+    if (error) {
+      console.error('[QA] Cache cleanup failed:', error);
+      return false;
+    }
+    
+    // Also try to delete specific test queries
+    const { error: deleteError } = await supabase
+      .from('food_enrichment_cache')
+      .delete()
+      .in('query', TEST_QUERIES);
+      
+    if (deleteError) {
+      console.warn('[QA] Specific query deletion failed:', deleteError);
+    }
+    
+    console.log('[QA] ✅ Cache cleared successfully');
+    return true;
+  } catch (error) {
+    console.error('[QA] Cache clear failed:', error);
+    return false;
+  }
+}
 
 const getPassCriteria = (query: string, source: string | null, ingredients_len: number) => {
   if (query.includes('club sandwich')) {
@@ -100,5 +130,6 @@ export async function runQATests(): Promise<QAResult[]> {
 // Make available globally for testing
 if (typeof window !== 'undefined') {
   (window as any).runQATests = runQATests;
-  console.log('🧪 QA Test Runner loaded. Run: await window.runQATests()');
+  (window as any).clearQACache = clearQACache;
+  console.log('🧪 QA Test Runner loaded. Run: await window.runQATests() or window.clearQACache()');
 }
