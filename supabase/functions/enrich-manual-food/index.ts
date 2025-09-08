@@ -32,6 +32,15 @@ interface EnrichedFood {
   source_id?: string;
   confidence: number;
   ingredient_source?: "FDC" | "EDAMAM" | "NUTRITIONIX" | "CURATED" | "ESTIMATED"; // Track ingredient source separately
+  low_value?: boolean; // Mark low-quality results for short caching
+}
+
+interface ProviderCandidate {
+  result: EnrichedFood;
+  src: string;
+  conf: number;
+  ing_len: number;
+  low_value: boolean;
 }
 
 // SHA256 utility
@@ -213,7 +222,7 @@ const parseIngredients = (raw?: string) => {
     .map(name => ({ name }));
 };
 
-// Nutritionix API integration with deep-fetch
+// Nutritionix API integration with deep-fetch (ENFORCED)
 const searchNutritionix = async (query: string): Promise<EnrichedFood | null> => {
   const appId = Deno.env.get('NUTRITIONIX_APP_ID');
   const apiKey = Deno.env.get('NUTRITIONIX_API_KEY');
@@ -222,7 +231,7 @@ const searchNutritionix = async (query: string): Promise<EnrichedFood | null> =>
   try {
     console.log(`[ENRICH][NUTRITIONIX] Searching: ${query}`);
     
-    // Step 1: Instant search to get candidates
+    // Step 1: ALWAYS call instant search to get candidates
     const instantResponse = await withTimeout(
       fetch(`https://trackapi.nutritionix.com/v2/search/instant?query=${encodeURIComponent(query)}`, {
         headers: {
@@ -242,14 +251,17 @@ const searchNutritionix = async (query: string): Promise<EnrichedFood | null> =>
     const branded = instantData.branded || [];
     const common = instantData.common || [];
     
-    // Prefer branded items for ingredients, fall back to common
+    console.log(`[ENRICH][NIX][INSTANT] hits=${branded.length + common.length}`);
+    
+    // Prefer branded items with nix_item_id for deep fetch, fall back to common
     const candidates = [...branded, ...common];
     if (candidates.length === 0) {
       console.log(`[ENRICH][NUTRITIONIX] No candidates found`);
       return null;
     }
     
-    const topCandidate = candidates[0];
+    // Find first candidate with nix_item_id for deep fetch
+    const topCandidate = candidates.find(c => c.nix_item_id) || candidates[0];
     const nixItemId = topCandidate.nix_item_id || topCandidate.tag_id;
     
     if (!nixItemId) {
@@ -257,7 +269,7 @@ const searchNutritionix = async (query: string): Promise<EnrichedFood | null> =>
       return null;
     }
 
-    // Step 2: Deep fetch item details for ingredients
+    // Step 2: MANDATORY deep fetch for ingredients
     console.log(`[ENRICH][NUTRITIONIX] Deep fetch: ${nixItemId}`);
     const itemResponse = await withTimeout(
       fetch(`https://trackapi.nutritionix.com/v2/search/item?nix_item_id=${nixItemId}`, {
@@ -271,8 +283,11 @@ const searchNutritionix = async (query: string): Promise<EnrichedFood | null> =>
 
     if (!itemResponse.ok) {
       console.log(`[ENRICH][NUTRITIONIX] Item fetch failed: ${itemResponse.status}`);
-      // Fallback to natural/nutrients
-      return await searchNutritionixNatural(query, appId, apiKey);
+      // Only fall back to natural for common items, not branded
+      if (topCandidate.tag_id) {
+        return await searchNutritionixNatural(query, appId, apiKey);
+      }
+      return null;
     }
     
     const itemData = await itemResponse.json();
@@ -280,7 +295,11 @@ const searchNutritionix = async (query: string): Promise<EnrichedFood | null> =>
     
     if (foods.length === 0) {
       console.log(`[ENRICH][NUTRITIONIX] No detailed food data`);
-      return await searchNutritionixNatural(query, appId, apiKey);
+      // Only fall back to natural for common items
+      if (topCandidate.tag_id) {
+        return await searchNutritionixNatural(query, appId, apiKey);
+      }
+      return null;
     }
     
     const food = foods[0];
@@ -303,9 +322,19 @@ const searchNutritionix = async (query: string): Promise<EnrichedFood | null> =>
     
     const sanitized = validateEnergy(per100g);
     
-    // Parse ingredients from nf_ingredient_statement (key benefit of deep fetch)
+    // Parse ingredients from nf_ingredient_statement (KEY BENEFIT of deep fetch)
     const rawIngredients = food.nf_ingredient_statement as string | undefined;
     const ingredients = parseIngredients(rawIngredients);
+    
+    console.log(`[ENRICH][NIX][ITEM] ing_len=${ingredients.length}`);
+    
+    // ENFORCE ingredient quality - mark as low_value if insufficient ingredients
+    const hasGoodIngredients = ingredients.length >= 3 && rawIngredients && rawIngredients.trim().length > 0;
+    const low_value = !hasGoodIngredients;
+    
+    if (low_value) {
+      console.log(`[ENRICH][NUTRITIONIX] Low value result: ing_len=${ingredients.length}, has_statement=${!!rawIngredients}`);
+    }
     
     const result = {
       name: food.food_name || topCandidate.food_name || query,
@@ -319,7 +348,8 @@ const searchNutritionix = async (query: string): Promise<EnrichedFood | null> =>
       },
       source: 'NUTRITIONIX' as const,
       source_id: nixItemId,
-      confidence: 0.75
+      confidence: 0.75,
+      low_value
     };
 
     console.log(`[ENRICH][NUTRITIONIX] Deep fetch success: ${ingredients.length} ingredients`);
@@ -331,7 +361,7 @@ const searchNutritionix = async (query: string): Promise<EnrichedFood | null> =>
   }
 };
 
-// Fallback to natural/nutrients API
+// Fallback to natural/nutrients API (common items only)
 const searchNutritionixNatural = async (query: string, appId: string, apiKey: string): Promise<EnrichedFood | null> => {
   try {
     console.log(`[ENRICH][NUTRITIONIX] Fallback to natural/nutrients`);
@@ -380,6 +410,9 @@ const searchNutritionixNatural = async (query: string, appId: string, apiKey: st
     const rawIngredients = food.nf_ingredient_statement as string | undefined;
     const ingredients = parseIngredients(rawIngredients);
     
+    // Mark as low_value if lacking ingredients (common for natural/nutrients)
+    const low_value = ingredients.length < 3;
+    
     return {
       name: food.food_name || query,
       aliases: [food.food_name, food.brand_name].filter(Boolean),
@@ -392,7 +425,8 @@ const searchNutritionixNatural = async (query: string, appId: string, apiKey: st
       },
       source: 'NUTRITIONIX',
       source_id: food.nix_item_id,
-      confidence: 0.75
+      confidence: 0.75,
+      low_value
     };
     
   } catch (error) {
@@ -533,55 +567,114 @@ serve(async (req) => {
       });
     }
 
-    // Provider priority (deterministic)
+    // INGREDIENT-AWARE PROVIDER CASCADE
     let result: EnrichedFood | null = null;
     
-    // Detect if query has multiple words (≥2 words)
-    const isMultiWord = normalizedQuery.includes(' ');
+    // Detect multi-word or non-ASCII tokens  
+    const isMultiWord = normalizedQuery.includes(' ') || /[^\x00-\x7F]/.test(normalizedQuery);
     
     if (isMultiWord) {
-      // Multi-word: try Nutritionix → Edamam → FDC → Estimated
-      console.log(`[ENRICH][MULTI-WORD] Priority: NUTRITIONIX → EDAMAM → FDC → ESTIMATED`);
+      console.log(`[ENRICH][MULTI-WORD] Priority: NUTRITIONIX → EDAMAM → FDC`);
       
+      // Sequential cascade for multi-word
       result = await searchNutritionix(query);
-      if (result) {
+      if (result && !result.low_value) {
         console.log(`[ENRICH][HIT source=NUTRITIONIX] confidence=${result.confidence}`);
-      }
-      
-      if (!result) {
-        result = await searchEdamam(query);
-        if (result) {
+      } else {
+        if (result?.low_value) {
+          console.log(`[ENRICH][SKIP NUTRITIONIX] low_value=true`);
+        }
+        
+        const edamamResult = await searchEdamam(query);
+        if (edamamResult) {
+          result = edamamResult;
           console.log(`[ENRICH][HIT source=EDAMAM] confidence=${result.confidence}`);
         }
-      }
-      
-      if (!result) {
-        result = await searchFDC(query);
-        if (result) {
-          console.log(`[ENRICH][HIT source=FDC] confidence=${result.confidence}`);
+        
+        if (!result) {
+          const fdcResult = await searchFDC(query);
+          if (fdcResult) {
+            result = fdcResult;
+            console.log(`[ENRICH][HIT source=FDC] confidence=${result.confidence}`);
+          }
         }
       }
     } else {
-      // Single word: try FDC → Edamam → Nutritionix → Estimated
-      console.log(`[ENRICH][SINGLE-WORD] Priority: FDC → EDAMAM → NUTRITIONIX → ESTIMATED`);
+      // Single word: call ALL providers then pick using ingredient-aware rule
+      console.log(`[ENRICH][SINGLE-WORD] Calling all providers for ingredient-aware selection`);
       
-      result = await searchFDC(query);
-      if (result) {
-        console.log(`[ENRICH][HIT source=FDC] confidence=${result.confidence}`);
+      const [nutritionixResult, edamamResult, fdcResult] = await Promise.all([
+        searchNutritionix(query),
+        searchEdamam(query), 
+        searchFDC(query)
+      ]);
+      
+      // Build candidates array
+      const candidates: ProviderCandidate[] = [];
+      
+      if (nutritionixResult) {
+        candidates.push({
+          result: nutritionixResult,
+          src: 'NUTRITIONIX',
+          conf: nutritionixResult.confidence,
+          ing_len: nutritionixResult.ingredients.length,
+          low_value: nutritionixResult.low_value || false
+        });
       }
       
-      if (!result) {
-        result = await searchEdamam(query);
-        if (result) {
-          console.log(`[ENRICH][HIT source=EDAMAM] confidence=${result.confidence}`);
-        }
+      if (edamamResult) {
+        candidates.push({
+          result: edamamResult,
+          src: 'EDAMAM', 
+          conf: edamamResult.confidence,
+          ing_len: edamamResult.ingredients.length,
+          low_value: edamamResult.low_value || false
+        });
       }
       
-      if (!result) {
-        result = await searchNutritionix(query);
-        if (result) {
-          console.log(`[ENRICH][HIT source=NUTRITIONIX] confidence=${result.confidence}`);
-        }
+      if (fdcResult) {
+        candidates.push({
+          result: fdcResult,
+          src: 'FDC',
+          conf: fdcResult.confidence, 
+          ing_len: fdcResult.ingredients.length,
+          low_value: fdcResult.low_value || false
+        });
+      }
+      
+      // DECISION RULE: Prefer candidates with ingredients_len >= 3, break ties by confidence
+      const goodCandidates = candidates.filter(c => c.ing_len >= 3);
+      
+      if (goodCandidates.length > 0) {
+        // Pick highest confidence among good candidates
+        const winner = goodCandidates.reduce((best, curr) => 
+          curr.conf > best.conf ? curr : best
+        );
+        result = winner.result;
+        console.log(`[ENRICH][DECISION] Picked ${winner.src} (ing_len=${winner.ing_len}, conf=${winner.conf})`);
+      } else if (candidates.length > 0) {
+        // No good candidates, pick highest confidence but mark as low_value
+        const winner = candidates.reduce((best, curr) => 
+          curr.conf > best.conf ? curr : best  
+        );
+        result = winner.result;
+        result.low_value = true;
+        console.log(`[ENRICH][DECISION] Picked ${winner.src} (NO GOOD INGREDIENTS, ing_len=${winner.ing_len}, conf=${winner.conf})`);
+      }
+      
+      // Log decision telemetry
+      if (candidates.length > 0) {
+        console.log(`[ENRICH][DECISION]`, {
+          q: normalizedQuery,
+          picked: result?.source || 'NONE', 
+          ingredients_len: result?.ingredients.length || 0,
+          candidates: candidates.map(c => ({
+            src: c.src,
+            conf: c.conf,
+            ing_len: c.ing_len,
+            low_value: c.low_value
+          }))
+        });
       }
     }
     
@@ -601,18 +694,45 @@ serve(async (req) => {
       });
     }
 
-    // Step 4: Ingredient backfill safety
-    // If winning source has no ingredients, backfill from GPT estimation
+    // INGREDIENT BACKFILL: If chosen nutrition source lacks ingredients, find best ingredient source
     if (result.ingredients.length <= 1 && result.source !== 'ESTIMATED') {
       try {
         console.log(`[ENRICH][BACKFILL] Attempting ingredient backfill for ${result.source}`);
-        const gptResult = await estimateWithGPT(query);
         
+        // Try other providers for ingredients if we haven't already
+        const ingredientCandidates: EnrichedFood[] = [];
+        
+        if (result.source !== 'NUTRITIONIX') {
+          const nixResult = await searchNutritionix(query);
+          if (nixResult && nixResult.ingredients.length > 1) {
+            ingredientCandidates.push(nixResult);
+          }
+        }
+        
+        if (result.source !== 'EDAMAM') {
+          const edamamResult = await searchEdamam(query);  
+          if (edamamResult && edamamResult.ingredients.length > 1) {
+            ingredientCandidates.push(edamamResult);
+          }
+        }
+        
+        // Try GPT as last resort
+        const gptResult = await estimateWithGPT(query);
         if (gptResult && gptResult.ingredients.length > 1) {
-          console.log(`[ENRICH][BACKFILL] Success: ${gptResult.ingredients.length} ingredients from GPT`);
-          // Keep nutrition from trusted source, use ingredients from GPT
-          result.ingredients = gptResult.ingredients;
-          result.ingredient_source = 'ESTIMATED'; // Mark ingredient source
+          ingredientCandidates.push(gptResult);
+        }
+        
+        if (ingredientCandidates.length > 0) {
+          // Pick best ingredient source (prefer most ingredients)
+          const bestIngredientSource = ingredientCandidates.reduce((best, curr) => 
+            curr.ingredients.length > best.ingredients.length ? curr : best
+          );
+          
+          console.log(`[ENRICH][BACKFILL] Success: ${bestIngredientSource.ingredients.length} ingredients from ${bestIngredientSource.source}`);
+          
+          // Compose final object: Keep macros from nutrition source, ingredients from ingredient source  
+          result.ingredients = bestIngredientSource.ingredients;
+          result.ingredient_source = bestIngredientSource.source; // Telemetry only - UI shows nutrition source
         }
       } catch (error) {
         console.log(`[ENRICH][BACKFILL] Failed: ${error.message}`);
@@ -629,21 +749,34 @@ serve(async (req) => {
       perServingG: result.perServing?.serving_grams
     });
 
-    // Cache the result with 90-day TTL
-    const expires_at = new Date(Date.now() + 90 * 24 * 3600 * 1000).toISOString();
-    
-    await supabaseAdmin
-      .from('food_enrichment_cache')
-      .upsert({
-        query_hash,
-        query: normalizedQuery,
-        response_data: result,
-        source: result.source,
-        confidence: result.confidence,
-        expires_at
-      }, { onConflict: 'query_hash' });
+    // SAFE CACHING: Do not cache low-value results OR (FDC + multi-word queries) 
+    const shouldSkipCache = result.low_value || 
+                           (result.source === 'FDC' && normalizedQuery.includes(' ')) ||
+                           result.ingredients.length <= 1;
+                           
+    if (shouldSkipCache) {
+      console.log(`[ENRICH][SKIP CACHE] low_value=${result.low_value}, source=${result.source}, ing_len=${result.ingredients.length}`);
+    } else {
+      // Cache with appropriate TTL
+      const ttl_hours = result.low_value ? 6 : (90 * 24); // 6h for low-value, 90d for good results
+      const expires_at = new Date(Date.now() + ttl_hours * 3600 * 1000).toISOString();
+      
+      await supabaseAdmin
+        .from('food_enrichment_cache')
+        .upsert({
+          query_hash,
+          query: normalizedQuery,
+          response_data: result,
+          source: result.source,
+          confidence: result.confidence,
+          expires_at,
+          low_value: result.low_value || false
+        }, { onConflict: 'query_hash' });
 
-    console.log(`[ENRICH][CACHED] ${result.source} expires=${expires_at.split('T')[0]}`);
+      console.log(`[ENRICH][CACHED] ${result.source} expires=${expires_at.split('T')[0]} ttl=${ttl_hours}h`);
+    }
+
+    
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
