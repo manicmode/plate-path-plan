@@ -2522,6 +2522,7 @@ export type Database = {
           created_at: string
           expires_at: string | null
           id: string
+          low_value: boolean
           query: string
           query_hash: string
           response_data: Json
@@ -2533,6 +2534,7 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
+          low_value?: boolean
           query: string
           query_hash: string
           response_data: Json
@@ -2544,6 +2546,7 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
+          low_value?: boolean
           query?: string
           query_hash?: string
           response_data?: Json
@@ -9443,6 +9446,10 @@ export type Database = {
       }
       check_social_badges: {
         Args: { target_user_id: string }
+        Returns: undefined
+      }
+      cleanup_food_enrichment_cache: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
       cleanup_rank20_dupes: {
