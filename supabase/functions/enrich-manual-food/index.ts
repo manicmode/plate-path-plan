@@ -598,6 +598,10 @@ serve(async (req) => {
       });
     }
 
+    // Feature flags - default ON
+    const ENRICH_V2_ING_AWARE = true;
+    const ENRICH_LOG_DIAG = false;
+
     // Build query hash
     const normalizedQuery = query.toLowerCase().trim();
     const hashInput = `${normalizedQuery}|${locale}`;
@@ -639,153 +643,103 @@ serve(async (req) => {
       });
     }
 
-    // ENHANCED INGREDIENT-AWARE PROVIDER CASCADE
+    if (!ENRICH_V2_ING_AWARE) {
+      // Fallback to old behavior if feature disabled
+      const nutritionixResult = await searchNutritionix(query);
+      if (nutritionixResult) {
+        const ttl_hours = 90 * 24; // 90 days
+        const expires_at = new Date(Date.now() + ttl_hours * 3600 * 1000).toISOString();
+        
+        await supabaseAdmin
+          .from('food_enrichment_cache')
+          .upsert({
+            query_hash,
+            query: normalizedQuery,
+            response_data: nutritionixResult,
+            source: nutritionixResult.source,
+            confidence: nutritionixResult.confidence,
+            expires_at,
+            low_value: false
+          }, { onConflict: 'query_hash' });
+
+        return new Response(JSON.stringify(nutritionixResult), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // INGREDIENT-AWARE V2 LOGIC
     let result: EnrichedFood | null = null;
     
-    // Detect multi-word or non-ASCII tokens  
-    const isMultiWord = normalizedQuery.includes(' ') || /[^\x00-\x7F]/.test(normalizedQuery);
+    // 1) Try Nutritionix (branded-first with deep fetch)
+    if (ENRICH_LOG_DIAG) console.log(`[ENRICH][TRY][NIX] q="${normalizedQuery}"`);
+    const nutritionixResult = await searchNutritionix(query);
     
-    if (isMultiWord) {
-      console.log(`[ENRICH][MULTI-WORD] Priority: NUTRITIONIX → EDAMAM → FDC → ESTIMATED`);
-      
-      // Sequential cascade for multi-word with enhanced logic
-      const nutritionixResult = await searchNutritionix(query);
-      let edamamResult: EnrichedFood | null = null;
-      
-      // Always try Edamam for ingredient comparison, even after NX-common
-      if (!nutritionixResult || nutritionixResult.low_value || nutritionixResult.ingredients.length <= 1) {
-        edamamResult = await searchEdamam(query);
-      }
-      
-      // Use ingredient-aware scoring to pick winner
-      const candidates: ProviderCandidate[] = [];
-      
-      if (nutritionixResult) {
-        const scored = calculateIngredientAwareScore(nutritionixResult);
-        candidates.push({
-          result: nutritionixResult,
-          src: 'NUTRITIONIX',
-          conf: scored,
-          ing_len: nutritionixResult.ingredients.length,
-          low_value: nutritionixResult.low_value || false
-        });
-      }
-      
-      if (edamamResult) {
-        const scored = calculateIngredientAwareScore(edamamResult);
-        candidates.push({
-          result: edamamResult,
-          src: 'EDAMAM',
-          conf: scored,
-          ing_len: edamamResult.ingredients.length,
-          low_value: edamamResult.low_value || false
-        });
-      }
-      
-      // Pick best candidate or fall back to FDC
-      if (candidates.length > 0) {
-        const winner = candidates.reduce((best, curr) => 
-          curr.conf > best.conf ? curr : best
-        );
-        
-        // Only use if score is decent, otherwise try FDC
-        if (winner.conf >= 0.6) {
-          result = winner.result;
-          console.log(`[ENRICH][HIT source=${winner.src}] confidence=${winner.conf.toFixed(2)} ingredients=${winner.ing_len}`);
-        }
-      }
-      
-      // FDC fallback if no good candidates
-      if (!result) {
-        const fdcResult = await searchFDC(query);
-        if (fdcResult) {
-          result = fdcResult;
-          console.log(`[ENRICH][HIT source=FDC] confidence=${result.confidence}`);
-        }
-      }
-      
-    } else {
-      // Single word: FDC-first but use ingredient-aware scoring for final pick
-      console.log(`[ENRICH][SINGLE-WORD] Priority: FDC → EDAMAM → NUTRITIONIX → ESTIMATED`);
-      
-      const [fdcResult, edamamResult, nutritionixResult] = await Promise.all([
-        searchFDC(query),
-        searchEdamam(query),
-        searchNutritionix(query)
-      ]);
-      
-      // Build candidates with ingredient-aware scoring
-      const candidates: ProviderCandidate[] = [];
-      
-      if (nutritionixResult) {
-        const scored = calculateIngredientAwareScore(nutritionixResult);
-        candidates.push({
-          result: nutritionixResult,
-          src: 'NUTRITIONIX',
-          conf: scored,
-          ing_len: nutritionixResult.ingredients.length,
-          low_value: nutritionixResult.low_value || false
-        });
-      }
-      
-      if (edamamResult) {
-        const scored = calculateIngredientAwareScore(edamamResult);
-        candidates.push({
-          result: edamamResult,
-          src: 'EDAMAM', 
-          conf: scored,
-          ing_len: edamamResult.ingredients.length,
-          low_value: edamamResult.low_value || false
-        });
-      }
-      
-      if (fdcResult) {
-        const scored = calculateIngredientAwareScore(fdcResult);
-        candidates.push({
-          result: fdcResult,
-          src: 'FDC',
-          conf: scored, 
-          ing_len: fdcResult.ingredients.length,
-          low_value: fdcResult.low_value || false
-        });
-      }
-      
-      // Pick highest scoring candidate
-      if (candidates.length > 0) {
-        const winner = candidates.reduce((best, curr) => 
-          curr.conf > best.conf ? curr : best
-        );
-        result = winner.result;
-        
-        // Mark as low_value if ingredients are insufficient
-        if (winner.ing_len <= 1) {
-          result.low_value = true;
-        }
-        
-        console.log(`[ENRICH][DECISION] Picked ${winner.src} (score=${winner.conf.toFixed(2)}, ing_len=${winner.ing_len})`);
-      }
-      
-      // Log decision telemetry
-      if (candidates.length > 0) {
-        console.log(`[ENRICH][DECISION]`, {
-          q: normalizedQuery,
-          picked: result?.source || 'NONE', 
-          ingredients_len: result?.ingredients.length || 0,
-          candidates: candidates.map(c => ({
-            src: c.src,
-            conf: c.conf.toFixed(2),
-            ing_len: c.ing_len,
-            low_value: c.low_value
-          }))
-        });
-      }
+    // 2) Try Edamam (ingredient aware)
+    if (ENRICH_LOG_DIAG) console.log(`[ENRICH][TRY][EDAMAM] q="${normalizedQuery}"`);
+    const edamamResult = await searchEdamam(query);
+    
+    // 3) Try FDC (nutrition backfill, last resort)
+    if (ENRICH_LOG_DIAG) console.log(`[ENRICH][TRY][FDC] q="${normalizedQuery}"`);
+    const fdcResult = await searchFDC(query);
+    if (fdcResult && fdcResult.ingredients.length <= 1) {
+      fdcResult.low_value = true;
+    }
+    
+    // Log telemetry if enabled
+    if (ENRICH_LOG_DIAG && nutritionixResult) {
+      console.log(`[ENRICH][TRY][NIX] q="${normalizedQuery}", branded=true, ingLen=${nutritionixResult.ingredients.length}`);
+    }
+    if (ENRICH_LOG_DIAG && edamamResult) {
+      console.log(`[ENRICH][TRY][EDAMAM] q="${normalizedQuery}", ingLen=${edamamResult.ingredients.length}`);
+    }
+    if (ENRICH_LOG_DIAG && fdcResult) {
+      console.log(`[ENRICH][TRY][FDC] q="${normalizedQuery}", ingLen=${fdcResult.ingredients.length}, kcal100g=${fdcResult.per100g.calories}`);
+    }
+
+    // 4) Ingredient-aware selection rule
+    const acceptBrand = (candidate: EnrichedFood) => {
+      const ingLen = candidate.ingredients.length;
+      return (candidate.source === 'NUTRITIONIX' && ingLen >= 5) ||
+             (ingLen >= 3 && /sandwich|burger|taco|wrap/i.test(normalizedQuery));
+    };
+    
+    const acceptGeneric = (candidate: EnrichedFood) => {
+      return candidate.ingredients.length >= 2;
+    };
+    
+    // Apply selection rule in priority order
+    if (nutritionixResult && acceptBrand(nutritionixResult)) {
+      result = nutritionixResult;
+      if (ENRICH_LOG_DIAG) console.log(`[ENRICH][PICK] source=NUTRITIONIX, ingLen=${result.ingredients.length}, acceptBrand=true`);
+    } else if (edamamResult && acceptGeneric(edamamResult)) {
+      result = edamamResult;
+      if (ENRICH_LOG_DIAG) console.log(`[ENRICH][PICK] source=EDAMAM, ingLen=${result.ingredients.length}, acceptGeneric=true`);
+    } else if (nutritionixResult && acceptGeneric(nutritionixResult)) {
+      result = nutritionixResult;
+      if (ENRICH_LOG_DIAG) console.log(`[ENRICH][PICK] source=NUTRITIONIX, ingLen=${result.ingredients.length}, acceptGeneric=true`);
+    } else if (fdcResult) {
+      // FDC as pure nutrition fallback (already marked as low_value if no ingredients)
+      result = fdcResult;
+      if (ENRICH_LOG_DIAG) console.log(`[ENRICH][PICK] source=FDC, ingLen=${result.ingredients.length}, fallback=true`);
+    } else if (nutritionixResult) {
+      // Use any nutritionix result as last resort
+      result = nutritionixResult;
+      result.low_value = true;
+      if (ENRICH_LOG_DIAG) console.log(`[ENRICH][PICK] source=NUTRITIONIX, ingLen=${result.ingredients.length}, lowValue=true`);
+    } else if (edamamResult) {
+      // Use any edamam result as last resort
+      result = edamamResult;
+      result.low_value = true;
+      if (ENRICH_LOG_DIAG) console.log(`[ENRICH][PICK] source=EDAMAM, ingLen=${result.ingredients.length}, lowValue=true`);
     }
     
     // Final fallback: GPT estimation
     if (!result) {
       result = await estimateWithGPT(query);
       if (result) {
-        console.log(`[ENRICH][HIT source=ESTIMATED] confidence=${result.confidence}`);
+        result.low_value = true; // GPT estimates are always low value
+        if (ENRICH_LOG_DIAG) console.log(`[ENRICH][PICK] source=ESTIMATED, ingLen=${result.ingredients.length}, fallback=true`);
       }
     }
     
@@ -797,69 +751,22 @@ serve(async (req) => {
       });
     }
 
-    // INGREDIENT BACKFILL: If chosen nutrition source lacks ingredients, find best ingredient source
-    if (result.ingredients.length <= 1 && result.source !== 'ESTIMATED') {
-      try {
-        console.log(`[ENRICH][BACKFILL] Attempting ingredient backfill for ${result.source}`);
-        
-        // Try other providers for ingredients if we haven't already
-        const ingredientCandidates: EnrichedFood[] = [];
-        
-        if (result.source !== 'NUTRITIONIX') {
-          const nixResult = await searchNutritionix(query);
-          if (nixResult && nixResult.ingredients.length > 1) {
-            ingredientCandidates.push(nixResult);
-          }
-        }
-        
-        if (result.source !== 'EDAMAM') {
-          const edamamResult = await searchEdamam(query);  
-          if (edamamResult && edamamResult.ingredients.length > 1) {
-            ingredientCandidates.push(edamamResult);
-          }
-        }
-        
-        // Try GPT as last resort
-        const gptResult = await estimateWithGPT(query);
-        if (gptResult && gptResult.ingredients.length > 1) {
-          ingredientCandidates.push(gptResult);
-        }
-        
-        if (ingredientCandidates.length > 0) {
-          // Pick best ingredient source (prefer most ingredients)
-          const bestIngredientSource = ingredientCandidates.reduce((best, curr) => 
-            curr.ingredients.length > best.ingredients.length ? curr : best
-          );
-          
-          console.log(`[ENRICH][BACKFILL] Success: ${bestIngredientSource.ingredients.length} ingredients from ${bestIngredientSource.source}`);
-          
-          // Compose final object: Keep macros from nutrition source, ingredients from ingredient source  
-          result.ingredients = bestIngredientSource.ingredients;
-          result.ingredient_source = bestIngredientSource.source; // Telemetry only - UI shows nutrition source
-        }
-      } catch (error) {
-        console.log(`[ENRICH][BACKFILL] Failed: ${error.message}`);
-        // Continue with original result
-      }
-    }
-
     // Set low_value flag based on ingredient count
     if (result.ingredients.length <= 1 && !result.low_value) {
       result.low_value = true;
     }
 
-    // Log what the edge function returns before cache write/return
-    console.log("[ENRICH][HIT]", {
-      q: normalizedQuery, 
-      source: result.source, 
-      conf: result.confidence,
+    // Log final result
+    const ttl_hours = result.low_value ? 6 : (90 * 24); // 6h for low-value, 90d for good results
+    
+    console.log("[ENRICH][PICK]", {
+      source: result.source,
       ingLen: result.ingredients?.length ?? 0,
-      low_value: result.low_value || false,
-      perServingG: result.perServing?.serving_grams
+      lowValue: result.low_value || false,
+      ttl: `${ttl_hours}h`
     });
 
     // CACHE WITH LOW_VALUE AWARENESS
-    const ttl_hours = result.low_value ? 6 : (90 * 24); // 6h for low-value, 90d for good results
     const expires_at = new Date(Date.now() + ttl_hours * 3600 * 1000).toISOString();
     
     await supabaseAdmin
@@ -875,8 +782,6 @@ serve(async (req) => {
       }, { onConflict: 'query_hash' });
 
     console.log(`[ENRICH][CACHED] ${result.source} expires=${expires_at.split('T')[0]} low_value=${result.low_value || false}`);
-
-    
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
