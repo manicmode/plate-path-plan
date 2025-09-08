@@ -28,20 +28,10 @@ export async function clearQACache(): Promise<boolean> {
   try {
     console.log('[QA] Clearing enrichment cache for test queries...');
     
-    const { error } = await supabase.rpc('cleanup_food_enrichment_cache');
+    const { data, error } = await supabase.functions.invoke('clear-qa-cache');
     if (error) {
       console.error('[QA] Cache cleanup failed:', error);
       return false;
-    }
-    
-    // Also try to delete specific test queries
-    const { error: deleteError } = await supabase
-      .from('food_enrichment_cache')
-      .delete()
-      .in('query', TEST_QUERIES);
-      
-    if (deleteError) {
-      console.warn('[QA] Specific query deletion failed:', deleteError);
     }
     
     console.log('[QA] ✅ Cache cleared successfully');

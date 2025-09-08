@@ -210,16 +210,31 @@ const searchEdamam = async (query: string): Promise<EnrichedFood | null> => {
   }
 };
 
-// Parse ingredients from various sources (Nutritionix, Edamam, etc.)
+// Enhanced ingredient parsing with better pattern recognition
 const parseIngredients = (raw?: string) => {
-  if (!raw) return [];
-  return raw
+  if (!raw?.trim()) return [];
+  
+  console.log(`[ENRICH][PARSE_ING] Raw: "${raw.substring(0, 200)}"`);
+  
+  // Clean up the raw string
+  let cleaned = raw
+    .replace(/\b(CONTAINS?|MAY CONTAIN)\b.*$/gi, '') // Remove allergen warnings
+    .replace(/\([^)]*\)/g, ' ')  // Remove all parentheticals
+    .replace(/\[[^\]]*\]/g, ' ') // Remove brackets
+    .replace(/\.+$/, '')         // Remove trailing periods
+    .replace(/\s+/g, ' ')        // Normalize spaces
+    .trim();
+    
+  // Split on various delimiters
+  const ingredients = cleaned
     .split(/[,;]+/g)
-    .map(x => x.replace(/\(.*?\)/g, ''))   // drop parentheticals
     .map(x => x.trim())
-    .filter(Boolean)
-    .slice(0, 60) // increased cap
-    .map(name => ({ name }));
+    .filter(x => x.length > 1 && !x.match(/^\d+$/)) // Filter out empty, single chars, and pure numbers
+    .slice(0, 60) // Cap at 60 ingredients
+    .map(name => ({ name: name.toLowerCase().replace(/^(and|or)\s+/i, '').trim() }));
+    
+  console.log(`[ENRICH][PARSE_ING] Parsed ${ingredients.length} ingredients from "${raw.substring(0, 100)}"`);
+  return ingredients;
 };
 
 // Enhanced Nutritionix API integration - branded-first with ingredient-aware scoring
@@ -253,33 +268,54 @@ const searchNutritionix = async (query: string): Promise<EnrichedFood | null> =>
     
     console.log(`[ENRICH][NIX][INSTANT] branded=${branded.length} common=${common.length}`);
     
-    // NEW: Branded-first strategy
+    // NEW: Branded-first strategy - try multiple branded items for ingredients
     if (branded.length > 0) {
-      // Prefer branded items - they have better ingredient data
-      const bestBranded = pickBestCandidate(query, branded);
-      if (bestBranded?.nix_item_id) {
-        console.log(`[ENRICH][NX][DEEP] item=${bestBranded.nix_item_id} (branded)`);
-        
-        const itemResponse = await withTimeout(
-          fetch(`https://trackapi.nutritionix.com/v2/search/item?nix_item_id=${bestBranded.nix_item_id}`, {
-            headers: {
-              'x-app-id': appId,
-              'x-app-key': apiKey
-            }
-          }),
-          1000
-        );
-
-        if (itemResponse.ok) {
-          const itemData = await itemResponse.json();
-          const foods = itemData.foods || [];
+      console.log(`[ENRICH][NX][BRANDED] Trying ${Math.min(6, branded.length)} branded candidates`);
+      
+      // Try up to 6 branded items to find one with good ingredients
+      const brandedCandidates = branded.slice(0, 6);
+      
+      for (let i = 0; i < brandedCandidates.length; i++) {
+        const candidate = brandedCandidates[i];
+        if (candidate?.nix_item_id) {
+          console.log(`[ENRICH][NX][DEEP] item=${candidate.nix_item_id} name="${candidate.food_name}"`);
           
-          if (foods.length > 0) {
-            const food = foods[0];
-            const result = parseNutritionixBrandedItem(food, bestBranded, query);
-            
-            console.log(`[ENRICH][NX][DEEP] item=${bestBranded.nix_item_id} ingredients=${result.ingredients.length}`);
-            return result;
+          try {
+            const itemResponse = await withTimeout(
+              fetch(`https://trackapi.nutritionix.com/v2/search/item?nix_item_id=${candidate.nix_item_id}`, {
+                headers: {
+                  'x-app-id': appId,
+                  'x-app-key': apiKey
+                }
+              }),
+              1000
+            );
+
+            if (itemResponse.ok) {
+              const itemData = await itemResponse.json();
+              const foods = itemData.foods || [];
+              
+              if (foods.length > 0) {
+                const food = foods[0];
+                const result = parseNutritionixBrandedItem(food, candidate, query);
+                
+                console.log(`[ENRICH][NX][DEEP] item=${candidate.nix_item_id} ingredients=${result.ingredients.length}`);
+                
+                // If we found good ingredients (3+), return this one immediately
+                if (result.ingredients.length >= 3) {
+                  console.log(`[ENRICH][NX][BRANDED] Found good ingredients (${result.ingredients.length}), using this result`);
+                  return result;
+                }
+                
+                // Otherwise, if this is the last candidate or we have at least some ingredients, return it
+                if (i === brandedCandidates.length - 1 || result.ingredients.length > 1) {
+                  return result;
+                }
+              }
+            }
+          } catch (error) {
+            console.log(`[ENRICH][NX][DEEP] Failed to fetch item ${candidate.nix_item_id}: ${error.message}`);
+            continue;
           }
         }
       }
@@ -307,7 +343,7 @@ const searchNutritionix = async (query: string): Promise<EnrichedFood | null> =>
   }
 };
 
-// Helper to pick best candidate from Nutritionix results
+// Helper to pick best candidate from Nutritionix results - try multiple for ingredients
 const pickBestCandidate = (query: string, candidates: any[]) => {
   if (!candidates.length) return null;
   

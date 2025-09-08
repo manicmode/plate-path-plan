@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.gpt-vision-selftest]
 verify_jwt = false
+
+[functions.clear-qa-cache]
+verify_jwt = false
