@@ -92,6 +92,50 @@ if (typeof window !== 'undefined' && window.location.search.includes('QA_ENRICH=
   }
 }
 
+// Expose testEnrichment console helper
+if (import.meta.env.MODE !== 'production' || window?.location?.search?.includes('QA_ENRICH=1')) {
+  (window as any).testEnrichment = async () => {
+    const queries = ['club sandwich','club sandwich on wheat','yakisoba','aloo gobi','pollo con rajas'];
+    const results = [];
+    
+    for (const q of queries) {
+      const run = async () => {
+        try {
+          const { supabase } = await import('@/lib/supabase');
+          const session = await supabase.auth.getSession();
+          const authToken = session.data.session?.access_token || '';
+          
+          const res = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/enrich-manual-food', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json', 
+              'Authorization': `Bearer ${authToken}`,
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6b2lpaWpxdGFob2hmYWZxaXJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzOTE2MzgsImV4cCI6MjA2Njk2NzYzOH0.Ny_Gxbhus7pNm0OHipRBfaFLNeK_ZSePfbj8no4SVGw'
+            },
+            body: JSON.stringify({ query: q })
+          });
+          const json = await res.json();
+          return { 
+            q, 
+            source: json.source, 
+            ingLen: (json.ingredients || []).length, 
+            kcal_100g: json?.per100g?.calories ?? null 
+          };
+        } catch (error) {
+          console.error(`[ENRICH QA] ${q} failed:`, error);
+          return { q, source: null, ingLen: 0, kcal_100g: null };
+        }
+      };
+      
+      const a = await run();
+      const b = await run(); // cache hit
+      results.push({ ...a, secondHitIngLen: b.ingLen });
+      console.log('[ENRICH QA]', a.q, a.source, a.ingLen, a.kcal_100g, '2nd:', b.ingLen);
+    }
+    return results;
+  };
+}
+
 // Initialize feature flags
 (window as any).__featureFlags = (window as any).__featureFlags || {};
 

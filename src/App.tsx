@@ -384,14 +384,12 @@ function AppContent() {
                        </ProtectedRoute>
                      } />
                      
-                     {/* QA Enrichment page - available in prod but guarded */}
-                     <Route path="/qa" element={
-                       <ProtectedRoute>
-                         <React.Suspense fallback={<div style={{ padding: 24 }}>Loading QA Tests…</div>}>
-                           <QaEnrichment />
-                         </React.Suspense>
-                       </ProtectedRoute>
-                     } />
+                      {/* QA Enrichment page - URL only discovery */}
+                      <Route path="/qa" element={
+                        <React.Suspense fallback={<div style={{ padding: 24 }}>Loading QA Tests…</div>}>
+                          {React.createElement(React.lazy(() => import('@/pages/qa')))}
+                        </React.Suspense>
+                      } />
                     
                     <Route path="/health-scan-photo" element={
                       FF.FEATURE_HEALTH_SCAN_PHOTO ? (
