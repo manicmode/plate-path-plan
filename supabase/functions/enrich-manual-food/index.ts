@@ -238,7 +238,7 @@ const parseIngredients = (raw?: string) => {
 };
 
 // Enhanced Nutritionix API integration - branded-first with ingredient-aware scoring
-const searchNutritionix = async (query: string): Promise<EnrichedFood | null> => {
+const searchNutritionix = async (query: string, isSandwich = false): Promise<EnrichedFood | null> => {
   const appId = Deno.env.get('NUTRITIONIX_APP_ID');
   const apiKey = Deno.env.get('NUTRITIONIX_API_KEY');
   if (!appId || !apiKey) return null;
@@ -267,6 +267,74 @@ const searchNutritionix = async (query: string): Promise<EnrichedFood | null> =>
     const common = instantData.common || [];
     
     console.log(`[ENRICH][NIX][INSTANT] branded=${branded.length} common=${common.length}`);
+    
+    // NEW: Sandwich-specific branded search
+    if (isSandwich && ENRICH_V2_SANDWICH_ROUTE && branded.length > 0) {
+      console.log(`[ENRICH][NIX][SANDWICH] Looking for branded sandwich items`);
+      
+      // Filter branded items for sandwich matches (both tokens present)
+      const sandwichCandidates = branded.filter((candidate: any) => {
+        const name = (candidate.food_name || '').toLowerCase();
+        const brandItem = (candidate.brand_name_item_name || '').toLowerCase();
+        const combined = `${name} ${brandItem}`;
+        
+        // Look for items containing both club and sandwich
+        const hasClub = /\bclub\b/.test(combined);
+        const hasSandwich = /\bsandwich\b/.test(combined);
+        
+        return hasClub && hasSandwich;
+      });
+      
+      if (ENRICH_LOG_DIAG) {
+        console.log(`[ENRICH][NIX][DF] {count: ${sandwichCandidates.length}, acceptedIngLen: "≥5"}`);
+      }
+      
+      // Try up to 5 sandwich-specific branded items
+      const candidatesToTry = sandwichCandidates.slice(0, 5);
+      
+      for (let i = 0; i < candidatesToTry.length; i++) {
+        const candidate = candidatesToTry[i];
+        if (candidate?.nix_item_id) {
+          console.log(`[ENRICH][NX][DEEP] item=${candidate.nix_item_id} name="${candidate.food_name}"`);
+          
+          try {
+            const itemResponse = await withTimeout(
+              fetch(`https://trackapi.nutritionix.com/v2/search/item?nix_item_id=${candidate.nix_item_id}`, {
+                headers: {
+                  'x-app-id': appId,
+                  'x-app-key': apiKey
+                }
+              }),
+              1000
+            );
+
+            if (itemResponse.ok) {
+              const itemData = await itemResponse.json();
+              const foods = itemData.foods || [];
+              
+              if (foods.length > 0) {
+                const food = foods[0];
+                const result = parseNutritionixBrandedItem(food, candidate, query);
+                
+                console.log(`[ENRICH][NX][DEEP] item=${candidate.nix_item_id} ingredients=${result.ingredients.length}`);
+                
+                // For sandwiches, require ≥5 ingredients
+                if (result.ingredients.length >= 5) {
+                  console.log(`[ENRICH][NX][BRANDED] Found sandwich with sufficient ingredients (${result.ingredients.length}), using this result`);
+                  return result;
+                }
+              }
+            }
+          } catch (error) {
+            console.log(`[ENRICH][NX][DEEP] Failed to fetch item ${candidate.nix_item_id}: ${error.message}`);
+            continue;
+          }
+        }
+      }
+      
+      // If no sandwich-specific branded items worked, fall back to regular branded search
+      console.log(`[ENRICH][NIX][SANDWICH] No suitable sandwich branded items found, falling back to regular search`);
+    }
     
     // NEW: Branded-first strategy - try multiple branded items for ingredients
     if (branded.length > 0) {
@@ -583,6 +651,7 @@ const estimateWithGPT = async (query: string): Promise<EnrichedFood | null> => {
 
 // Feature flags - default ON unless noted
 const ENRICH_V2_ING_AWARE = true; 
+const ENRICH_V2_SANDWICH_ROUTE = true;
 const ENRICH_LOG_DIAG = false;
 const ENRICH_VERSION = "v2.2";
 
@@ -597,6 +666,37 @@ function classifyQuery(q: string): 'dish'|'ingredient' {
   if (SIMPLE_ING.includes(t)) return 'ingredient';
   // single word unknown defaults to dish to avoid FDC on dishes like "yakisoba"
   return 'dish';
+}
+
+// Bread-aware normalizer for sandwich queries
+function normalizeSandwichQuery(query: string): { baseDish: string; breadKind?: string } {
+  if (!ENRICH_V2_SANDWICH_ROUTE) {
+    return { baseDish: query };
+  }
+  
+  const lowerQuery = query.toLowerCase().trim();
+  
+  // Check if it's a sandwich query
+  if (!/\bsandwich\b/.test(lowerQuery)) {
+    return { baseDish: query };
+  }
+  
+  // Strip trailing bread specifiers
+  const breadPattern = /\s+on\s+(wheat|white|rye|sourdough|multigrain|whole\s+wheat|whole\s+grain|whole-grain|wholewheat)$/i;
+  const match = query.match(breadPattern);
+  
+  if (match) {
+    const baseDish = query.replace(breadPattern, '').trim();
+    const breadKind = match[1];
+    
+    if (ENRICH_LOG_DIAG) {
+      console.log(`[ENRICH][ROUTE] sandwich {q: "${query}", base: "${baseDish}", breadKind: "${breadKind}"}`);
+    }
+    
+    return { baseDish, breadKind };
+  }
+  
+  return { baseDish: query };
 }
 
 serve(async (req) => {
@@ -703,6 +803,11 @@ serve(async (req) => {
     // INGREDIENT-AWARE V2 LOGIC WITH DISH ROUTING
     let result: EnrichedFood | null = null;
     
+    // Normalize query for sandwiches
+    const { baseDish, breadKind } = normalizeSandwichQuery(query);
+    const isSandwich = /\bsandwich\b/i.test(query);
+    const searchQuery = baseDish;
+    
     // Classify query type for provider ordering
     const queryType = classifyQuery(normalizedQuery);
     const providerOrder = queryType === 'dish' ? ['NUTRITIONIX', 'EDAMAM', 'FDC'] : ['FDC', 'EDAMAM', 'NUTRITIONIX'];
@@ -715,7 +820,7 @@ serve(async (req) => {
     for (const provider of providerOrder) {
       if (provider === 'NUTRITIONIX' && !nutritionixResult) {
         if (ENRICH_LOG_DIAG) console.log(`[ENRICH][TRY][NIX] q="${normalizedQuery}"`);
-        nutritionixResult = await searchNutritionix(query);
+        nutritionixResult = await searchNutritionix(searchQuery, isSandwich);
         if (nutritionixResult && ENRICH_LOG_DIAG) {
           const branded = nutritionixResult.source_id ? true : false;
           console.log(`[ENRICH][TRY][NIX] q="${normalizedQuery}", branded=${branded}, ingLen=${nutritionixResult.ingredients.length}`);
@@ -723,14 +828,14 @@ serve(async (req) => {
       }
       if (provider === 'EDAMAM' && !edamamResult) {
         if (ENRICH_LOG_DIAG) console.log(`[ENRICH][TRY][EDAMAM] q="${normalizedQuery}"`);
-        edamamResult = await searchEdamam(query);
+        edamamResult = await searchEdamam(searchQuery);
         if (edamamResult && ENRICH_LOG_DIAG) {
           console.log(`[ENRICH][TRY][EDAMAM] q="${normalizedQuery}", ingLen=${edamamResult.ingredients.length}`);
         }
       }
       if (provider === 'FDC' && !fdcResult) {
         if (ENRICH_LOG_DIAG) console.log(`[ENRICH][TRY][FDC] q="${normalizedQuery}"`);
-        fdcResult = await searchFDC(query);
+        fdcResult = await searchFDC(searchQuery);
         if (fdcResult) {
           if (fdcResult.ingredients.length <= 1) {
             fdcResult.low_value = true;
@@ -750,7 +855,7 @@ serve(async (req) => {
       return candidate.source === 'NUTRITIONIX' ? 3 : 2;
     };
     
-    // Score and pick winner
+    // Score and pick winner with sandwich-specific logic
     const candidates: Array<{result: EnrichedFood, score: number, reason: string, branded?: boolean}> = [];
     
     if (nutritionixResult) {
@@ -763,6 +868,16 @@ serve(async (req) => {
       else if (ingLen === 2) score += 0.10;
       else score -= 0.30;
       if (branded) score += 0.05;
+      
+      // Sandwich-specific scoring boosts
+      if (isSandwich && ENRICH_V2_SANDWICH_ROUTE) {
+        if (branded && ingLen >= 5) {
+          score += 0.30; // Major boost for branded sandwiches with good ingredients
+        }
+        if (ingLen >= 8) {
+          score += 0.20; // Boost for very detailed ingredient lists
+        }
+      }
       
       const meetsCriteria = ingLen >= minIng;
       candidates.push({
@@ -782,6 +897,13 @@ serve(async (req) => {
       else if (ingLen === 2) score += 0.10;
       else score -= 0.30;
       
+      // Sandwich-specific scoring for Edamam
+      if (isSandwich && ENRICH_V2_SANDWICH_ROUTE) {
+        if (ingLen >= 5) {
+          score += 0.15; // Moderate boost for detailed Edamam results
+        }
+      }
+      
       const meetsCriteria = ingLen >= minIng;
       candidates.push({
         result: edamamResult,
@@ -799,6 +921,15 @@ serve(async (req) => {
       else if (ingLen === 2) score += 0.10;
       else score -= 0.30;
       
+      // Hard block against weak FDC on sandwiches when better options exist
+      if (isSandwich && ENRICH_V2_SANDWICH_ROUTE && ingLen <= 1) {
+        const hasRicherOption = (nutritionixResult && nutritionixResult.ingredients.length >= 5) ||
+                                (edamamResult && edamamResult.ingredients.length >= 5);
+        if (hasRicherOption) {
+          score -= 0.50; // Heavy penalty to avoid weak FDC when rich options available
+        }
+      }
+      
       const meetsCriteria = ingLen >= minIng;
       candidates.push({
         result: fdcResult,
@@ -813,6 +944,14 @@ serve(async (req) => {
       const winner = candidates[0];
       result = winner.result;
       
+      if (ENRICH_LOG_DIAG) {
+        console.log(`[ENRICH][DECISION]`, {
+          source: result.source,
+          ingLen: result.ingredients.length,
+          conf: result.confidence
+        });
+      }
+      
       console.log(`[ENRICH][DECISION]`, {
         q: normalizedQuery,
         route: queryType,
@@ -823,6 +962,8 @@ serve(async (req) => {
           reason: winner.reason,
           branded: winner.branded || false
         }
+      });
+    }
       });
     }
     
