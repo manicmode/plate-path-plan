@@ -69,16 +69,24 @@ export default function QaEnrichment() {
   // Expose console helper
   useEffect(() => {
     (window as any).testEnrichment = runDirectTests;
+    
+    // Re-enable the window.clearQACache() helper
+    const QA_KEYS = ['club sandwich','club sandwich on wheat','yakisoba','aloo gobi','pollo con rajas'];
+    
     (window as any).clearQACache = async () => {
       try {
-        const { data } = await supabase.functions.invoke('clear-qa-cache');
-        if (data?.success) {
-          console.log('[QA] Cache cleared successfully');
+        console.log('[QA] Clearing enrichment cache…');
+        const { error } = await supabase.from('food_enrichment_cache').delete().in('query', QA_KEYS);
+        if (error) {
+          console.error('[QA] Clear cache failed', error);
+        } else {
+          console.log('[QA] Done.');
         }
-      } catch (error) {
-        console.error('[QA] Failed to clear cache:', error);
+      } catch (e) {
+        console.error('[QA] Clear cache failed', e);
       }
     };
+    
     return () => {
       delete (window as any).testEnrichment;
       delete (window as any).clearQACache;
