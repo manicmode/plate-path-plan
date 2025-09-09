@@ -42,7 +42,7 @@ export function useManualFoodEnrichment() {
   const enrich = useCallback(async (
     query: string, 
     locale: string = 'auto',
-    options?: { noCache?: boolean; bust?: string; context?: 'manual' | 'scan' }
+    options?: { noCache?: boolean; bust?: string; context?: 'manual' | 'scan'; diag?: boolean; }
   ): Promise<EnrichedFood | null> => {
     if (!query?.trim()) {
       setError('Query is required');
@@ -74,7 +74,14 @@ export function useManualFoodEnrichment() {
       
       const { data, error: functionError } = await supabase.functions.invoke<EnrichedFood>(
         functionUrl,
-        { body: { query: query.trim(), locale, context } }
+        { 
+          body: { 
+            query: query.trim(), 
+            locale, 
+            context: options?.context || 'manual',
+            diag: options?.diag || false
+          } 
+        }
       );
 
       if (functionError) {

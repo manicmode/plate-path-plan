@@ -151,21 +151,34 @@ export default function QAPage() {
       try {
         console.log(`[HEALTHSCAN QA] Testing: "${query}"`);
         
-        const result = await simulateHealthScanEnrichment(query);
+        const start = performance.now();
+        // Pure function call using unified router (no UI coupling)
+        const enriched = await enrich(query, 'auto', { 
+          noCache: true, 
+          bust: Date.now().toString(),
+          context: 'scan',
+          diag: true
+        });
+        const ms = Math.round(performance.now() - start);
         
-        const pass_fail = getPassCriteria(query, result.source, result.ingredients_len) ? 'PASS' : 'FAIL';
+        const source = enriched?.source || null;
+        const confidence = enriched?.confidence || null;
+        const ingredients_len = enriched?.ingredients?.length || 0;
+        const kcal_100g = enriched?.per100g?.calories || null;
+        
+        const pass_fail = getPassCriteria(query, source, ingredients_len) ? 'PASS' : 'FAIL';
         
         testResults.push({
-          query: result.query,
-          source: result.source,
-          confidence: result.confidence,
-          ingredients_len: result.ingredients_len,
-          kcal_100g: result.kcal_100g,
+          query,
+          source,
+          confidence,
+          ingredients_len,
+          kcal_100g,
           pass_fail,
-          ms: result.ms
+          ms
         });
         
-        console.log(`[HEALTHSCAN QA] ${query}: ${result.source}, ${result.ingredients_len} ingredients, ${pass_fail}, ${result.ms}ms (context: scan)`);
+        console.log(`[HEALTHSCAN QA] ${query}: ${source}, ${ingredients_len} ingredients, ${pass_fail}, ${ms}ms (context: scan)`);
         
       } catch (error) {
         console.error(`[HEALTHSCAN QA] ${query} failed:`, error);
@@ -227,9 +240,11 @@ export default function QAPage() {
   const overallStatus = results.length > 0 && results.every(r => r.pass_fail === 'PASS') ? 'PASS' : 'FAIL';
   const healthScanOverallStatus = healthScanResults.length > 0 && healthScanResults.every(r => r.pass_fail === 'PASS') ? 'PASS' : 'FAIL';
 
-  // Expose window.clearQACache for dev console
+// Expose window.clearQACache and debugging helpers for dev console
   if (typeof window !== 'undefined') {
     (window as any).clearQACache = clearQACache;
+    (window as any).runManualQA = runEnrichmentTest;
+    (window as any).runHealthScanQA = runHealthScanTest;
   }
 
   return (
@@ -354,7 +369,7 @@ export default function QAPage() {
                         <th className="border border-border p-2 text-left">Ingredients Len</th>
                         <th className="border border-border p-2 text-left">Kcal/100g</th>
                         <th className="border border-border p-2 text-left">Time (ms)</th>
-                        <th className="border border-border p-2 text-left">Result</th>
+                         <th className="border border-border p-2 text-left">Why Picked</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -378,18 +393,27 @@ export default function QAPage() {
                             {result.kcal_100g ? Math.round(result.kcal_100g) : '-'}
                           </td>
                           <td className="border border-border p-2">{result.ms || '-'}</td>
-                          <td className="border border-border p-2">
-                            <Badge 
-                              variant={result.pass_fail === 'PASS' ? 'default' : 'destructive'}
-                              className="text-xs"
-                            >
-                              {result.pass_fail === 'PASS' ? (
-                                <><CheckCircle className="w-3 h-3 mr-1" />PASS</>
-                              ) : (
-                                <><XCircle className="w-3 h-3 mr-1" />FAIL</>
-                              )}
-                            </Badge>
-                          </td>
+                           <td className="border border-border p-2">
+                             <Badge 
+                               variant={result.pass_fail === 'PASS' ? 'default' : 'destructive'}
+                               className="text-xs"
+                             >
+                               {result.pass_fail === 'PASS' ? (
+                                 <><CheckCircle className="w-3 h-3 mr-1" />PASS</>
+                               ) : (
+                                 <><XCircle className="w-3 h-3 mr-1" />FAIL</>
+                               )}
+                             </Badge>
+                           </td>
+                           <td className="border border-border p-2 text-xs">
+                             {result.source && (
+                               <div className="space-y-1">
+                                 <div>Source: {result.source}</div>
+                                 <div>Ingredients: {result.ingredients_len}</div>
+                                 {result.ms && <div>Time: {result.ms}ms</div>}
+                               </div>
+                             )}
+                           </td>
                         </tr>
                       ))}
                     </tbody>
@@ -433,7 +457,7 @@ export default function QAPage() {
                         <th className="border border-border p-2 text-left">Ingredients Len</th>
                         <th className="border border-border p-2 text-left">Kcal/100g</th>
                         <th className="border border-border p-2 text-left">Time (ms)</th>
-                        <th className="border border-border p-2 text-left">Result</th>
+                        <th className="border border-border p-2 text-left">Why Picked</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -457,18 +481,27 @@ export default function QAPage() {
                             {result.kcal_100g ? Math.round(result.kcal_100g) : '-'}
                           </td>
                           <td className="border border-border p-2">{result.ms || '-'}</td>
-                          <td className="border border-border p-2">
-                            <Badge 
-                              variant={result.pass_fail === 'PASS' ? 'default' : 'destructive'}
-                              className="text-xs"
-                            >
-                              {result.pass_fail === 'PASS' ? (
-                                <><CheckCircle className="w-3 h-3 mr-1" />PASS</>
-                              ) : (
-                                <><XCircle className="w-3 h-3 mr-1" />FAIL</>
-                              )}
-                            </Badge>
-                          </td>
+                           <td className="border border-border p-2">
+                             <Badge 
+                               variant={result.pass_fail === 'PASS' ? 'default' : 'destructive'}
+                               className="text-xs"
+                             >
+                               {result.pass_fail === 'PASS' ? (
+                                 <><CheckCircle className="w-3 h-3 mr-1" />PASS</>
+                               ) : (
+                                 <><XCircle className="w-3 h-3 mr-1" />FAIL</>
+                               )}
+                             </Badge>
+                           </td>
+                           <td className="border border-border p-2 text-xs">
+                             {result.source && (
+                               <div className="space-y-1">
+                                 <div>Source: {result.source}</div>
+                                 <div>Ingredients: {result.ingredients_len}</div>
+                                 {result.ms && <div>Time: {result.ms}ms</div>}
+                               </div>
+                             )}
+                           </td>
                         </tr>
                       ))}
                     </tbody>

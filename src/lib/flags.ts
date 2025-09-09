@@ -37,6 +37,12 @@ export const F = {
   ENRICH_V2_ROUTER: flag('VITE_ENRICH_V2_ROUTER', true),         // Unified router for manual & health-scan (on by default)
   ENRICH_BRAND_FIRST: flag('VITE_ENRICH_BRAND_FIRST', true),     // Brand-first enrichment (on by default)
   ENRICH_SANDWICH_ROUTING: flag('VITE_ENRICH_SANDWICH_ROUTING', true), // Sandwich-specific routing (on by default)
+  
+  // New v2.2 routing flags
+  ENRICH_V22_LOCK_SANDWICH: flag('VITE_ENRICH_V22_LOCK_SANDWICH', true),  // Hard-gate sandwich routing (on by default)
+  ENRICH_FDC_GUARD: flag('VITE_ENRICH_FDC_GUARD', true),                  // Reject weak FDC when better exists (on by default)
+  ENRICH_NIX_CAP_PER_QUERY: intFlag('VITE_ENRICH_NIX_CAP_PER_QUERY', 2),  // Max 2 Nutritionix requests per query (on by default)
+  ENRICH_DIAG: flag('VITE_ENRICH_DIAG', false),                           // Structured console logs (off by default)
 };
 
 // Helper for sampling (dev-only randomness)

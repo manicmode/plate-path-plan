@@ -731,31 +731,51 @@ const flag = (name: string, onByDefault = true) => {
   return !!v;
 };
 
+const intFlag = (name: string, def = 3) => {
+  const v = (Deno.env as any)?.[name];
+  const n = Number(v);
+  return Number.isFinite(n) ? n : def;
+};
+
 const ENRICH_V2_ING_AWARE = flag('VITE_ENRICH_V2_ING_AWARE', true);
 const ENRICH_BRAND_FIRST = flag('VITE_ENRICH_BRAND_FIRST', true);
 const ENRICH_SANDWICH_ROUTING = flag('VITE_ENRICH_SANDWICH_ROUTING', true);
 const ENRICH_LOG_DIAG = flag('VITE_ENRICH_LOG_DIAG', false);
 const ENRICH_SAFE_MODE = flag('VITE_ENRICH_SAFE_MODE', false);
 const ENRICH_V2_ROUTER = flag('VITE_ENRICH_V2_ROUTER', true);
-const ENRICH_VERSION = "v2.3-unified"; // Updated for unified scoring
 
-// Query classification helpers
-const SANDWICH_HINTS = ['sandwich', 'club sandwich', 'sub', 'hoagie', 'panini', 'wrap', 'burger', 'taco'];
+// New v2.2 routing flags
+const ENRICH_V22_LOCK_SANDWICH = flag('VITE_ENRICH_V22_LOCK_SANDWICH', true);
+const ENRICH_FDC_GUARD = flag('VITE_ENRICH_FDC_GUARD', true);
+const ENRICH_NIX_CAP_PER_QUERY = intFlag('VITE_ENRICH_NIX_CAP_PER_QUERY', 2);
+const ENRICH_DIAG = flag('VITE_ENRICH_DIAG', false);
+const ENRICH_VERSION = "v2.4-hardgate"; // Updated for hard-gated routing
 
-function isSandwichy(q: string) {
-  const s = q.toLowerCase();
-  return SANDWICH_HINTS.some(h => s.includes(h));
+// Query classification helpers - Updated for v2.2
+const SANDWICH_HINTS = ['club', 'sandwich', 'sub', 'wrap', 'burger', 'torta', 'hoagie'];
+
+function isSandwichy(q: string): boolean {
+  const tokens = q.toLowerCase().split(/\b/);
+  return SANDWICH_HINTS.some(hint => tokens.includes(hint));
 }
 
 function isMultiWord(q: string) {
   return q.trim().includes(' ');
 }
 
-const BREAD_HINTS = ['wheat', 'whole', 'white', 'sourdough', 'multigrain', 'rye'];
+const BREAD_HINTS = ['wheat', 'whole', 'white', 'sourdough', 'multigrain', 'rye', 'ciabatta', 'brioche'];
 
-function extractBreadHints(q: string) {
+function extractBreadHints(q: string): string[] {
   const s = q.toLowerCase();
   return BREAD_HINTS.filter(h => s.includes(h));
+}
+
+function breadMatches(candidate: EnrichedFood, breadTokens: string[]): boolean {
+  if (!breadTokens.length) return false;
+  const candidateName = (candidate.name || '').toLowerCase();
+  const ingredientText = candidate.ingredients?.map(i => i.name).join(' ').toLowerCase() || '';
+  const combined = `${candidateName} ${ingredientText}`;
+  return breadTokens.some(token => combined.includes(token.toLowerCase()));
 }
 
 // UNIFIED SCORING AND GUARD LOGIC (shared by manual and health scan flows)
@@ -765,6 +785,19 @@ interface ScoringCandidate {
   score: number;
 }
 
+interface DiagnosticData {
+  q: string;
+  context: 'manual' | 'scan';
+  chosen?: { source: string; ingredients_len: number };
+  tried: {
+    nix?: { calls: number; ingredients_lens: number[] };
+    edamam?: { ingredients_len?: number };
+    fdc?: { ingredients_len?: number };
+  };
+  decision: 'gate' | 'score' | 'guard';
+  time_ms: number;
+}
+
 const scoreAndPick = (
   candidates: EnrichedFood[], 
   isSandwich: boolean, 
@@ -772,31 +805,34 @@ const scoreAndPick = (
 ): EnrichedFood | null => {
   if (!candidates.length) return null;
   
-  // Step 1: REJECT RULE - Filter out weak FDC if better options exist
-  const hasQualifiedNonFDC = candidates.some(c => 
-    c.source !== 'FDC' && (c.ingredients?.length ?? 0) >= 2
-  );
-  
-  const filteredCandidates = candidates.filter(candidate => {
-    if (candidate.source === 'FDC' && 
-        (candidate.ingredients?.length ?? 0) <= 1 && 
-        hasQualifiedNonFDC) {
-      if (ENRICH_LOG_DIAG) {
-        console.log(`[ENRICH][REJECT] FDC candidate rejected: ${candidate.name} (${candidate.ingredients?.length ?? 0} ingredients, better options exist)`);
+  // Step 1: FDC GUARD - Reject weak FDC when better exists (if flag enabled)
+  let filteredCandidates = candidates;
+  if (ENRICH_FDC_GUARD) {
+    const hasQualifiedNonFDC = candidates.some(c => 
+      c.source !== 'FDC' && (c.ingredients?.length ?? 0) >= 2
+    );
+    
+    filteredCandidates = candidates.filter(candidate => {
+      if (candidate.source === 'FDC' && 
+          (candidate.ingredients?.length ?? 0) <= 1 && 
+          hasQualifiedNonFDC) {
+        if (ENRICH_DIAG || ENRICH_LOG_DIAG) {
+          console.log(`[ENRICH][GUARD] FDC rejected: ${candidate.name} (${candidate.ingredients?.length ?? 0} ingredients, better exists)`);
+        }
+        return false;
       }
-      return false;
-    }
-    return true;
-  });
+      return true;
+    });
+  }
   
   if (!filteredCandidates.length) return null;
   
-  // Step 2: SCORE RULE - Score remaining candidates
+  // Step 2: SCORE RULE (after reject filter)
   const scoredCandidates: ScoringCandidate[] = filteredCandidates.map(candidate => {
     const ingredientCount = candidate.ingredients?.length ?? 0;
     let score = candidate.confidence ?? 0.75;
     
-    // Ingredient scoring
+    // Base ingredient scoring
     if (ingredientCount >= 5) {
       score += 0.35;
     } else if (ingredientCount >= 3) {
@@ -808,31 +844,22 @@ const scoreAndPick = (
     }
     
     // Sandwich-specific bonuses
-    if (isSandwich) {
-      if (candidate.source === 'NUTRITIONIX') {
-        score += 0.10;
-      }
-      
-      // Bread matching bonus
-      if (breadTokens.length > 0) {
-        const candidateName = (candidate.name || '').toLowerCase();
-        const hasMatchingBread = breadTokens.some(token => 
-          candidateName.includes(token.toLowerCase())
-        );
-        if (hasMatchingBread) {
-          score += 0.05;
-        }
-      }
+    if (isSandwich && candidate.source === 'NUTRITIONIX') {
+      score += 0.10;
+    }
+    
+    if (isSandwich && breadMatches(candidate, breadTokens)) {
+      score += 0.05;
     }
     
     return { result: candidate, source: candidate.source, score };
   });
   
-  // Step 3: Sort by score and pick winner
+  // Step 3: Sort by score descending and pick first
   scoredCandidates.sort((a, b) => b.score - a.score);
   const winner = scoredCandidates[0];
   
-  if (ENRICH_LOG_DIAG) {
+  if (ENRICH_DIAG) {
     console.log(`[ENRICH][SCORE] Winner: ${winner.source} (${winner.result.ingredients?.length ?? 0} ingredients, score: ${winner.score.toFixed(3)})`);
   }
   
@@ -845,59 +872,133 @@ const enrichDish = async (query: string, options: {
   context?: 'manual' | 'scan';
   noCache?: boolean;
   bust?: string;
+  diag?: boolean;
 }): Promise<EnrichedFood | null> => {
-  const { breadKind, context = 'manual' } = options;
+  const startTime = Date.now();
+  const { breadKind, context = 'manual', diag = false } = options;
   const isSandwich = isSandwichy(query);
   const isMultiWordQuery = isMultiWord(query);
   const breadTokens = breadKind ? [breadKind] : extractBreadHints(query);
   
-  if (ENRICH_LOG_DIAG) {
+  let nixCalls = 0;
+  const diagnostics: DiagnosticData = {
+    q: query,
+    context,
+    tried: {},
+    decision: 'score',
+    time_ms: 0
+  };
+  
+  if (ENRICH_DIAG || diag) {
     console.log(`[ENRICH][ROUTE] Query="${query}", context=${context}, sandwich=${isSandwich}, multiWord=${isMultiWordQuery}, breadHints=${breadTokens.join(',')}`);
   }
   
-  // Collect all candidates in parallel
-  const candidatePromises: Promise<EnrichedFood | null>[] = [];
+  let result: EnrichedFood | null = null;
   
   if (ENRICH_SAFE_MODE) {
     // Safe mode: Edamam → FDC (bypass Nutritionix)
-    if (ENRICH_LOG_DIAG) {
+    diagnostics.decision = 'guard';
+    if (ENRICH_DIAG) {
       console.log(`[ENRICH][SAFE_MODE] Bypassing Nutritionix for "${query}"`);
     }
-    candidatePromises.push(
-      searchEdamam(query),
-      searchFDC(query)
-    );
-  } else if (isSandwich || isMultiWordQuery) {
-    // Sandwich/multi-word: Nutritionix (branded deep-fetch) → Edamam → FDC (guarded)
-    candidatePromises.push(
-      searchNutritionix(query, breadKind, isSandwich),
-      searchEdamam(query),
-      searchFDC(query)
-    );
+    
+    const edamamResult = await searchEdamam(query);
+    if (edamamResult) {
+      diagnostics.tried.edamam = { ingredients_len: edamamResult.ingredients?.length ?? 0 };
+      result = edamamResult;
+    } else {
+      const fdcResult = await searchFDC(query);
+      if (fdcResult) {
+        diagnostics.tried.fdc = { ingredients_len: fdcResult.ingredients?.length ?? 0 };
+        result = fdcResult;
+      }
+    }
+  } else if (ENRICH_V22_LOCK_SANDWICH && isSandwich) {
+    // Hard-gated sandwich routing
+    diagnostics.decision = 'gate';
+    
+    // 1. Try Nutritionix branded deep-fetch first (max 2 calls)
+    let nixResult: EnrichedFood | null = null;
+    if (nixCalls < ENRICH_NIX_CAP_PER_QUERY) {
+      nixResult = await searchNutritionix(query, breadKind, true);
+      nixCalls++;
+      
+      if (nixResult && (nixResult.ingredients?.length ?? 0) >= 5) {
+        diagnostics.tried.nix = { calls: nixCalls, ingredients_lens: [nixResult.ingredients?.length ?? 0] };
+        result = nixResult;
+      }
+    }
+    
+    // 2. Fallback to Edamam if Nutritionix insufficient
+    if (!result) {
+      const edamamResult = await searchEdamam(query);
+      if (edamamResult && (edamamResult.ingredients?.length ?? 0) >= 5) {
+        diagnostics.tried.edamam = { ingredients_len: edamamResult.ingredients?.length ?? 0 };
+        result = edamamResult;
+      } else if (!result) {
+        // 3. Final fallback FDC only if ingredients >= 2
+        const fdcResult = await searchFDC(query);
+        if (fdcResult && (fdcResult.ingredients?.length ?? 0) >= 2) {
+          diagnostics.tried.fdc = { ingredients_len: fdcResult.ingredients?.length ?? 0 };
+          result = fdcResult;
+        }
+      }
+    }
   } else {
-    // Single-word: keep current path (FDC first) but still apply FDC reject when richer option exists
-    candidatePromises.push(
-      searchFDC(query),
-      searchNutritionix(query, breadKind, isSandwich),
-      searchEdamam(query)
-    );
+    // Standard routing with scoring
+    const candidatePromises: Promise<EnrichedFood | null>[] = [];
+    
+    if (isMultiWordQuery) {
+      // Multi-word: Edamam → Nutritionix → FDC
+      candidatePromises.push(
+        searchEdamam(query),
+        nixCalls < ENRICH_NIX_CAP_PER_QUERY ? searchNutritionix(query, breadKind, false) : Promise.resolve(null),
+        searchFDC(query)
+      );
+      if (nixCalls < ENRICH_NIX_CAP_PER_QUERY) nixCalls++;
+    } else {
+      // Single-word: FDC → Nutritionix → Edamam
+      candidatePromises.push(
+        searchFDC(query),
+        nixCalls < ENRICH_NIX_CAP_PER_QUERY ? searchNutritionix(query, breadKind, false) : Promise.resolve(null),
+        searchEdamam(query)
+      );
+      if (nixCalls < ENRICH_NIX_CAP_PER_QUERY) nixCalls++;
+    }
+    
+    const results = await Promise.all(candidatePromises);
+    const validCandidates = results.filter(r => r !== null) as EnrichedFood[];
+    
+    // Track diagnostic info
+    diagnostics.tried.nix = { calls: nixCalls, ingredients_lens: validCandidates.filter(c => c.source === 'NUTRITIONIX').map(c => c.ingredients?.length ?? 0) };
+    const edamamCandidate = validCandidates.find(c => c.source === 'EDAMAM');
+    if (edamamCandidate) {
+      diagnostics.tried.edamam = { ingredients_len: edamamCandidate.ingredients?.length ?? 0 };
+    }
+    const fdcCandidate = validCandidates.find(c => c.source === 'FDC');
+    if (fdcCandidate) {
+      diagnostics.tried.fdc = { ingredients_len: fdcCandidate.ingredients?.length ?? 0 };
+    }
+    
+    // Use unified scoring to pick the best candidate
+    result = scoreAndPick(validCandidates, isSandwich, breadTokens);
   }
   
-  const results = await Promise.all(candidatePromises);
-  const validCandidates = results.filter(r => r !== null) as EnrichedFood[];
-  
-  if (ENRICH_LOG_DIAG && validCandidates.length > 0) {
-    console.log(`[ENRICH][CANDIDATES] Found ${validCandidates.length} candidates: ${validCandidates.map(c => `${c.source}(${c.ingredients?.length ?? 0})`).join(', ')}`);
+  // Finalize diagnostics
+  diagnostics.time_ms = Date.now() - startTime;
+  if (result) {
+    diagnostics.chosen = {
+      source: result.source,
+      ingredients_len: result.ingredients?.length ?? 0
+    };
   }
   
-  // Use unified scoring to pick the best candidate
-  const winner = scoreAndPick(validCandidates, isSandwich, breadTokens);
-  
-  if (winner && ENRICH_LOG_DIAG) {
-    console.log(`[ENRICH][WIN] q="${query}", source=${winner.source}, ingLen=${winner.ingredients?.length ?? 0}, context=${context}`);
+  // Log structured diagnostic line
+  if (ENRICH_DIAG || diag) {
+    console.log(`[ENRICH][DIAG]`, JSON.stringify(diagnostics));
   }
   
-  return winner;
+  return result;
 };
 
 // QA Cache clearing helper (dev/test only)
