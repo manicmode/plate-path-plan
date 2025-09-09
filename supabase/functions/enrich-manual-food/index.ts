@@ -237,16 +237,18 @@ const parseIngredients = (raw?: string) => {
   return ingredients;
 };
 
-// Enhanced Nutritionix API integration - branded-first with ingredient-aware scoring
-const searchNutritionix = async (query: string, isSandwich = false): Promise<EnrichedFood | null> => {
+// Enhanced Nutritionix API integration - branded-first with bread-aware scoring
+const searchNutritionix = async (query: string, breadKind?: string, isSandwich = false): Promise<EnrichedFood | null> => {
   const appId = Deno.env.get('NUTRITIONIX_APP_ID');
   const apiKey = Deno.env.get('NUTRITIONIX_API_KEY');
   if (!appId || !apiKey) return null;
 
   try {
-    console.log(`[ENRICH][NUTRITIONIX] Searching: ${query}`);
+    if (ENRICH_LOG_DIAG) {
+      console.log(`[ENRICH][FETCH:NUTRITIONIX] Searching: ${query}`);
+    }
     
-    // Step 1: ALWAYS call instant search to get candidates
+    // Step 1: Call instant search to get candidates
     const instantResponse = await withTimeout(
       fetch(`https://trackapi.nutritionix.com/v2/search/instant?query=${encodeURIComponent(query)}`, {
         headers: {
@@ -254,7 +256,7 @@ const searchNutritionix = async (query: string, isSandwich = false): Promise<Enr
           'x-app-key': apiKey
         }
       }),
-      1000
+      1200
     );
 
     if (!instantResponse.ok) {
@@ -266,133 +268,123 @@ const searchNutritionix = async (query: string, isSandwich = false): Promise<Enr
     const branded = instantData.branded || [];
     const common = instantData.common || [];
     
-    console.log(`[ENRICH][NIX][INSTANT] branded=${branded.length} common=${common.length}`);
-    
-    // NEW: Sandwich-specific branded search
-    if (isSandwich && ENRICH_V2_SANDWICH_ROUTE && branded.length > 0) {
-      console.log(`[ENRICH][NIX][SANDWICH] Looking for branded sandwich items`);
-      
-      // Filter branded items for sandwich matches (both tokens present)
-      const sandwichCandidates = branded.filter((candidate: any) => {
-        const name = (candidate.food_name || '').toLowerCase();
-        const brandItem = (candidate.brand_name_item_name || '').toLowerCase();
-        const combined = `${name} ${brandItem}`;
-        
-        // Look for items containing both club and sandwich
-        const hasClub = /\bclub\b/.test(combined);
-        const hasSandwich = /\bsandwich\b/.test(combined);
-        
-        return hasClub && hasSandwich;
-      });
-      
-      if (ENRICH_LOG_DIAG) {
-        console.log(`[ENRICH][NIX][DF] {count: ${sandwichCandidates.length}, acceptedIngLen: "≥5"}`);
-      }
-      
-      // Try up to 5 sandwich-specific branded items
-      const candidatesToTry = sandwichCandidates.slice(0, 5);
-      
-      for (let i = 0; i < candidatesToTry.length; i++) {
-        const candidate = candidatesToTry[i];
-        if (candidate?.nix_item_id) {
-          console.log(`[ENRICH][NX][DEEP] item=${candidate.nix_item_id} name="${candidate.food_name}"`);
-          
-          try {
-            const itemResponse = await withTimeout(
-              fetch(`https://trackapi.nutritionix.com/v2/search/item?nix_item_id=${candidate.nix_item_id}`, {
-                headers: {
-                  'x-app-id': appId,
-                  'x-app-key': apiKey
-                }
-              }),
-              1000
-            );
-
-            if (itemResponse.ok) {
-              const itemData = await itemResponse.json();
-              const foods = itemData.foods || [];
-              
-              if (foods.length > 0) {
-                const food = foods[0];
-                const result = parseNutritionixBrandedItem(food, candidate, query);
-                
-                console.log(`[ENRICH][NX][DEEP] item=${candidate.nix_item_id} ingredients=${result.ingredients.length}`);
-                
-                // For sandwiches, require ≥5 ingredients
-                if (result.ingredients.length >= 5) {
-                  console.log(`[ENRICH][NX][BRANDED] Found sandwich with sufficient ingredients (${result.ingredients.length}), using this result`);
-                  return result;
-                }
-              }
-            }
-          } catch (error) {
-            console.log(`[ENRICH][NX][DEEP] Failed to fetch item ${candidate.nix_item_id}: ${error.message}`);
-            continue;
-          }
-        }
-      }
-      
-      // If no sandwich-specific branded items worked, fall back to regular branded search
-      console.log(`[ENRICH][NIX][SANDWICH] No suitable sandwich branded items found, falling back to regular search`);
+    if (ENRICH_LOG_DIAG) {
+      console.log(`[ENRICH][TRY][NIX] q="${query}", branded=${branded.length}, common=${common.length}`);
     }
     
-    // NEW: Branded-first strategy - try multiple branded items for ingredients
-    if (branded.length > 0) {
-      console.log(`[ENRICH][NX][BRANDED] Trying ${Math.min(6, branded.length)} branded candidates`);
+    // Enhanced branded-first strategy with sandwich priority
+    if (branded.length > 0 && ENRICH_V2_SANDWICH_ROUTE) {
+      let bestCandidate: any = null;
+      let bestScore = 0;
+      let bestResult: EnrichedFood | null = null;
       
-      // Try up to 6 branded items to find one with good ingredients
-      const brandedCandidates = branded.slice(0, 6);
-      
-      for (let i = 0; i < brandedCandidates.length; i++) {
-        const candidate = brandedCandidates[i];
-        if (candidate?.nix_item_id) {
-          console.log(`[ENRICH][NX][DEEP] item=${candidate.nix_item_id} name="${candidate.food_name}"`);
+      // For sandwiches, prioritize items that match query tokens closely
+      let candidatesToTry = branded;
+      if (isSandwich) {
+        const queryTokens = query.toLowerCase().split(/\s+/);
+        candidatesToTry = branded.filter((candidate: any) => {
+          const name = (candidate.food_name || '').toLowerCase();
+          const brandItem = (candidate.brand_name_item_name || '').toLowerCase();
+          const combined = `${name} ${brandItem}`;
           
-          try {
-            const itemResponse = await withTimeout(
-              fetch(`https://trackapi.nutritionix.com/v2/search/item?nix_item_id=${candidate.nix_item_id}`, {
-                headers: {
-                  'x-app-id': appId,
-                  'x-app-key': apiKey
-                }
-              }),
-              1000
-            );
+          // Check if all query tokens are present
+          return queryTokens.every(token => combined.includes(token));
+        });
+        
+        if (candidatesToTry.length === 0) {
+          candidatesToTry = branded; // Fallback to all branded if no matches
+        }
+      }
+      
+      // Try up to 5 branded candidates
+      const maxCandidates = Math.min(5, candidatesToTry.length);
+      
+      for (let i = 0; i < maxCandidates; i++) {
+        const candidate = candidatesToTry[i];
+        if (!candidate?.nix_item_id) continue;
+        
+        try {
+          const itemResponse = await withTimeout(
+            fetch(`https://trackapi.nutritionix.com/v2/search/item?nix_item_id=${candidate.nix_item_id}`, {
+              headers: {
+                'x-app-id': appId,
+                'x-app-key': apiKey
+              }
+            }),
+            1200
+          );
 
-            if (itemResponse.ok) {
-              const itemData = await itemResponse.json();
-              const foods = itemData.foods || [];
+          if (itemResponse.ok) {
+            const itemData = await itemResponse.json();
+            const foods = itemData.foods || [];
+            
+            if (foods.length > 0) {
+              const food = foods[0];
+              const result = parseNutritionixBrandedItem(food, candidate, query);
+              const ingLen = result.ingredients.length;
               
-              if (foods.length > 0) {
-                const food = foods[0];
-                const result = parseNutritionixBrandedItem(food, candidate, query);
-                
-                console.log(`[ENRICH][NX][DEEP] item=${candidate.nix_item_id} ingredients=${result.ingredients.length}`);
-                
-                // If we found good ingredients (3+), return this one immediately
-                if (result.ingredients.length >= 3) {
-                  console.log(`[ENRICH][NX][BRANDED] Found good ingredients (${result.ingredients.length}), using this result`);
-                  return result;
+              if (ENRICH_LOG_DIAG) {
+                console.log(`[ENRICH][FETCH:NUTRITIONIX] {id: "${candidate.nix_item_id}", name: "${candidate.food_name}", branded: true, ingredients_len: ${ingLen}}`);
+              }
+              
+              // Calculate candidate score
+              let score = result.confidence || 0.75;
+              
+              // Ingredient scoring
+              if (ingLen >= 3) score += 0.25;
+              else if (ingLen === 2) score += 0.10;
+              else score -= 0.30;
+              
+              // Brand boost
+              score += 0.05;
+              
+              // Bread matching bonus
+              if (breadKind && (candidate.food_name || candidate.brand_name_item_name || '').toLowerCase().includes(breadKind.toLowerCase())) {
+                score += 0.05;
+              }
+              
+              // Sandwich-specific boosts
+              if (isSandwich && ENRICH_V2_SANDWICH_ROUTE) {
+                if (ingLen >= 5) {
+                  score += 0.30; // Major boost for detailed sandwiches
                 }
-                
-                // Otherwise, if this is the last candidate or we have at least some ingredients, return it
-                if (i === brandedCandidates.length - 1 || result.ingredients.length > 1) {
-                  return result;
+                if (ingLen >= 8) {
+                  score += 0.20; // Extra boost for very detailed ingredient lists
                 }
               }
+              
+              // Accept immediately if meets brand criteria
+              const minIngredients = isSandwich ? 5 : 3;
+              if (ingLen >= minIngredients) {
+                if (ENRICH_LOG_DIAG) {
+                  console.log(`[ENRICH][SELECT] {source: "NUTRITIONIX", ingredients_len: ${ingLen}, breadMatched: ${!!breadKind}}`);
+                }
+                return result;
+              }
+              
+              // Track best candidate if none meet immediate criteria
+              if (score > bestScore) {
+                bestScore = score;
+                bestCandidate = candidate;
+                bestResult = result;
+              }
             }
-          } catch (error) {
-            console.log(`[ENRICH][NX][DEEP] Failed to fetch item ${candidate.nix_item_id}: ${error.message}`);
-            continue;
           }
+        } catch (error) {
+          console.log(`[ENRICH][NUTRITIONIX] Deep-fetch failed for ${candidate.nix_item_id}: ${error.message}`);
+          continue;
         }
+      }
+      
+      // Return best branded result if we found one
+      if (bestResult) {
+        return bestResult;
       }
     }
     
     // Fallback to common if branded failed or unavailable
     if (common.length > 0) {
       const bestCommon = pickBestCandidate(query, common);
-      console.log(`[ENRICH][NX][COMMON] low_value=true`);
       
       const naturalResult = await searchNutritionixNatural(bestCommon.food_name || query, appId, apiKey);
       if (naturalResult) {
@@ -402,7 +394,6 @@ const searchNutritionix = async (query: string, isSandwich = false): Promise<Enr
       }
     }
     
-    console.log(`[ENRICH][NUTRITIONIX] No viable candidates found`);
     return null;
     
   } catch (error) {
@@ -668,7 +659,7 @@ function classifyQuery(q: string): 'dish'|'ingredient' {
   return 'dish';
 }
 
-// Bread-aware normalizer for sandwich queries
+// Enhanced bread-aware normalizer for sandwich queries
 function normalizeSandwichQuery(query: string): { baseDish: string; breadKind?: string } {
   if (!ENRICH_V2_SANDWICH_ROUTE) {
     return { baseDish: query };
@@ -681,16 +672,16 @@ function normalizeSandwichQuery(query: string): { baseDish: string; breadKind?: 
     return { baseDish: query };
   }
   
-  // Strip trailing bread specifiers
-  const breadPattern = /\s+on\s+(wheat|white|rye|sourdough|multigrain|whole\s+wheat|whole\s+grain|whole-grain|wholewheat)$/i;
+  // Enhanced bread pattern with more options
+  const breadPattern = /\s+on\s+(wheat|white|rye|sourdough|multigrain|whole\s+wheat|whole\s+grain|whole-grain|wholewheat|hoagie|roll|wrap|pita)$/i;
   const match = query.match(breadPattern);
   
   if (match) {
     const baseDish = query.replace(breadPattern, '').trim();
-    const breadKind = match[1];
+    const breadKind = match[1].toLowerCase().replace(/\s+/g, ' ');
     
     if (ENRICH_LOG_DIAG) {
-      console.log(`[ENRICH][ROUTE] sandwich {q: "${query}", base: "${baseDish}", breadKind: "${breadKind}"}`);
+      console.log(`[ENRICH][ROUTE] {q: "${query}", base: "${baseDish}", bread: "${breadKind}"}`);
     }
     
     return { baseDish, breadKind };
@@ -699,6 +690,35 @@ function normalizeSandwichQuery(query: string): { baseDish: string; breadKind?: 
   return { baseDish: query };
 }
 
+// QA Cache clearing helper (dev/test only)
+const clearQACache = async (supabaseAdmin: any): Promise<boolean> => {
+  try {
+    const qaQueries = [
+      'club sandwich',
+      'club sandwich on wheat', 
+      'yakisoba',
+      'aloo gobi',
+      'pollo con rajas'
+    ];
+    
+    const { error } = await supabaseAdmin
+      .from('food_enrichment_cache')
+      .delete()
+      .in('query', qaQueries);
+    
+    if (error) {
+      console.error('[QA] Cache clear failed:', error);
+      return false;
+    }
+    
+    console.log('[QA] Cache cleared for', qaQueries.length, 'QA queries');
+    return true;
+  } catch (error) {
+    console.error('[QA] Cache clear error:', error);
+    return false;
+  }
+};
+
 serve(async (req) => {
   console.log(`[ENRICH][REQ] ${new Date().toISOString()}`);
   
@@ -706,9 +726,29 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const url = new URL(req.url);
+  
+  // Handle QA cache clearing endpoint
+  if (url.pathname.includes('clear-qa-cache')) {
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false
+        }
+      }
+    );
+    
+    const success = await clearQACache(supabaseAdmin);
+    return new Response(JSON.stringify({ success }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const { query, locale = 'auto' } = await req.json();
-    const url = new URL(req.url);
     const bustParam = url.searchParams.get('bust');
     const bustHeader = req.headers.get('x-qa-bust');
     const qaCache = bustParam === '1' || bustHeader === '1';
@@ -720,7 +760,12 @@ serve(async (req) => {
       });
     }
 
-    // Build query hash
+    // Normalize query for sandwiches (bread-aware parsing)
+    const { baseDish, breadKind } = normalizeSandwichQuery(query);
+    const isSandwich = /\bsandwich\b/i.test(query);
+    const searchQuery = baseDish;
+
+    // Build query hash for caching (use original query, not normalized)
     const normalizedQuery = query.toLowerCase().trim();
     const hashInput = `${normalizedQuery}|${locale}`;
     const query_hash = await sha256(hashInput);
@@ -777,9 +822,15 @@ serve(async (req) => {
 
     if (!ENRICH_V2_ING_AWARE) {
       // Fallback to old behavior if feature disabled
-      const nutritionixResult = await searchNutritionix(query);
+      const nutritionixResult = await searchNutritionix(query, breadKind);
       if (nutritionixResult) {
-        const ttl_hours = 90 * 24; // 90 days
+        // Add versioning to result
+        nutritionixResult.conf = { 
+          enrich_version: ENRICH_VERSION,
+          providerPath: 'nutritionix_legacy'
+        };
+        
+        const ttl_hours = nutritionixResult.low_value ? 6 : 90 * 24;
         const expires_at = new Date(Date.now() + ttl_hours * 3600 * 1000).toISOString();
         
         await supabaseAdmin
@@ -791,7 +842,7 @@ serve(async (req) => {
             source: nutritionixResult.source,
             confidence: nutritionixResult.confidence,
             expires_at,
-            low_value: false
+            low_value: nutritionixResult.low_value || false
           }, { onConflict: 'query_hash' });
 
         return new Response(JSON.stringify(nutritionixResult), {
@@ -800,13 +851,8 @@ serve(async (req) => {
       }
     }
 
-    // INGREDIENT-AWARE V2 LOGIC WITH DISH ROUTING
+    // INGREDIENT-AWARE V2 LOGIC WITH BREAD ROUTING
     let result: EnrichedFood | null = null;
-    
-    // Normalize query for sandwiches
-    const { baseDish, breadKind } = normalizeSandwichQuery(query);
-    const isSandwich = /\bsandwich\b/i.test(query);
-    const searchQuery = baseDish;
     
     // Classify query type for provider ordering
     const queryType = classifyQuery(normalizedQuery);
@@ -819,43 +865,28 @@ serve(async (req) => {
     
     for (const provider of providerOrder) {
       if (provider === 'NUTRITIONIX' && !nutritionixResult) {
-        if (ENRICH_LOG_DIAG) console.log(`[ENRICH][TRY][NIX] q="${normalizedQuery}"`);
-        nutritionixResult = await searchNutritionix(searchQuery, isSandwich);
-        if (nutritionixResult && ENRICH_LOG_DIAG) {
-          const branded = nutritionixResult.source_id ? true : false;
-          console.log(`[ENRICH][TRY][NIX] q="${normalizedQuery}", branded=${branded}, ingLen=${nutritionixResult.ingredients.length}`);
-        }
+        nutritionixResult = await searchNutritionix(searchQuery, breadKind, isSandwich);
       }
       if (provider === 'EDAMAM' && !edamamResult) {
-        if (ENRICH_LOG_DIAG) console.log(`[ENRICH][TRY][EDAMAM] q="${normalizedQuery}"`);
         edamamResult = await searchEdamam(searchQuery);
-        if (edamamResult && ENRICH_LOG_DIAG) {
-          console.log(`[ENRICH][TRY][EDAMAM] q="${normalizedQuery}", ingLen=${edamamResult.ingredients.length}`);
-        }
       }
       if (provider === 'FDC' && !fdcResult) {
-        if (ENRICH_LOG_DIAG) console.log(`[ENRICH][TRY][FDC] q="${normalizedQuery}"`);
         fdcResult = await searchFDC(searchQuery);
-        if (fdcResult) {
-          if (fdcResult.ingredients.length <= 1) {
-            fdcResult.low_value = true;
-          }
-          if (ENRICH_LOG_DIAG) {
-            console.log(`[ENRICH][TRY][FDC] q="${normalizedQuery}", ingLen=${fdcResult.ingredients.length}, kcal100g=${fdcResult.per100g.calories}`);
-          }
+        if (fdcResult && fdcResult.ingredients.length <= 1) {
+          fdcResult.low_value = true;
         }
       }
     }
 
-    // Ingredient-aware selection with minimum requirements
+    // Enhanced ingredient-aware selection with sandwich-specific logic
     const minIngredients = (candidate: EnrichedFood, queryText: string): number => {
-      if (queryText.includes('sandwich') || queryText.includes('burger') || queryText.includes('taco') || queryText.includes('wrap')) {
+      if (/sandwich|burger|taco|wrap/.test(queryText)) {
         return candidate.source === 'NUTRITIONIX' ? 5 : 3;
       }
       return candidate.source === 'NUTRITIONIX' ? 3 : 2;
     };
     
-    // Score and pick winner with sandwich-specific logic
+    // Score and pick winner with bread matching
     const candidates: Array<{result: EnrichedFood, score: number, reason: string, branded?: boolean}> = [];
     
     if (nutritionixResult) {
@@ -869,6 +900,11 @@ serve(async (req) => {
       else score -= 0.30;
       if (branded) score += 0.05;
       
+      // Bread matching bonus
+      if (breadKind && nutritionixResult.name?.toLowerCase().includes(breadKind.toLowerCase())) {
+        score += 0.05;
+      }
+      
       // Sandwich-specific scoring boosts
       if (isSandwich && ENRICH_V2_SANDWICH_ROUTE) {
         if (branded && ingLen >= 5) {
@@ -876,6 +912,11 @@ serve(async (req) => {
         }
         if (ingLen >= 8) {
           score += 0.20; // Boost for very detailed ingredient lists
+        }
+        
+        // Hard block against weak options when rich ones exist
+        if (ingLen <= 1 && (edamamResult?.ingredients.length >= 5)) {
+          score -= 0.50;
         }
       }
       
@@ -945,10 +986,10 @@ serve(async (req) => {
       result = winner.result;
       
       if (ENRICH_LOG_DIAG) {
-        console.log(`[ENRICH][DECISION]`, {
+        console.log(`[ENRICH][SELECT]`, {
           source: result.source,
-          ingLen: result.ingredients.length,
-          conf: result.confidence
+          ingredients_len: result.ingredients.length,
+          breadMatched: !!breadKind && result.name?.toLowerCase().includes(breadKind.toLowerCase())
         });
       }
       
@@ -964,15 +1005,12 @@ serve(async (req) => {
         }
       });
     }
-      });
-    }
     
     // Final fallback: GPT estimation
     if (!result) {
       result = await estimateWithGPT(query);
       if (result) {
         result.low_value = true; // GPT estimates are always low value
-        if (ENRICH_LOG_DIAG) console.log(`[ENRICH][PICK] source=ESTIMATED, ingLen=${result.ingredients.length}, fallback=true`);
       }
     }
     
@@ -984,32 +1022,15 @@ serve(async (req) => {
       });
     }
 
-    // Set low_value flag based on ingredient count
-    if (result.ingredients.length <= 1 && !result.low_value) {
-      result.low_value = true;
-    }
-
-    // Add cache versioning to result
-    result = {
-      ...result,
-      conf: {
-        enrich_version: ENRICH_VERSION,
-        branded: result.source === 'NUTRITIONIX' && !!result.source_id,
-        providerPath: queryType
-      }
+    // Add versioning to result
+    result.conf = { 
+      enrich_version: ENRICH_VERSION,
+      providerPath: result.source.toLowerCase(),
+      ...(result.conf || {})
     };
 
-    // Log final result
-    const ttl_hours = result.low_value ? 6 : (90 * 24); // 6h for low-value, 90d for good results
-    
-    console.log("[ENRICH][PICK]", {
-      source: result.source,
-      ingLen: result.ingredients?.length ?? 0,
-      lowValue: result.low_value || false,
-      ttl: `${ttl_hours}h`
-    });
-
-    // CACHE WITH LOW_VALUE AWARENESS
+    // Cache the result with appropriate TTL
+    const ttl_hours = result.low_value ? 6 : 90 * 24; // 6 hours for low value, 90 days for good results
     const expires_at = new Date(Date.now() + ttl_hours * 3600 * 1000).toISOString();
     
     await supabaseAdmin
@@ -1024,17 +1045,24 @@ serve(async (req) => {
         low_value: result.low_value || false
       }, { onConflict: 'query_hash' });
 
-    console.log(`[ENRICH][CACHED] ${result.source} expires=${expires_at.split('T')[0]} low_value=${result.low_value || false}`);
+    console.log(`[ENRICH][SUCCESS]`, {
+      q: normalizedQuery,
+      source: result.source,
+      conf: result.confidence,
+      ingLen: result.ingredients?.length ?? 0,
+      lowValue: result.low_value || false,
+      ttl: ttl_hours
+    });
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error(`[ENRICH][ERROR] ${error.message}`);
-    return new Response(JSON.stringify({
-      error: 'Enrichment failed',
-      details: error.message
+    console.error(`[ENRICH][ERROR]`, error);
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      message: error.message 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
