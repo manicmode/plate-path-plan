@@ -102,21 +102,29 @@ if (import.meta.env.MODE !== 'production' || window?.location?.search?.includes(
       const run = async () => {
         try {
           const { supabase } = await import('@/lib/supabase');
+          const session = await supabase.auth.getSession();
+          const authToken = session.data.session?.access_token || '';
+          
           const url = options.bust ? 'enrich-manual-food?bust=1' : 'enrich-manual-food';
           const { data, error } = await supabase.functions.invoke(url, {
             body: { query: q.trim(), locale: 'auto' }
           });
           
-          if (error) {
-            console.error(`[ENRICH QA] ${q} error:`, error);
-            return { q, source: null, ingLen: 0, kcal_100g: null };
-          }
-          
+          const res = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/enrich-manual-food', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json', 
+              'Authorization': `Bearer ${authToken}`,
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6b2lpaWpxdGFob2hmYWZxaXJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzOTE2MzgsImV4cCI6MjA2Njk2NzYzOH0.Ny_Gxbhus7pNm0OHipRBfaFLNeK_ZSePfbj8no4SVGw'
+            },
+            body: JSON.stringify({ query: q })
+          });
+          const json = await res.json();
           return { 
             q, 
-            source: data?.source, 
-            ingLen: (data?.ingredients || []).length, 
-            kcal_100g: data?.per100g?.calories ?? null 
+            source: json.source, 
+            ingLen: (json.ingredients || []).length, 
+            kcal_100g: json?.per100g?.calories ?? null 
           };
         } catch (error) {
           console.error(`[ENRICH QA] ${q} failed:`, error);
@@ -130,23 +138,6 @@ if (import.meta.env.MODE !== 'production' || window?.location?.search?.includes(
       console.log('[ENRICH QA]', a.q, a.source, a.ingLen, a.kcal_100g, '2nd:', b.ingLen);
     }
     return results;
-  };
-  
-  // Expose clearQACache helper
-  (window as any).clearQACache = async () => {
-    try {
-      const { supabase } = await import('@/lib/supabase');
-      const { data, error } = await supabase.functions.invoke('clear-qa-cache');
-      if (error) {
-        console.error('[QA] Cache clear failed:', error);
-        return false;
-      }
-      console.log('[QA] Cache cleared successfully');
-      return data?.success || true;
-    } catch (error) {
-      console.error('[QA] Cache clear error:', error);
-      return false;
-    }
   };
 }
 

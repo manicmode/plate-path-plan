@@ -108,12 +108,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     if (isOpen) {
       const itemsToUse = prefilledItems || initialItems;
       console.log('[REVIEW] Initializing with items:', itemsToUse.length, prefilledItems ? '(prefilled)' : '(detected)');
-      
-      // Context-based selection defaults: health-scan = selected, manual = unselected
-      const initialChecked = context === 'health-scan';
-      setItems(itemsToUse.map(item => ({ ...item, selected: initialChecked })));
+      setItems(itemsToUse.map(item => ({ ...item, selected: true })));
     }
-  }, [isOpen, initialItems, prefilledItems, context]);
+  }, [isOpen, initialItems, prefilledItems]);
 
   // Build modal items for nutrition hydration
   const modalItems = useMemo(() => {
@@ -640,32 +637,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
                 ) : (
                   // Items list
                   <>
-                    {/* Selection controls */}
-                    <div className="flex items-center justify-between px-1 py-2 mb-3">
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setItems(prev => prev.map(item => ({ ...item, selected: true })))}
-                          className="h-7 px-2 text-xs text-white/70 hover:text-white hover:bg-white/10"
-                        >
-                          Select all
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setItems(prev => prev.map(item => ({ ...item, selected: false })))}
-                          className="h-7 px-2 text-xs text-white/70 hover:text-white hover:bg-white/10"
-                        >
-                          Clear all
-                        </Button>
-                      </div>
-                      <div className="text-xs text-white/60">
-                        {selectedCount} selected
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 pt-4">{items.map((item) => (
+                    <div className="space-y-2 pt-4">
+                      {items.map((item) => (
                         <ReviewItemCard
                           key={item.id}
                           item={item}

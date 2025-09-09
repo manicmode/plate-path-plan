@@ -1,9 +1,5 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { callEnrichment } from '@/lib/enrich/edgeClient';
-import { routeEnrichment } from '@/lib/enrich/router';
-import { aggregateResults, formatEnrichedFood } from '@/lib/enrich/aggregate';
-import { F } from '@/lib/flags';
 
 interface Nutrients {
   calories: number;
@@ -43,27 +39,16 @@ export function useManualFoodEnrichment() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const enrich = useCallback(async (
-    query: string, 
-    locale: string = 'auto',
-    options?: { noCache?: boolean; bust?: string; context?: 'manual' | 'scan' | 'qa'; diag?: boolean; }
-  ): Promise<EnrichedFood | null> => {
+  const enrich = useCallback(async (query: string, locale: string = 'auto'): Promise<EnrichedFood | null> => {
     if (!query?.trim()) {
       setError('Query is required');
       return null;
     }
 
-    // Only use enrichment for QA/confirm flows or when explicitly enabled
-    const context = options?.context || 'manual';
-    const isQAContext = context === 'qa';
-    const isConfirmContext = context === 'scan' || context === 'manual'; // After selection
-    
+    // Check feature flag
     const featureEnabled = localStorage.getItem('FEATURE_ENRICH_MANUAL_FOOD') !== 'false';
-    
-    if (!featureEnabled && !isQAContext) {
-      if (F.ENRICH_DIAG) {
-        console.log('[ENRICH] Feature disabled for non-QA context, skipping enrichment');
-      }
+    if (!featureEnabled) {
+      console.log('[ENRICH] Feature disabled, skipping enrichment');
       return null;
     }
 
@@ -71,36 +56,22 @@ export function useManualFoodEnrichment() {
     setError(null);
 
     try {
-      const context = options?.context || 'manual';
-      console.log(`[ENRICH][CLIENT] Calling enrich-manual-food: "${query}" (context: ${context})`);
+      console.log(`[ENRICH][CLIENT] Calling enrich-manual-food: "${query}"`);
       
-      // Try edge function first
-      const edgeResult = await callEnrichment(query, {
-        context,
-        locale,
-        diag: options?.diag,
-        noCache: options?.noCache,
-        bust: options?.bust
-      });
-      
-      // If edge function worked, return its result
-      if (!edgeResult.fallback && edgeResult.data && !edgeResult.error) {
-        console.log(`[ENRICH][SUCCESS] Edge function: Source: ${edgeResult.data.source}, Confidence: ${edgeResult.data.confidence}, Context: ${context}`);
-        return edgeResult.data;
+      const { data, error: functionError } = await supabase.functions.invoke<EnrichedFood>(
+        'enrich-manual-food',
+        { body: { query: query.trim(), locale } }
+      );
+
+      if (functionError) {
+        console.error('[ENRICH][ERROR]', functionError);
+        setError(functionError.message || 'Enrichment failed');
+        return null;
       }
-      
-      // Edge function failed or unavailable - use fallback routing
-      if (F.ENRICH_DIAG) {
-        console.log(`[ENRICH][FALLBACK] Edge unavailable, using local router`);
-      }
-      
-      const routerResult = await routeEnrichment(query, context);
-      const aggregated = aggregateResults(routerResult);
-      const formatted = formatEnrichedFood(aggregated, query);
-      
-      if (formatted) {
-        console.log(`[ENRICH][SUCCESS] Fallback router: Source: ${formatted.source}, Confidence: ${formatted.confidence}, Context: ${context}`);
-        return formatted;
+
+      if (data) {
+        console.log(`[ENRICH][SUCCESS] Source: ${data.source}, Confidence: ${data.confidence}`);
+        return data;
       }
 
       return null;

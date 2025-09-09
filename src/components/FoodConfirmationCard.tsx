@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
 import { withSafeCancel } from '@/lib/ui/withSafeCancel';
 import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
@@ -27,7 +27,7 @@ import { useNutritionStore } from '@/stores/nutritionStore';
 // Add the FoodCandidate type import
 import type { Candidate } from '@/lib/food/search/getFoodCandidates';
 import { inferPortion } from '@/lib/food/portion/inferPortion';
-import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR, F } from '@/lib/flags';
+import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR } from '@/lib/flags';
 import { extractName } from '@/lib/debug/extractName';
 import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
 import { DialogTitle } from '@radix-ui/react-dialog';
@@ -147,59 +147,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [prevItem, setPrevItem] = useState<any | null>(null);
-  // Update FoodConfirmationCard to use enrichment for confirm flow
-  const [enrichmentLoading, setEnrichmentLoading] = useState(false);
-  const [enrichedItem, setEnrichedItem] = useState<FoodItem | null>(null);
-
-  // Add enrichment effect for confirm flow
-  useEffect(() => {
-    if (!currentFoodItem || enrichedItem) return;
-    
-    // Check if we should enrich using new unified flags
-    const shouldEnrich = F.ENRICH_CONFIRM_ENRICH || (typeof window !== 'undefined' && /[?&]QA_ENRICH=1/.test(window.location.search));
-    
-    if (!shouldEnrich) {
-      setEnrichedItem(currentFoodItem);
-      return;
-    }
-
-    let cancelled = false;
-    setEnrichmentLoading(true);
-    
-    const enrichSelected = async (item: FoodItem) => {
-      try {
-        // Call the edge client directly
-        const { callEnrichment } = await import('@/lib/enrich/edgeClient');
-        const result = await callEnrichment(item.name, { context: 'manual' });
-        
-        if (result?.data && !result.fallback) {
-          // Convert enriched result to FoodItem format  
-          const { enrichedToFoodItem } = await import('@/hooks/useManualFoodEnrichment');
-          return enrichedToFoodItem(result.data, item.portionGrams || 100);
-        }
-        return item;
-      } catch (error) {
-        console.warn('[ENRICH] Failed, using original:', error);
-        return item;
-      }
-    };
-
-    enrichSelected(currentFoodItem).then((result) => {
-      if (!cancelled) { 
-        setEnrichedItem(result); 
-        setEnrichmentLoading(false); 
-      }
-    }).catch((error) => { 
-      if (!cancelled) {
-        // Fail-open: use original item if enrichment fails
-        console.warn('[ENRICH] Failed, using original item:', error);
-        setEnrichedItem(currentFoodItem);
-        setEnrichmentLoading(false); 
-      }
-    });
-    
-    return () => { cancelled = true; };
-  }, [currentFoodItem, enrichedItem]);
   
   // Prompt B: Reversible Confirm choice - stable candidate options with initial item at index 0
   const [selectedCandidateIndex, setSelectedCandidateIndex] = useState(0);
@@ -264,18 +211,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
     return hasOverlap && scoreOK;
   }
-  
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
   const { playFoodLogConfirm } = useSound();
 
   const [reminderOpen, setReminderOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
-
-  // Callback for candidate chip selection
-  const handleCandidateChipSelect = useCallback((idx: number) => {
-    setSelectedCandidateIndex(idx);
-  }, []);
 
   // Derive a stable ID from props (not from transient state)
   const foodId = foodItem?.id ?? null;
@@ -291,30 +232,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     });
   }, [foodItem]);
 
-  // Nutrition sanitizer helper
-  type MaybeNum = number | null | undefined;
-  const num = (v: MaybeNum) =>
-    (typeof v === 'number' && Number.isFinite(v)) ? v : null;
-
-  function sanitizeNutrition<T extends Record<string, any>>(item: T) {
-    const per100gCal = num(item?.per100g?.calories);
-    const perGramCal = num(item?.perGram?.calories) ?? (per100gCal != null ? per100gCal / 100 : null);
-    const servingG = num(item?.perServing?.serving_grams) ?? num(item?.serving_grams);
-
-    return {
-      ...item,
-      per100g: per100gCal != null ? { calories: per100gCal } : null,
-      perGram: perGramCal != null ? { calories: perGramCal } : null,
-      perServing: servingG != null ? { serving_grams: servingG } : null,
-    };
-  }
-
-  // Apply safety sanitization using unified helper
-  const current = useMemo(
-    () => sanitizeNutrition(candidateOptions[selectedCandidateIndex] ?? {}),
-    [candidateOptions, selectedCandidateIndex]
-  );
-
   // Zustand selector MUST run unconditionally on every render
   const storeAnalysis = useNutritionStore(
     s => (foodId ? s.byId[foodId] : undefined)
@@ -326,55 +243,45 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   // Detect barcode immediately from stable signals present on first render
   const isBarcodeSource = !!(
-    (current as any)?.source === 'barcode' ||
-    (current as any)?.id?.startsWith?.('bc:') ||
-    (current as any)?.barcode
+    (currentFoodItem as any)?.source === 'barcode' ||
+    (currentFoodItem as any)?.id?.startsWith?.('bc:') ||
+    (currentFoodItem as any)?.barcode
   );
 
   // Detect manual/voice sources for v3 handling
   const isManualVoiceSource = !!(
-    (current as any)?.__source === 'manual' || 
-    (current as any)?.__source === 'voice' ||
-    (current as any)?.source === 'manual' || 
-    (current as any)?.source === 'speech'
+    (currentFoodItem as any)?.__source === 'manual' || 
+    (currentFoodItem as any)?.__source === 'voice' ||
+    (currentFoodItem as any)?.source === 'manual' || 
+    (currentFoodItem as any)?.source === 'speech'
   );
 
   const useHydration = !bypassHydration;
-
   // Check if nutrition is ready from various sources
   const perGramReady =
-    !!current?.perGram ||
-    (Array.isArray((current as any)?.perGramKeys) && (current as any).perGramKeys.length > 0) ||
-    (typeof (current as any)?.pgSum === 'number' && (current as any).pgSum > 0);
-
+    !!currentFoodItem?.perGram ||
+    (Array.isArray(currentFoodItem?.perGramKeys) && currentFoodItem.perGramKeys.length > 0) ||
+    (typeof currentFoodItem?.pgSum === 'number' && currentFoodItem.pgSum > 0);
+  
   const isNutritionReady = perGramReady
     || ((useHydration && !isBarcodeSource) ? (perGramSum > 0) : true);
-
-  // Defensive render guard - readiness check
-  const hasPerUnit = !!current?.perGram?.calories || !!current?.per100g?.calories;
-  const ready = hasPerUnit && !!current;
-  
-  // Show loading state inside dialog, not early return
-  const showLoader = enrichmentLoading || (!ready && !skipNutritionGuard) || isProcessingFood;
   
   // Log mount and hydration states
   useEffect(() => {
-    if (isOpen && current) {
-      const source = (current as any)?.__source || (current as any)?.source || 'unknown';
+    if (isOpen && currentFoodItem) {
+      const source = (currentFoodItem as any)?.__source || (currentFoodItem as any)?.source || 'unknown';
       console.log('[CONFIRM][MOUNT]', {
         source,
         useHydration,
         isNutritionReady,
-        isManualVoice: isManualVoiceSource,
-        hasPer100g: !!current?.per100g,
-        hasPerGram: !!current?.perGram
+        isManualVoice: isManualVoiceSource
       });
       
       if (!isNutritionReady && useHydration) {
         console.log('[CONFIRM][HYDRATE:PENDING]');
       }
     }
-  }, [isOpen, current, useHydration, isNutritionReady, isManualVoiceSource]);
+  }, [isOpen, currentFoodItem, useHydration, isNutritionReady, isManualVoiceSource]);
 
   // Log when hydration completes
   useEffect(() => {
@@ -386,17 +293,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   
   // V3 nutrition hydration for manual/voice items
   useEffect(() => {
-    if (!(current as any)?.id || !isManualVoiceSource || !ENABLE_FOOD_TEXT_V3_NUTR) return;
+    if (!currentFoodItem?.id || !isManualVoiceSource || !ENABLE_FOOD_TEXT_V3_NUTR) return;
     if (perGramReady) return; // Skip if already ready
     
     const controller = new AbortController();
     
     console.log('[NUTRITION][V3][START]', { 
-      name: (current as any).name, 
-      id: (current as any).id 
+      name: currentFoodItem.name, 
+      id: currentFoodItem.id 
     });
     
-    hydrateNutritionV3(current, { 
+    hydrateNutritionV3(currentFoodItem, { 
       signal: controller.signal, 
       preferGeneric: true 
     }).then(result => {
@@ -425,7 +332,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     });
     
     return () => controller.abort();
-  }, [(current as any)?.id, isManualVoiceSource, perGramReady]);
+  }, [currentFoodItem?.id, isManualVoiceSource, perGramReady]);
 
   // Log render guard state for diagnostics
   console.log('[CONFIRM][RENDER_GUARD]', {
@@ -438,21 +345,21 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   // Log nutrition readiness
   useEffect(() => {
-    if (isNutritionReady && current) {
+    if (isNutritionReady && currentFoodItem) {
       const source = perGramReady ? 'item' : 'store';
-      const dataSource = (current as any).dataSource || 'unknown';
-      const pgKeys = ((current as any).perGramKeys?.length || 0);
+      const dataSource = currentFoodItem.dataSource || 'unknown';
+      const pgKeys = (currentFoodItem.perGramKeys?.length || 0);
       
       console.log('[NUTRITION][READY]', { 
         source, 
         dataSource, 
         pgKeys 
       });
-    } else if (!isNutritionReady && current) {
+    } else if (!isNutritionReady && currentFoodItem) {
       const reason = !perGramReady && perGramSum === 0 ? 'NO_PER_GRAM_KEYS' : 'UNKNOWN';
       console.log('[NUTRITION][BLOCKED]', { reason });
     }
-  }, [isNutritionReady, perGramReady, perGramSum, current]);
+  }, [isNutritionReady, perGramReady, perGramSum, currentFoodItem]);
 
   // Set body flag when reminder is open for CSS portal handling
   useEffect(() => {
@@ -471,17 +378,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return () => { delete document.body.dataset.modalOpen; };
   }, [isOpen]);
 
-
   // Force preferItem on barcode regardless of bypassHydration timing
   // Updated to prefer item-level per-gram data when available
   const preferItem =
     (perGramReady && (isManualVoiceSource || !storeAnalysis?.perGram || perGramSum === 0)) ||
     isBarcodeSource ||
-    (bypassHydration && ((current as any)?.source === 'manual' || (current as any)?.source === 'speech'));
+    (bypassHydration && ((currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech'));
 
   // Pick the per-gram basis we'll use everywhere below
   const basisPerGram: Record<string, number> | undefined =
-    (preferItem ? (current as any)?.perGram : storeAnalysis?.perGram) || undefined;
+    (preferItem ? (currentFoodItem as any)?.perGram : storeAnalysis?.perGram) || undefined;
 
   // Normalize key aliases so different sources still render
   const getPG = (k: string) => {
@@ -505,13 +411,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   const sliderPct = portionPercentage[0] / 100;
   
-  // after you compute current, servingG and sliderPct…
-  const actualServingG = Math.max(0, Math.round(((current as any)?.servingGrams ?? 100) * sliderPct));
+  // after you compute currentFoodItem, servingG and sliderPct…
+  const actualServingG = Math.max(0, Math.round(((currentFoodItem as any)?.servingGrams ?? 100) * sliderPct));
 
   // Which basis are we on?
   // v3 manual/voice (canonical / Estimated / legacy_text_lookup) => per 1g
   // legacy store (photo/barcode)       => per 100g
-  const dataSource = (current as any)?.dataSource as string | undefined;
+  const dataSource = (currentFoodItem as any)?.dataSource as string | undefined;
   const isPerGramBasis =
     isManualVoiceSource ||
     dataSource === 'canonical' ||
@@ -607,8 +513,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     setCurrentFoodItem(foodItem);
     setSelectedCandidate(null);
     setSelectedCandidateIndex(0); // Reset to initial item
-    setEnrichedItem(null); // Reset enrichment
-    setEnrichmentLoading(false);
   }, [foodItem]);
 
   // Trigger coach response when flagged ingredients are detected
@@ -695,6 +599,44 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       }
     }
   }, [currentFoodItem?.id, currentFoodItem?.name, isManualVoiceSource, perGramReady]);
+
+  // Prompt B: Handle candidate chip selection - preserves serving grams and slider position
+  const handleCandidateChipSelect = (index: number) => {
+    if (index === selectedCandidateIndex) return; // Already selected
+    
+    const candidate = candidateOptions[index];
+    if (!candidate) return;
+    
+    console.log('[CONFIRM][CHIP:SELECT]', {
+      from_index: selectedCandidateIndex,
+      to_index: index,
+      from: candidateOptions[selectedCandidateIndex]?.name,
+      to: candidate.name
+    });
+    
+    setSelectedCandidateIndex(index);
+    
+    // Re-bind foodItem to selected candidate while preserving portion state
+    if ((candidate as any).servingG || candidate.portionGrams) {
+      // Use pre-calculated values from v3 candidates
+      const servingGrams = (candidate as any).servingG || candidate.portionGrams || 100;
+      setCurrentFoodItem({
+        ...candidate,
+        portionGrams: servingGrams,
+        // Preserve portion adjustment
+        calories: Math.round((candidate.calories || 0) * (portionPercentage[0] / 100)),
+        protein: Math.round(((candidate.protein || 0) * (portionPercentage[0] / 100)) * 10) / 10,
+        carbs: Math.round(((candidate.carbs || 0) * (portionPercentage[0] / 100)) * 10) / 10,
+        fat: Math.round(((candidate.fat || 0) * (portionPercentage[0] / 100)) * 10) / 10,
+      });
+    } else {
+      // Fallback - use candidate as-is
+      setCurrentFoodItem({
+        ...candidate,
+        portionGrams: candidate.portionGrams || 100
+      });
+    }
+  };
 
   // Guard content rendering ONLY; hooks already executed
   if (!currentFoodItem) {
@@ -1123,7 +1065,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   return (
     <>
-      <Dialog
+      <Dialog 
         open={dialogOpen} 
         onOpenChange={(open) => {
           // Prevent closing parent when reminder is open
@@ -1147,28 +1089,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         >
           <VisuallyHidden><DialogTitle>Confirm Food Log</DialogTitle></VisuallyHidden>
           <div className="p-6">
-            {/* Show loader when processing */}
-            {showLoader && (
-              <div className="flex items-center justify-center min-h-[200px]">
-                <div className="text-center">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 dark:bg-emerald-900/20 rounded-full mb-4">
-                    <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    {enrichmentLoading ? 'Enriching nutrition data...' : 'Loading next item...'}
-                  </p>
-                  {totalItems > 1 && (
-                    <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-                      Item {((currentIndex ?? 0) + 1)} of {totalItems}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            {/* Main content - only show when not loading */}
-            {!showLoader && (
-              <>
             {/* Unknown Product Alert */}
             {isUnknownProduct && (
               <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800 mb-4">
@@ -1459,23 +1379,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                         {flaggedIngredients.length} flagged
                       </Badge>
                     )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Loading State for Enrichment */}
-            {enrichmentLoading && (
-              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center gap-3">
-                  <div className="animate-spin h-5 w-5 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full"></div>
-                  <div>
-                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                      Enriching nutrition data...
-                    </p>
-                    <p className="text-xs text-blue-600 dark:text-blue-400">
-                      Getting enhanced nutrition information
-                    </p>
                   </div>
                 </div>
               </div>
@@ -1812,10 +1715,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 </>
               )}
             </div>
-            {/* Close main content wrapper */}
-            </>
-          )}
-        </div>
+          </div>
         </AccessibleDialogContent>
       </Dialog>
 

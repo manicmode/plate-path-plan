@@ -163,31 +163,25 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
       const startTime = Date.now();
       
       const results = await searchFoodByName(trimmed, { 
-        maxResults: 10, 
+        maxResults: 50, 
         bypassGuard: true 
       });
       const ms = Date.now() - startTime;
       
-      // Filter and ensure ≥3 suggestions when providers return data
-      const filtered = results.filter(r => {
-        // Remove exact echo matches and ensure we have genuine suggestions
-        return r.name.toLowerCase() !== trimmed.toLowerCase();
-      });
+      console.info('[HEALTH][SEARCH] results', { q: trimmed, count: results.length, ms });
       
-      console.info('[HEALTH][SEARCH] results', { q: trimmed, count: filtered.length, ms });
-      
-      setSearchResults(filtered);
+      setSearchResults(results);
       saveRecentSearch(trimmed);
       
       // Log telemetry
       logFallbackEvents.resultsReceived(
-        filtered.length, 
-        filtered.length > 0, 
+        results.length, 
+        results.length > 0, 
         ms, 
-        filtered[0]?.confidence
+        results[0]?.confidence
       );
       
-      if (filtered.length === 0) {
+      if (results.length === 0) {
         setNoResults(true);
       }
     } catch (error) {
@@ -495,8 +489,8 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
                 <CardContent className="p-4 text-center">
                   <div className="mb-4">
                     <Search className="w-10 h-10 text-amber-400 mx-auto mb-3" />
-                     <h3 className="text-base font-medium text-amber-300 mb-2">No Close Matches</h3>
-                     <p className="text-amber-200 text-sm">Try a more specific term or add a brand name.</p>
+                    <h3 className="text-base font-medium text-amber-300 mb-2">No Close Matches</h3>
+                    <p className="text-amber-200 text-sm">Try these suggestions:</p>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-2">

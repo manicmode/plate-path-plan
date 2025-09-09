@@ -49,7 +49,7 @@ export const SearchResultsList: React.FC<SearchResultsListProps> = ({
           <div className="text-4xl mb-4">🔍</div>
           <h3 className="text-xl font-bold text-orange-300 mb-2">No Close Matches</h3>
           <p className="text-orange-200 text-sm">
-            Try a more specific term or add a brand name.
+            Try adding a brand name (e.g., "Trader Joe's {query}") or check your spelling.
           </p>
         </CardContent>
       </Card>
