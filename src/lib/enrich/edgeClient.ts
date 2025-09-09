@@ -46,7 +46,7 @@ async function checkEdgeHealth(): Promise<boolean> {
     }
     
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${F.ENRICH_EDGE_FN_NAME}`,
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-manual-food`,
       {
         method: 'HEAD',
         headers,

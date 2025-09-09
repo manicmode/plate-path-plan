@@ -297,8 +297,39 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const isNutritionReady = perGramReady
     || ((useHydration && !isBarcodeSource) ? (perGramSum > 0) : true);
 
-  // Defensive render guard
+  // Defensive render guard - readiness check
   const hasPerUnit = !!current?.perGram?.calories || !!current?.per100g?.calories;
+  const ready = hasPerUnit && !!current;
+  
+  // Error boundary component for crash protection
+  function CardBoundary({ children }: {children: React.ReactNode}) {
+    const [err, setErr] = useState<Error | null>(null);
+    
+    if (err) {
+      return (
+        <div className="p-6 text-center">
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+          </div>
+        </div>
+      );
+    }
+    
+    try {
+      return <>{children}</>;
+    } catch (error) {
+      setErr(error as Error);
+      return (
+        <div className="p-6 text-center">
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+          </div>
+        </div>
+      );
+    }
+  }
   
   // Log mount and hydration states
   useEffect(() => {
@@ -1063,7 +1094,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   }
 
   return (
-    <>
+    <CardBoundary>
       <Dialog 
         open={dialogOpen} 
         onOpenChange={(open) => {
@@ -1733,7 +1764,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         onIngredientsSubmit={handleManualIngredientSubmit}
         productName={currentFoodItem?.name || ''}
       />
-    </>
+      </Dialog>
+    </CardBoundary>
   );
 };
 
