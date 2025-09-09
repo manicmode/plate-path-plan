@@ -1,11 +1,10 @@
 /**
- * Edge function client with health check and fallback routing
+ * Edge function client for enrichment with health checks and fallback mechanisms
  */
-
-import { supabase } from '@/integrations/supabase/client';
+import { buildEnrichUrl } from './api';
 import { F } from '@/lib/flags';
 
-// Global state for edge health
+// Global state for edge health  
 let edgeHealthState = {
   isDown: false,
   lastChecked: 0,
@@ -13,9 +12,17 @@ let edgeHealthState = {
 };
 
 /**
- * Health check the edge function URL
+ * Check edge function health (QA only)
  */
 async function checkEdgeHealth(): Promise<boolean> {
+  // Skip health checks in production - only for QA 
+  const isQA = window.location.pathname.includes('/qa') || 
+               new URLSearchParams(window.location.search).has('QA_ENRICH');
+  
+  if (!isQA) {
+    return true; // Assume healthy in production, let actual calls handle errors
+  }
+  
   const now = Date.now();
   
   // Don't check more than once per 30 seconds
@@ -32,21 +39,12 @@ async function checkEdgeHealth(): Promise<boolean> {
   edgeHealthState.lastChecked = now;
   
   try {
+    const headers = { 'Content-Type': 'application/json' };
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), F.ENRICH_EDGE_PING_MS);
     
-    // Build URL for health check
-    const { data: { session } } = await supabase.auth.getSession();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    
-    if (session?.access_token) {
-      headers.Authorization = `Bearer ${session.access_token}`;
-    }
-    
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-manual-food`,
+      buildEnrichUrl(F.ENRICH_EDGE_FN_NAME, { ping: '1' }), 
       {
         method: 'HEAD',
         headers,
@@ -79,71 +77,73 @@ async function checkEdgeHealth(): Promise<boolean> {
 }
 
 /**
- * Call enrichment with edge function health check and fallback
+ * Call the enrichment edge function with fallback handling
  */
 export async function callEnrichment(
-  query: string,
-  options: {
-    context?: 'manual' | 'scan';
-    diag?: boolean;
+  query: string, 
+  options?: { 
+    context?: 'manual' | 'scan' | 'qa';
     locale?: string;
+    diag?: boolean;
     noCache?: boolean;
     bust?: string;
-  } = {}
+  }
 ): Promise<any> {
-  // Check if edge function is available
-  const edgeHealthy = await checkEdgeHealth();
+  const context = options?.context || 'manual';
   
-  if (edgeHealthState.isDown || F.ENRICH_SAFE_MODE) {
+  // First check if edge function is healthy (QA only)
+  const isHealthy = await checkEdgeHealth();
+  
+  if (F.ENRICH_SAFE_MODE || (!isHealthy && edgeHealthState.isDown)) {
     if (F.ENRICH_DIAG) {
-      const reason = F.ENRICH_SAFE_MODE ? 'safe_mode' : 'edge_404';
-      console.log(`[ENRICH][EDGE_404] using fallback, reason=${reason}`);
+      console.log(`[ENRICH][EDGE_404] using fallback, safe_mode=${F.ENRICH_SAFE_MODE}, down=${edgeHealthState.isDown}`);
     }
-    
-    // Return fallback response structure
-    return {
-      data: null,
-      error: { message: 'Edge function unavailable, using fallback routing' },
-      fallback: true
-    };
+    return { fallback: true, error: 'edge_unavailable' };
   }
   
   try {
-    // Build URL with cache busting for QA
-    let functionUrl = F.ENRICH_EDGE_FN_NAME;
-    if (options?.noCache || options?.bust) {
-      const params = new URLSearchParams();
-      if (options.noCache) params.set('bust', '1');
-      if (options.bust) params.set('bust', options.bust);
-      functionUrl += '?' + params.toString();
-    }
+    const params = {
+      query,
+      context,
+      locale: options?.locale || 'auto',
+      ...(options?.diag && { diag: '1' }),
+      ...(options?.noCache && { noCache: '1' }),
+      ...(options?.bust && { bust: options.bust }),
+    };
     
-    const { data, error } = await supabase.functions.invoke(functionUrl, {
-      body: {
-        query: query.trim(),
-        locale: options.locale || 'auto',
-        context: options.context || 'manual',
-        diag: options.diag || F.ENRICH_DIAG
-      }
+    const url = buildEnrichUrl(F.ENRICH_EDGE_FN_NAME, params);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params)
     });
     
-    return { data, error, fallback: false };
-    
-  } catch (error: any) {
-    if (F.ENRICH_DIAG) {
-      console.log(`[ENRICH][EDGE_ERROR] ${error.message}`);
+    if (!response.ok) {
+      // Mark as down for network-level failures
+      if (response.status >= 500 || response.status === 404) {
+        edgeHealthState.isDown = true;
+        if (F.ENRICH_DIAG) {
+          console.log(`[ENRICH][EDGE_DOWN] status=${response.status}, marked down`);
+        }
+      }
+      throw new Error(`edge_${response.status}`);
     }
     
-    // Mark edge as down on network errors
-    if (error.message?.includes('fetch') || error.message?.includes('network')) {
+    return await response.json();
+    
+  } catch (error) {
+    // Network errors indicate the edge function is down
+    if (error instanceof TypeError || (error as any).message?.includes('fetch')) {
       edgeHealthState.isDown = true;
+      if (F.ENRICH_DIAG) {
+        console.log('[ENRICH][EDGE_DOWN] network error, marked down:', error);
+      }
     }
     
-    return {
-      data: null,
-      error: { message: error.message || 'Edge function failed' },
-      fallback: true
-    };
+    return { fallback: true, error: (error as Error).message };
   }
 }
 

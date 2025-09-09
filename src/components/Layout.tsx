@@ -313,7 +313,7 @@ const Layout = ({ children }: LayoutProps) => {
         )}
 
       {/* Main Content with safe area padding for bottom nav */}
-      <main className="app-content max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+      <main className="app-content max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 pt-16 md:pt-20">
         {children}
       </main>
 

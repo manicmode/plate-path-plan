@@ -46,17 +46,24 @@ export function useManualFoodEnrichment() {
   const enrich = useCallback(async (
     query: string, 
     locale: string = 'auto',
-    options?: { noCache?: boolean; bust?: string; context?: 'manual' | 'scan'; diag?: boolean; }
+    options?: { noCache?: boolean; bust?: string; context?: 'manual' | 'scan' | 'qa'; diag?: boolean; }
   ): Promise<EnrichedFood | null> => {
     if (!query?.trim()) {
       setError('Query is required');
       return null;
     }
 
-    // Check feature flag (unified for both flows)
+    // Only use enrichment for QA/confirm flows or when explicitly enabled
+    const context = options?.context || 'manual';
+    const isQAContext = context === 'qa';
+    const isConfirmContext = context === 'scan' || context === 'manual'; // After selection
+    
     const featureEnabled = localStorage.getItem('FEATURE_ENRICH_MANUAL_FOOD') !== 'false';
-    if (!featureEnabled) {
-      console.log('[ENRICH] Feature disabled, skipping enrichment');
+    
+    if (!featureEnabled && !isQAContext) {
+      if (F.ENRICH_DIAG) {
+        console.log('[ENRICH] Feature disabled for non-QA context, skipping enrichment');
+      }
       return null;
     }
 

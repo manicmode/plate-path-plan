@@ -91,7 +91,7 @@ async function callNutritionix(query: string, branded = false): Promise<Provider
  */
 export async function routeEnrichment(
   query: string,
-  context: 'manual' | 'scan' = 'manual'
+  context: 'manual' | 'scan' | 'qa' = 'manual'
 ): Promise<RouterResult> {
   const startTime = Date.now();
   const isMultiWord = query.trim().split(/\s+/).length > 1;

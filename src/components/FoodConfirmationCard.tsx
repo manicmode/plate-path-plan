@@ -301,26 +301,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const hasPerUnit = !!current?.perGram?.calories || !!current?.per100g?.calories;
   const ready = hasPerUnit && !!current;
   
-  // If not ready, return existing loading state
-  if (!ready) {
-    return (
-      <Dialog open={isOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
-        <AccessibleDialogContent 
-          className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
-          title="Loading food item"
-          description="Please wait while the food item nutrition is being loaded."
-        >
-          <div className="p-6 text-center">
-            <div className="animate-pulse space-y-4">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
-              <div className="h-8 bg-gray-200 rounded w-full"></div>
-            </div>
-          </div>
-        </AccessibleDialogContent>
-      </Dialog>
-    );
-  }
+  // Show loader inside dialog until ready, no early return
   
   // Log mount and hydration states
   useEffect(() => {
