@@ -38,7 +38,8 @@ const HEALTH_SCAN_QUERIES = [
 
 const getPassCriteria = (query: string, source: string | null, ingredients_len: number) => {
   if (query.includes('club sandwich')) {
-    return source === 'NUTRITIONIX' && ingredients_len >= 5;
+    // Updated rule: source ∈ (NUTRITIONIX, EDAMAM) AND ingredients_len ≥ 5
+    return (source === 'NUTRITIONIX' || source === 'EDAMAM') && ingredients_len >= 5;
   }
   if (query === 'yakisoba' || query === 'aloo gobi') {
     return ingredients_len >= 2;

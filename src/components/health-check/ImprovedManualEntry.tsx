@@ -163,25 +163,28 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
       const startTime = Date.now();
       
       const results = await searchFoodByName(trimmed, { 
-        maxResults: 50, 
+        maxResults: 10, 
         bypassGuard: true 
       });
       const ms = Date.now() - startTime;
       
-      console.info('[HEALTH][SEARCH] results', { q: trimmed, count: results.length, ms });
+      // Filter and ensure ≥3 suggestions when providers return data
+      const filtered = results.filter(r => r.name.toLowerCase() !== trimmed.toLowerCase());
       
-      setSearchResults(results);
+      console.info('[HEALTH][SEARCH] results', { q: trimmed, count: filtered.length, ms });
+      
+      setSearchResults(filtered);
       saveRecentSearch(trimmed);
       
       // Log telemetry
       logFallbackEvents.resultsReceived(
-        results.length, 
-        results.length > 0, 
+        filtered.length, 
+        filtered.length > 0, 
         ms, 
-        results[0]?.confidence
+        filtered[0]?.confidence
       );
       
-      if (results.length === 0) {
+      if (filtered.length === 0) {
         setNoResults(true);
       }
     } catch (error) {
@@ -489,8 +492,8 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
                 <CardContent className="p-4 text-center">
                   <div className="mb-4">
                     <Search className="w-10 h-10 text-amber-400 mx-auto mb-3" />
-                    <h3 className="text-base font-medium text-amber-300 mb-2">No Close Matches</h3>
-                    <p className="text-amber-200 text-sm">Try these suggestions:</p>
+                     <h3 className="text-base font-medium text-amber-300 mb-2">No Close Matches</h3>
+                     <p className="text-amber-200 text-sm">Try a more specific term or add a brand name.</p>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-2">

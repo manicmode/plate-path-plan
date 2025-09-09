@@ -16,10 +16,10 @@ let edgeHealthState = {
  */
 async function checkEdgeHealth(): Promise<boolean> {
   // Skip health checks in production - only for QA 
-  const isQA = window.location.pathname.includes('/qa') || 
+  const isQAMode = window.location.pathname.includes('/qa') || 
                new URLSearchParams(window.location.search).has('QA_ENRICH');
   
-  if (!isQA) {
+  if (!isQAMode) {
     return true; // Assume healthy in production, let actual calls handle errors
   }
   
@@ -44,10 +44,11 @@ async function checkEdgeHealth(): Promise<boolean> {
     const timeout = setTimeout(() => controller.abort(), F.ENRICH_EDGE_PING_MS);
     
     const response = await fetch(
-      buildEnrichUrl(F.ENRICH_EDGE_FN_NAME, { ping: '1' }), 
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-manual-food`, 
       {
-        method: 'HEAD',
+        method: 'POST',
         headers,
+        body: JSON.stringify({ ping: '1' }),
         signal: controller.signal,
       }
     );
@@ -111,9 +112,7 @@ export async function callEnrichment(
       ...(options?.bust && { bust: options.bust }),
     };
     
-    const url = buildEnrichUrl(F.ENRICH_EDGE_FN_NAME, params);
-    
-    const response = await fetch(url, {
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-manual-food`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

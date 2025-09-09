@@ -16,9 +16,10 @@ export function buildEnrichUrl(fnName: string, params: Record<string, string>) {
   return url.toString();
 }
 
-export async function callEnrichEdge(fnName: string, params: Record<string, string>) {
-  const url = buildEnrichUrl(fnName, params);
-  const res = await fetch(url, { 
+export async function callEnrichEdge(fnName: string, params: Record<string, unknown>) {
+  const url = new URL(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${fnName}`);
+  url.searchParams.set('v', ENRICH_API_VERSION);
+  const res = await fetch(url.toString(), { 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -27,7 +28,7 @@ export async function callEnrichEdge(fnName: string, params: Record<string, stri
   });
   
   if (!res.ok) {
-    throw new Error(`edge_${res.status}`);
+    throw new Error(`enrich ${fnName} ${res.status}`);
   }
   
   return res.json();

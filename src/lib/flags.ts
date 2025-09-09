@@ -33,7 +33,11 @@ export const F = {
   
   // Investigation & QA flags
   ENRICH_LOG_DIAG: flag('VITE_ENRICH_LOG_DIAG', false),          // Diagnostic logging (off by default)
-  ENRICH_SAFE_MODE: flag('VITE_ENRICH_SAFE_MODE', true),         // Disable Nutritionix, route Edamam→FDC (on by default for stability) 
+  ENRICH_SAFE_MODE: flag('VITE_ENRICH_SAFE_MODE', false),        // OFF by default (prod)
+  ENRICH_SUGGESTIONS: flag('VITE_ENRICH_SUGGESTIONS', false),    // never enrich during typeahead
+  ENRICH_CONFIRM_ENABLED: flag('VITE_ENRICH_CONFIRM_ENABLED', true), // confirm uses router
+  ENRICH_SCAN_ENABLED: flag('VITE_ENRICH_SCAN_ENABLED', false),  // start disabled; QA can enable
+  ENRICH_QA_SIMULATE: flag('VITE_ENRICH_QA_SIMULATE', false),    // no simulation
   ENRICH_V2_ROUTER: flag('VITE_ENRICH_V2_ROUTER', false),        // Unified router for manual & health-scan (off by default)
   ENRICH_BRAND_FIRST: flag('VITE_ENRICH_BRAND_FIRST', false),    // Brand-first enrichment (off by default)
   ENRICH_SANDWICH_ROUTING: flag('VITE_ENRICH_SANDWICH_ROUTING', false), // Sandwich-specific routing (off by default)
@@ -43,6 +47,7 @@ export const F = {
   ENRICH_FDC_GUARD: flag('VITE_ENRICH_FDC_GUARD', false),                 // Reject weak FDC when better exists (off by default)
   ENRICH_NIX_CAP_PER_QUERY: intFlag('VITE_ENRICH_NIX_CAP_PER_QUERY', 1),  // Max 1 Nutritionix requests per query 
   ENRICH_DIAG: flag('VITE_ENRICH_DIAG', false),                           // Structured console logs (off by default)
+  ENRICH_API_VERSION: (import.meta as any).env?.VITE_ENRICH_API_VERSION || 'v2.2', // API version
   
   // Edge function configuration
   ENRICH_EDGE_FN_NAME: (import.meta as any).env?.VITE_ENRICH_EDGE_FN_NAME || 'enrich-manual-food',
@@ -52,6 +57,9 @@ export const F = {
 // Helper for sampling (dev-only randomness)
 export const sampledOn = (pct: number) =>
   pct >= 100 ? true : pct <= 0 ? false : (Math.random() * 100) < pct;
+
+// QA detection helper
+export const isQA = () => typeof window !== 'undefined' && /[?&]QA_ENRICH=1/.test(window.location.search);
 
 export const ENABLE_FOOD_TEXT_V3 = 
   import.meta.env.VITE_FOOD_TEXT_V3 !== '0'; // default on unless explicitly 0

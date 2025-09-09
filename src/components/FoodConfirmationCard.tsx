@@ -27,7 +27,7 @@ import { useNutritionStore } from '@/stores/nutritionStore';
 // Add the FoodCandidate type import
 import type { Candidate } from '@/lib/food/search/getFoodCandidates';
 import { inferPortion } from '@/lib/food/portion/inferPortion';
-import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR } from '@/lib/flags';
+import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR, F } from '@/lib/flags';
 import { extractName } from '@/lib/debug/extractName';
 import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
 import { DialogTitle } from '@radix-ui/react-dialog';
@@ -147,6 +147,57 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [prevItem, setPrevItem] = useState<any | null>(null);
+  // Update FoodConfirmationCard to use enrichment for confirm flow
+  const [enrichmentLoading, setEnrichmentLoading] = useState(false);
+  const [enrichedItem, setEnrichedItem] = useState<FoodItem | null>(null);
+
+  // Add enrichment effect for confirm flow
+  useEffect(() => {
+    if (!currentFoodItem || enrichedItem) return;
+    
+    // Check if we should enrich (confirm enabled or QA mode)
+    const shouldEnrich = F.ENRICH_CONFIRM_ENABLED || (typeof window !== 'undefined' && /[?&]QA_ENRICH=1/.test(window.location.search));
+    
+    if (!shouldEnrich) {
+      setEnrichedItem(currentFoodItem);
+      return;
+    }
+
+    let cancelled = false;
+    setEnrichmentLoading(true);
+    
+    const enrichSelected = async (item: FoodItem) => {
+      try {
+        // Call the edge client directly
+        const { callEnrichment } = await import('@/lib/enrich/edgeClient');
+        const result = await callEnrichment(item.name, { context: 'manual' });
+        
+        if (result?.data && !result.fallback) {
+          // Convert enriched result to FoodItem format  
+          const { enrichedToFoodItem } = await import('@/hooks/useManualFoodEnrichment');
+          return enrichedToFoodItem(result.data, item.portionGrams || 100);
+        }
+        return item;
+      } catch (error) {
+        console.warn('[ENRICH] Failed, using original:', error);
+        return item;
+      }
+    };
+
+    enrichSelected(currentFoodItem).then((result) => {
+      if (!cancelled) { 
+        setEnrichedItem(result); 
+        setEnrichmentLoading(false); 
+      }
+    }).catch(() => { 
+      if (!cancelled) {
+        setEnrichedItem(currentFoodItem);
+        setEnrichmentLoading(false); 
+      }
+    });
+    
+    return () => { cancelled = true; };
+  }, [currentFoodItem, enrichedItem]);
   
   // Prompt B: Reversible Confirm choice - stable candidate options with initial item at index 0
   const [selectedCandidateIndex, setSelectedCandidateIndex] = useState(0);
@@ -553,6 +604,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     setCurrentFoodItem(foodItem);
     setSelectedCandidate(null);
     setSelectedCandidateIndex(0); // Reset to initial item
+    setEnrichedItem(null); // Reset enrichment
+    setEnrichmentLoading(false);
   }, [foodItem]);
 
   // Trigger coach response when flagged ingredients are detected
@@ -1381,6 +1434,23 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                         {flaggedIngredients.length} flagged
                       </Badge>
                     )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Loading State for Enrichment */}
+            {enrichmentLoading && (
+              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin h-5 w-5 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full"></div>
+                  <div>
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      Enriching nutrition data...
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">
+                      Getting enhanced nutrition information
+                    </p>
                   </div>
                 </div>
               </div>
