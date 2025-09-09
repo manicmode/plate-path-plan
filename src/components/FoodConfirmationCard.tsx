@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
 import { withSafeCancel } from '@/lib/ui/withSafeCancel';
 import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
@@ -211,12 +211,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
     return hasOverlap && scoreOK;
   }
+  
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
   const { playFoodLogConfirm } = useSound();
 
   const [reminderOpen, setReminderOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  // Callback for candidate chip selection
+  const handleCandidateChipSelect = useCallback((idx: number) => {
+    setSelectedCandidateIndex(idx);
+  }, []);
 
   // Derive a stable ID from props (not from transient state)
   const foodId = foodItem?.id ?? null;
@@ -232,6 +238,30 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     });
   }, [foodItem]);
 
+  // Nutrition sanitizer helper
+  type MaybeNum = number | null | undefined;
+  const num = (v: MaybeNum) =>
+    (typeof v === 'number' && Number.isFinite(v)) ? v : null;
+
+  function sanitizeNutrition<T extends Record<string, any>>(item: T) {
+    const per100gCal = num(item?.per100g?.calories);
+    const perGramCal = num(item?.perGram?.calories) ?? (per100gCal != null ? per100gCal / 100 : null);
+    const servingG = num(item?.perServing?.serving_grams) ?? num(item?.serving_grams);
+
+    return {
+      ...item,
+      per100g: per100gCal != null ? { calories: per100gCal } : null,
+      perGram: perGramCal != null ? { calories: perGramCal } : null,
+      perServing: servingG != null ? { serving_grams: servingG } : null,
+    };
+  }
+
+  // Apply safety sanitization using unified helper
+  const current = useMemo(
+    () => sanitizeNutrition(candidateOptions[selectedCandidateIndex] ?? {}),
+    [candidateOptions, selectedCandidateIndex]
+  );
+
   // Zustand selector MUST run unconditionally on every render
   const storeAnalysis = useNutritionStore(
     s => (foodId ? s.byId[foodId] : undefined)
@@ -241,100 +271,53 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const perGram = storeAnalysis?.perGram || {};
   const perGramSum = Object.values(perGram).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
 
-  // Sanitize food data to prevent crashes from incomplete/null nutrition data
-  const safeHydrate = (item: any) => {
-    if (!item) return null;
-    
-    const coerceNum = (n: any) => (typeof n === 'number' && !Number.isNaN(n)) ? n : null;
-    
-    const per100g = item?.per100g ? {
-      calories: coerceNum(item.per100g.calories),
-      protein: coerceNum(item.per100g.protein),
-      carbs: coerceNum(item.per100g.carbs),
-      fat: coerceNum(item.per100g.fat),
-      fiber: coerceNum(item.per100g.fiber),
-      sugar: coerceNum(item.per100g.sugar),
-      sodium: coerceNum(item.per100g.sodium)
-    } : null;
-    
-    const perGram = item?.perGram ? {
-      calories: coerceNum(item.perGram.calories),
-      protein: coerceNum(item.perGram.protein),
-      carbs: coerceNum(item.perGram.carbs),
-      fat: coerceNum(item.perGram.fat),
-      fiber: coerceNum(item.perGram.fiber),
-      sugar: coerceNum(item.perGram.sugar),
-      sodium: coerceNum(item.perGram.sodium)
-    } : null;
-    
-    const servingG = coerceNum(item?.perServing?.serving_grams) || coerceNum(item?.serving_grams) || null;
-    const perServing = servingG ? { serving_grams: servingG } : null;
-
-    return {
-      ...item,
-      per100g,
-      perGram,
-      perServing
-    };
-  };
-
-  // Apply safety sanitization
-  const sanitizedFoodItem = currentFoodItem ? safeHydrate(currentFoodItem) : null;
-
   // Detect barcode immediately from stable signals present on first render
   const isBarcodeSource = !!(
-    (sanitizedFoodItem as any)?.source === 'barcode' ||
-    (sanitizedFoodItem as any)?.id?.startsWith?.('bc:') ||
-    (sanitizedFoodItem as any)?.barcode
+    (current as any)?.source === 'barcode' ||
+    (current as any)?.id?.startsWith?.('bc:') ||
+    (current as any)?.barcode
   );
 
   // Detect manual/voice sources for v3 handling
   const isManualVoiceSource = !!(
-    (sanitizedFoodItem as any)?.__source === 'manual' || 
-    (sanitizedFoodItem as any)?.__source === 'voice' ||
-    (sanitizedFoodItem as any)?.source === 'manual' || 
-    (sanitizedFoodItem as any)?.source === 'speech'
+    (current as any)?.__source === 'manual' || 
+    (current as any)?.__source === 'voice' ||
+    (current as any)?.source === 'manual' || 
+    (current as any)?.source === 'speech'
   );
 
   const useHydration = !bypassHydration;
 
-  const useHydration = !bypassHydration;
   // Check if nutrition is ready from various sources
   const perGramReady =
-    !!sanitizedFoodItem?.perGram ||
-    (Array.isArray(sanitizedFoodItem?.perGramKeys) && sanitizedFoodItem.perGramKeys.length > 0) ||
-    (typeof sanitizedFoodItem?.pgSum === 'number' && sanitizedFoodItem.pgSum > 0);
-  
-  // Zustand selector MUST run unconditionally on every render
-  const storeAnalysis = useNutritionStore(
-    s => (foodId ? s.byId[foodId] : undefined)
-  );
-
-  // Optional helpers (no new hooks below guards) 
-  const perGram = storeAnalysis?.perGram || {};
-  const perGramSum = Object.values(perGram).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
+    !!current?.perGram ||
+    (Array.isArray((current as any)?.perGramKeys) && (current as any).perGramKeys.length > 0) ||
+    (typeof (current as any)?.pgSum === 'number' && (current as any).pgSum > 0);
 
   const isNutritionReady = perGramReady
     || ((useHydration && !isBarcodeSource) ? (perGramSum > 0) : true);
+
+  // Defensive render guard
+  const hasPerUnit = !!current?.perGram?.calories || !!current?.per100g?.calories;
   
   // Log mount and hydration states
   useEffect(() => {
-    if (isOpen && sanitizedFoodItem) {
-      const source = (sanitizedFoodItem as any)?.__source || (sanitizedFoodItem as any)?.source || 'unknown';
+    if (isOpen && current) {
+      const source = (current as any)?.__source || (current as any)?.source || 'unknown';
       console.log('[CONFIRM][MOUNT]', {
         source,
         useHydration,
         isNutritionReady,
         isManualVoice: isManualVoiceSource,
-        hasPer100g: !!sanitizedFoodItem?.per100g,
-        hasPerGram: !!sanitizedFoodItem?.perGram
+        hasPer100g: !!current?.per100g,
+        hasPerGram: !!current?.perGram
       });
       
       if (!isNutritionReady && useHydration) {
         console.log('[CONFIRM][HYDRATE:PENDING]');
       }
     }
-  }, [isOpen, sanitizedFoodItem, useHydration, isNutritionReady, isManualVoiceSource]);
+  }, [isOpen, current, useHydration, isNutritionReady, isManualVoiceSource]);
 
   // Log when hydration completes
   useEffect(() => {
@@ -346,17 +329,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   
   // V3 nutrition hydration for manual/voice items
   useEffect(() => {
-    if (!sanitizedFoodItem?.id || !isManualVoiceSource || !ENABLE_FOOD_TEXT_V3_NUTR) return;
+    if (!(current as any)?.id || !isManualVoiceSource || !ENABLE_FOOD_TEXT_V3_NUTR) return;
     if (perGramReady) return; // Skip if already ready
     
     const controller = new AbortController();
     
     console.log('[NUTRITION][V3][START]', { 
-      name: sanitizedFoodItem.name, 
-      id: sanitizedFoodItem.id 
+      name: (current as any).name, 
+      id: (current as any).id 
     });
     
-    hydrateNutritionV3(sanitizedFoodItem, { 
+    hydrateNutritionV3(current, { 
       signal: controller.signal, 
       preferGeneric: true 
     }).then(result => {
@@ -385,7 +368,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     });
     
     return () => controller.abort();
-  }, [sanitizedFoodItem?.id, isManualVoiceSource, perGramReady]);
+  }, [(current as any)?.id, isManualVoiceSource, perGramReady]);
 
   // Log render guard state for diagnostics
   console.log('[CONFIRM][RENDER_GUARD]', {
@@ -398,21 +381,21 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   // Log nutrition readiness
   useEffect(() => {
-    if (isNutritionReady && sanitizedFoodItem) {
+    if (isNutritionReady && current) {
       const source = perGramReady ? 'item' : 'store';
-      const dataSource = sanitizedFoodItem.dataSource || 'unknown';
-      const pgKeys = (sanitizedFoodItem.perGramKeys?.length || 0);
+      const dataSource = (current as any).dataSource || 'unknown';
+      const pgKeys = ((current as any).perGramKeys?.length || 0);
       
       console.log('[NUTRITION][READY]', { 
         source, 
         dataSource, 
         pgKeys 
       });
-    } else if (!isNutritionReady && sanitizedFoodItem) {
+    } else if (!isNutritionReady && current) {
       const reason = !perGramReady && perGramSum === 0 ? 'NO_PER_GRAM_KEYS' : 'UNKNOWN';
       console.log('[NUTRITION][BLOCKED]', { reason });
     }
-  }, [isNutritionReady, perGramReady, perGramSum, sanitizedFoodItem]);
+  }, [isNutritionReady, perGramReady, perGramSum, current]);
 
   // Set body flag when reminder is open for CSS portal handling
   useEffect(() => {
@@ -431,56 +414,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return () => { delete document.body.dataset.modalOpen; };
   }, [isOpen]);
 
-// Sanitize food data to prevent crashes from incomplete/null nutrition data
-  const safeHydrate = (item: any) => {
-    if (!item) return null;
-    
-    const coerceNum = (n: any) => (typeof n === 'number' && !Number.isNaN(n)) ? n : null;
-    
-    const per100g = item?.per100g ? {
-      calories: coerceNum(item.per100g.calories),
-      protein: coerceNum(item.per100g.protein),
-      carbs: coerceNum(item.per100g.carbs),
-      fat: coerceNum(item.per100g.fat),
-      fiber: coerceNum(item.per100g.fiber),
-      sugar: coerceNum(item.per100g.sugar),
-      sodium: coerceNum(item.per100g.sodium)
-    } : null;
-    
-    const perGram = item?.perGram ? {
-      calories: coerceNum(item.perGram.calories),
-      protein: coerceNum(item.perGram.protein),
-      carbs: coerceNum(item.perGram.carbs),
-      fat: coerceNum(item.perGram.fat),
-      fiber: coerceNum(item.perGram.fiber),
-      sugar: coerceNum(item.perGram.sugar),
-      sodium: coerceNum(item.perGram.sodium)
-    } : null;
-    
-    const servingG = coerceNum(item?.perServing?.serving_grams) || coerceNum(item?.serving_grams) || null;
-    const perServing = servingG ? { serving_grams: servingG } : null;
-
-    return {
-      ...item,
-      per100g,
-      perGram,
-      perServing
-    };
-  };
-
-  // Apply safety sanitization
-  const sanitizedFoodItem = currentFoodItem ? safeHydrate(currentFoodItem) : null;
 
   // Force preferItem on barcode regardless of bypassHydration timing
   // Updated to prefer item-level per-gram data when available
   const preferItem =
     (perGramReady && (isManualVoiceSource || !storeAnalysis?.perGram || perGramSum === 0)) ||
     isBarcodeSource ||
-    (bypassHydration && ((sanitizedFoodItem as any)?.source === 'manual' || (sanitizedFoodItem as any)?.source === 'speech'));
+    (bypassHydration && ((current as any)?.source === 'manual' || (current as any)?.source === 'speech'));
 
   // Pick the per-gram basis we'll use everywhere below
   const basisPerGram: Record<string, number> | undefined =
-    (preferItem ? (sanitizedFoodItem as any)?.perGram : storeAnalysis?.perGram) || undefined;
+    (preferItem ? (current as any)?.perGram : storeAnalysis?.perGram) || undefined;
 
   // Normalize key aliases so different sources still render
   const getPG = (k: string) => {
@@ -504,13 +448,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   const sliderPct = portionPercentage[0] / 100;
   
-  // after you compute sanitizedFoodItem, servingG and sliderPct…
-  const actualServingG = Math.max(0, Math.round(((sanitizedFoodItem as any)?.servingGrams ?? 100) * sliderPct));
+  // after you compute current, servingG and sliderPct…
+  const actualServingG = Math.max(0, Math.round(((current as any)?.servingGrams ?? 100) * sliderPct));
 
   // Which basis are we on?
   // v3 manual/voice (canonical / Estimated / legacy_text_lookup) => per 1g
   // legacy store (photo/barcode)       => per 100g
-  const dataSource = (sanitizedFoodItem as any)?.dataSource as string | undefined;
+  const dataSource = (current as any)?.dataSource as string | undefined;
   const isPerGramBasis =
     isManualVoiceSource ||
     dataSource === 'canonical' ||
@@ -692,44 +636,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       }
     }
   }, [currentFoodItem?.id, currentFoodItem?.name, isManualVoiceSource, perGramReady]);
-
-  // Prompt B: Handle candidate chip selection - preserves serving grams and slider position
-  const handleCandidateChipSelect = (index: number) => {
-    if (index === selectedCandidateIndex) return; // Already selected
-    
-    const candidate = candidateOptions[index];
-    if (!candidate) return;
-    
-    console.log('[CONFIRM][CHIP:SELECT]', {
-      from_index: selectedCandidateIndex,
-      to_index: index,
-      from: candidateOptions[selectedCandidateIndex]?.name,
-      to: candidate.name
-    });
-    
-    setSelectedCandidateIndex(index);
-    
-    // Re-bind foodItem to selected candidate while preserving portion state
-    if ((candidate as any).servingG || candidate.portionGrams) {
-      // Use pre-calculated values from v3 candidates
-      const servingGrams = (candidate as any).servingG || candidate.portionGrams || 100;
-      setCurrentFoodItem({
-        ...candidate,
-        portionGrams: servingGrams,
-        // Preserve portion adjustment
-        calories: Math.round((candidate.calories || 0) * (portionPercentage[0] / 100)),
-        protein: Math.round(((candidate.protein || 0) * (portionPercentage[0] / 100)) * 10) / 10,
-        carbs: Math.round(((candidate.carbs || 0) * (portionPercentage[0] / 100)) * 10) / 10,
-        fat: Math.round(((candidate.fat || 0) * (portionPercentage[0] / 100)) * 10) / 10,
-      });
-    } else {
-      // Fallback - use candidate as-is
-      setCurrentFoodItem({
-        ...candidate,
-        portionGrams: candidate.portionGrams || 100
-      });
-    }
-  };
 
   // Guard content rendering ONLY; hooks already executed
   if (!currentFoodItem) {
