@@ -735,112 +735,162 @@ const ENRICH_V2_ING_AWARE = flag('VITE_ENRICH_V2_ING_AWARE', true);
 const ENRICH_BRAND_FIRST = flag('VITE_ENRICH_BRAND_FIRST', true);
 const ENRICH_SANDWICH_ROUTING = flag('VITE_ENRICH_SANDWICH_ROUTING', true);
 const ENRICH_LOG_DIAG = flag('VITE_ENRICH_LOG_DIAG', false);
-const ENRICH_VERSION = "v2.3-sandwich";
+const ENRICH_VERSION = "v2.2";
 
-// Sandwich detection with expanded patterns
-const SANDWICH_HINTS = ['sandwich', 'club sandwich', 'sub', 'hoagie', 'panini', 'wrap'];
-const BREAD_HINTS = ['wheat', 'whole', 'white', 'sourdough', 'multigrain', 'rye'];
+// Query classification helpers
+const SANDWICH_HINTS = ['sandwich', 'club sandwich', 'sub', 'hoagie', 'panini', 'wrap', 'burger', 'taco'];
 
 function isSandwichy(q: string) {
   const s = q.toLowerCase();
   return SANDWICH_HINTS.some(h => s.includes(h));
 }
 
+function isMultiWord(q: string) {
+  return q.trim().includes(' ');
+}
+
+const BREAD_HINTS = ['wheat', 'whole', 'white', 'sourdough', 'multigrain', 'rye'];
+
 function extractBreadHints(q: string) {
   const s = q.toLowerCase();
   return BREAD_HINTS.filter(h => s.includes(h));
 }
 
-// Dish vs Ingredient routing
-const DISH_WORDS = ['sandwich','burger','taco','wrap','noodle','ramen','sushi','roll','curry','biryani','yakisoba','gobi','rajas','pizza','enchilada','quesadilla'];
-const SIMPLE_ING = ['apple','egg','rice','pasta','yogurt','cereal','chicken','fish','beef','salmon','banana'];
+// Enhanced provider ordering with FDC guards
+const calculateProviderScore = (candidate: EnrichedFood, query: string): number => {
+  let score = candidate.confidence ?? 0.75;
+  const ingredientCount = candidate.ingredients?.length ?? 0;
+  
+  // Ingredient scoring nudges
+  if (ingredientCount >= 5) {
+    score += 0.5;
+  } else if (ingredientCount >= 3) {
+    score += 0.25;
+  } else if (ingredientCount === 2) {
+    score += 0.10;
+  } else {
+    score -= 0.30;
+  }
+  
+  // Hard gate for FDC with ≤1 ingredients
+  if (candidate.source === 'FDC' && ingredientCount <= 1) {
+    score = -Infinity; // Never select weak FDC if others meet thresholds
+    candidate.low_value = true;
+  }
+  
+  return score;
+};
 
-function classifyQuery(q: string): 'dish'|'ingredient' {
-  const t = q.toLowerCase().trim();
-  if (t.includes(' ')) return 'dish';
-  if (DISH_WORDS.some(w => t.includes(w))) return 'dish';
-  if (SIMPLE_ING.includes(t)) return 'ingredient';
-  // single word unknown defaults to dish to avoid FDC on dishes like "yakisoba"
-  return 'dish';
-}
-
-// Sandwich-specific routing - Nutritionix branded first
-async function routeSandwich(query: string, opts: { timeoutMs: number, bust?: boolean }): Promise<EnrichedFood | null> {
-  const breadHints = extractBreadHints(query);
+// Provider ordering with ingredient-aware thresholds
+const tryProviderOrdering = async (query: string, breadKind?: string): Promise<EnrichedFood | null> => {
+  const isSandwich = isSandwichy(query);
+  const isMultiWordQuery = isMultiWord(query);
   
   if (ENRICH_LOG_DIAG) {
-    console.log(`[ENRICH][SANDWICH] q="${query}" route="NXI→EDA→FDC" breadHints=[${breadHints.join(',')}]`);
+    console.log(`[ENRICH] Query classification: sandwich=${isSandwich}, multiWord=${isMultiWordQuery}`);
   }
-
-  // 1) Nutritionix branded deep-fetch (strict ≥5 ingredients)
-  const nxi = await resolveNutritionixBranded(query);
-  if (nxi?.ingredients && nxi.ingredients.length >= 5) {
-    if (ENRICH_LOG_DIAG) {
-      console.log(`[ENRICH][SANDWICH] picked=NUTRITIONIX ingLen=${nxi.ingredients.length}`);
+  
+  let nutritionixResult: EnrichedFood | null = null;
+  let edamamResult: EnrichedFood | null = null;
+  let fdcResult: EnrichedFood | null = null;
+  
+  // Try providers in parallel for efficiency
+  const [nxi, eda, fdc] = await Promise.all([
+    searchNutritionix(query, breadKind, isSandwich),
+    searchEdamam(query),
+    searchFDC(query)
+  ]);
+  
+  nutritionixResult = nxi;
+  edamamResult = eda;
+  fdcResult = fdc;
+  
+  // Apply thresholds based on query type and provider
+  const getThreshold = (source: string, isSandwich: boolean, isMultiWordQuery: boolean): number => {
+    if (isSandwich) {
+      switch (source) {
+        case 'NUTRITIONIX': return 5;
+        case 'EDAMAM': return 3;
+        case 'FDC': return 2;
+        default: return 2;
+      }
+    } else if (isMultiWordQuery) {
+      switch (source) {
+        case 'NUTRITIONIX': return 3;
+        case 'EDAMAM': return 3;
+        case 'FDC': return 2;
+        default: return 2;
+      }
+    } else {
+      // Single word queries are more lenient
+      switch (source) {
+        case 'NUTRITIONIX': return 2;
+        case 'EDAMAM': return 2;
+        case 'FDC': return 1;
+        default: return 1;
+      }
     }
-    return nxi;
+  };
+  
+  // Check if candidates meet thresholds
+  const candidates: Array<{result: EnrichedFood, score: number, source: string, meetsThreshold: boolean}> = [];
+  
+  if (nutritionixResult) {
+    const threshold = getThreshold('NUTRITIONIX', isSandwich, isMultiWordQuery);
+    const meetsThreshold = nutritionixResult.ingredients.length >= threshold;
+    const score = calculateProviderScore(nutritionixResult, query);
+    candidates.push({
+      result: nutritionixResult,
+      score: meetsThreshold ? score : -1,
+      source: 'NUTRITIONIX',
+      meetsThreshold
+    });
   }
-
-  // 2) EDAMAM generic with ingredient list ≥5 
-  const eda = await searchEdamam(query);
-  if (eda?.ingredients && eda.ingredients.length >= 5) {
+  
+  if (edamamResult) {
+    const threshold = getThreshold('EDAMAM', isSandwich, isMultiWordQuery);
+    const meetsThreshold = edamamResult.ingredients.length >= threshold;
+    const score = calculateProviderScore(edamamResult, query);
+    candidates.push({
+      result: edamamResult,
+      score: meetsThreshold ? score : -1,
+      source: 'EDAMAM',
+      meetsThreshold
+    });
+  }
+  
+  if (fdcResult) {
+    const threshold = getThreshold('FDC', isSandwich, isMultiWordQuery);
+    const meetsThreshold = fdcResult.ingredients.length >= threshold;
+    const score = calculateProviderScore(fdcResult, query);
+    
+    // Additional FDC guard: don't select if other providers meet their thresholds
+    const hasOtherQualified = candidates.some(c => c.meetsThreshold);
+    const finalScore = (hasOtherQualified && fdcResult.ingredients.length <= 1) ? -Infinity : score;
+    
+    candidates.push({
+      result: fdcResult,
+      score: meetsThreshold ? finalScore : -1,
+      source: 'FDC',
+      meetsThreshold
+    });
+  }
+  
+  // Sort by score (highest first) and return best candidate
+  candidates.sort((a, b) => b.score - a.score);
+  
+  if (candidates.length > 0 && candidates[0].score > -1) {
+    const winner = candidates[0];
+    
     if (ENRICH_LOG_DIAG) {
-      console.log(`[ENRICH][SANDWICH] picked=EDAMAM ingLen=${eda.ingredients.length}`);
+      console.log(`[ENRICH][SELECT] {source: "${winner.source}", ingredients_len: ${winner.result.ingredients.length}, threshold: ${getThreshold(winner.source, isSandwich, isMultiWordQuery)}, meetsThreshold: ${winner.meetsThreshold}}`);
     }
-    return eda;
+    
+    return winner.result;
   }
-
-  // 3) FDC fallback (avoid ≤1 ingredient unless nothing else)
-  const fdc = await searchFDC(query);
-  if (fdc?.ingredients && fdc.ingredients.length > 1) {
-    if (ENRICH_LOG_DIAG) {
-      console.log(`[ENRICH][SANDWICH] picked=FDC ingLen=${fdc.ingredients.length}`);
-    }
-    return fdc;
-  }
-
-  // Last resort: accept even minimal results
-  if (fdc) {
-    fdc.low_value = true;
-    if (ENRICH_LOG_DIAG) {
-      console.log(`[ENRICH][SANDWICH] picked=FDC(low_value) ingLen=${fdc.ingredients.length}`);
-    }
-    return fdc;
-  }
-
+  
   return null;
-}
-
-// Enhanced bread-aware normalizer for sandwich queries
-function normalizeSandwichQuery(query: string): { baseDish: string; breadKind?: string } {
-  if (!ENRICH_SANDWICH_ROUTING) {
-    return { baseDish: query };
-  }
-  
-  const lowerQuery = query.toLowerCase().trim();
-  
-  // Check if it's a sandwich query
-  if (!/\bsandwich\b/.test(lowerQuery)) {
-    return { baseDish: query };
-  }
-  
-  // Enhanced bread pattern with more options
-  const breadPattern = /\s+on\s+(wheat|white|rye|sourdough|multigrain|whole\s+wheat|whole\s+grain|whole-grain|wholewheat|hoagie|roll|wrap|pita)$/i;
-  const match = query.match(breadPattern);
-  
-  if (match) {
-    const baseDish = query.replace(breadPattern, '').trim();
-    const breadKind = match[1].toLowerCase().replace(/\s+/g, ' ');
-    
-    if (ENRICH_LOG_DIAG) {
-      console.log(`[ENRICH][ROUTE] {q: "${query}", base: "${baseDish}", bread: "${breadKind}"}`);
-    }
-    
-    return { baseDish, breadKind };
-  }
-  
-  return { baseDish: query };
-}
+};
 
 // QA Cache clearing helper (dev/test only)
 const clearQACache = async (supabaseAdmin: any): Promise<boolean> => {
@@ -912,10 +962,9 @@ serve(async (req) => {
       });
     }
 
-    // Normalize query for sandwiches (bread-aware parsing)
-    const { baseDish, breadKind } = normalizeSandwichQuery(query);
-    const isSandwich = /\bsandwich\b/i.test(query);
-    const searchQuery = baseDish;
+    // Extract bread hints for sandwich scoring (don't change search query)
+    const breadKind = extractBreadHints(query)[0] || undefined;
+    const searchQuery = query;
 
     // Build query hash for caching (use original query, not normalized)
     const normalizedQuery = query.toLowerCase().trim();
@@ -1003,166 +1052,11 @@ serve(async (req) => {
       }
     }
 
-    // INGREDIENT-AWARE V2 LOGIC WITH SANDWICH ROUTING
+    // INGREDIENT-AWARE V2 LOGIC WITH FINALIZED PROVIDER ORDER
     let result: EnrichedFood | null = null;
     
-    const useSandwichRoute = ENRICH_SANDWICH_ROUTING && isSandwichy(query);
-    
-    if (useSandwichRoute) {
-      // Use dedicated sandwich routing
-      result = await routeSandwich(query, { timeoutMs: 1200, bust: qaCache });
-    } else {
-      // Normal provider cascade (existing logic)
-      const queryType = classifyQuery(normalizedQuery);
-      const providerOrder = queryType === 'dish' ? ['NUTRITIONIX', 'EDAMAM', 'FDC'] : ['FDC', 'EDAMAM', 'NUTRITIONIX'];
-      
-      let nutritionixResult: EnrichedFood | null = null;
-      let edamamResult: EnrichedFood | null = null;
-      let fdcResult: EnrichedFood | null = null;
-      
-      for (const provider of providerOrder) {
-        if (provider === 'NUTRITIONIX' && !nutritionixResult) {
-          nutritionixResult = await searchNutritionix(searchQuery, breadKind, isSandwich);
-        }
-        if (provider === 'EDAMAM' && !edamamResult) {
-          edamamResult = await searchEdamam(searchQuery);
-        }
-        if (provider === 'FDC' && !fdcResult) {
-          fdcResult = await searchFDC(searchQuery);
-          if (fdcResult && fdcResult.ingredients.length <= 1) {
-            fdcResult.low_value = true;
-          }
-        }
-      }
-      
-      // Enhanced ingredient-aware selection with sandwich-specific logic
-      const minIngredients = (candidate: EnrichedFood, queryText: string): number => {
-        if (/sandwich|burger|taco|wrap/.test(queryText)) {
-          return candidate.source === 'NUTRITIONIX' ? 5 : 3;
-        }
-        return candidate.source === 'NUTRITIONIX' ? 3 : 2;
-      };
-      
-      // Score and pick winner with bread matching
-      const candidates: Array<{result: EnrichedFood, score: number, reason: string, branded?: boolean}> = [];
-      
-      if (nutritionixResult) {
-        const minIng = minIngredients(nutritionixResult, normalizedQuery);
-        const ingLen = nutritionixResult.ingredients.length;
-        const branded = !!nutritionixResult.source_id;
-        
-        let score = nutritionixResult.confidence || 0.75;
-        if (ingLen >= 3) score += 0.25;
-        else if (ingLen === 2) score += 0.10;
-        else score -= 0.30;
-        if (branded) score += 0.05;
-        
-        // Bread matching bonus
-        if (breadKind && nutritionixResult.name?.toLowerCase().includes(breadKind.toLowerCase())) {
-          score += 0.05;
-        }
-        
-        // Sandwich-specific scoring boosts
-        if (isSandwich && ENRICH_SANDWICH_ROUTING) {
-          if (branded && ingLen >= 5) {
-            score += 0.30; // Major boost for branded sandwiches with good ingredients
-          }
-          if (ingLen >= 8) {
-            score += 0.20; // Boost for very detailed ingredient lists
-          }
-          
-          // Hard block against weak options when rich ones exist
-          if (ingLen <= 1 && (edamamResult?.ingredients.length >= 5)) {
-            score -= 0.50;
-          }
-        }
-        
-        const meetsCriteria = ingLen >= minIng;
-        candidates.push({
-          result: nutritionixResult,
-          score: meetsCriteria ? score : score - 0.5,
-          reason: `NUTRITIONIX ${branded ? 'branded' : 'common'} ${meetsCriteria ? 'meets' : 'fails'} minIng=${minIng}`,
-          branded
-        });
-      }
-      
-      if (edamamResult) {
-        const minIng = minIngredients(edamamResult, normalizedQuery);
-        const ingLen = edamamResult.ingredients.length;
-        
-        let score = edamamResult.confidence || 0.78;
-        if (ingLen >= 3) score += 0.25;
-        else if (ingLen === 2) score += 0.10;
-        else score -= 0.30;
-        
-        // Sandwich-specific scoring for Edamam
-        if (isSandwich && ENRICH_SANDWICH_ROUTING) {
-          if (ingLen >= 5) {
-            score += 0.15; // Moderate boost for detailed Edamam results
-          }
-        }
-        
-        const meetsCriteria = ingLen >= minIng;
-        candidates.push({
-          result: edamamResult,
-          score: meetsCriteria ? score : score - 0.5,
-          reason: `EDAMAM ${meetsCriteria ? 'meets' : 'fails'} minIng=${minIng}`
-        });
-      }
-      
-      if (fdcResult) {
-        const minIng = minIngredients(fdcResult, normalizedQuery);
-        const ingLen = fdcResult.ingredients.length;
-        
-        let score = fdcResult.confidence || 0.85;
-        if (ingLen >= 3) score += 0.25;
-        else if (ingLen === 2) score += 0.10;
-        else score -= 0.30;
-        
-        // Hard block against weak FDC on sandwiches when better options exist
-        if (isSandwich && ENRICH_SANDWICH_ROUTING && ingLen <= 1) {
-          const hasRicherOption = (nutritionixResult && nutritionixResult.ingredients.length >= 5) ||
-                                  (edamamResult && edamamResult.ingredients.length >= 5);
-          if (hasRicherOption) {
-            score -= 0.50; // Heavy penalty to avoid weak FDC when rich options available
-          }
-        }
-        
-        const meetsCriteria = ingLen >= minIng;
-        candidates.push({
-          result: fdcResult,
-          score: meetsCriteria ? score : score - 0.5,
-          reason: `FDC ${meetsCriteria ? 'meets' : 'fails'} minIng=${minIng}`
-        });
-      }
-      
-      // Pick highest scoring candidate
-      if (candidates.length > 0) {
-        candidates.sort((a, b) => b.score - a.score);
-        const winner = candidates[0];
-        result = winner.result;
-        
-        if (ENRICH_LOG_DIAG) {
-          console.log(`[ENRICH][SELECT]`, {
-            source: result.source,
-            ingredients_len: result.ingredients.length,
-            breadMatched: !!breadKind && result.name?.toLowerCase().includes(breadKind.toLowerCase())
-          });
-        }
-        
-        console.log(`[ENRICH][DECISION]`, {
-          q: normalizedQuery,
-          route: queryType,
-          tried: providerOrder,
-          picked: {
-            source: result.source,
-            ingLen: result.ingredients.length,
-            reason: winner.reason,
-            branded: winner.branded || false
-          }
-        });
-      }
-    }
+    // Use new provider ordering system
+    result = await tryProviderOrdering(searchQuery, breadKind);
 
     // still nothing? FDC fallback
     if (!result) result = await searchFDC(searchQuery);
