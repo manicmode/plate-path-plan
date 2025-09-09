@@ -17,6 +17,8 @@ interface QAResult {
   kcal_100g: number | null;
   pass_fail: 'PASS' | 'FAIL';
   ms?: number;
+  whyPicked?: string;
+  diagnostic?: any;
 }
 
 const TEST_QUERIES = [
@@ -97,11 +99,12 @@ export default function QAPage() {
         console.log(`[QA] Testing: "${query}"`);
         
         const start = performance.now();
-        // Use cache busting and manual context
+        // Use cache busting and manual context with diagnostics
         const enriched = await enrich(query, 'auto', { 
           noCache: true, 
           bust: Date.now().toString(),
-          context: 'manual' 
+          context: 'manual',
+          diag: true 
         });
         const ms = Math.round(performance.now() - start);
         
@@ -119,7 +122,9 @@ export default function QAPage() {
           ingredients_len,
           kcal_100g,
           pass_fail,
-          ms
+          ms,
+          whyPicked: (enriched as any)?._router?.whyPicked || 'manual_enrichment',
+          diagnostic: (enriched as any)?._router || null
         });
         
         console.log(`[QA] ${query}: ${source}, ${ingredients_len} ingredients, ${pass_fail}, ${ms}ms (context: manual)`);
@@ -132,7 +137,9 @@ export default function QAPage() {
           confidence: null,
           ingredients_len: 0,
           kcal_100g: null,
-          pass_fail: 'FAIL'
+          pass_fail: 'FAIL',
+          whyPicked: 'error',
+          diagnostic: null
         });
       }
     }
@@ -175,7 +182,9 @@ export default function QAPage() {
           ingredients_len,
           kcal_100g,
           pass_fail,
-          ms
+          ms,
+          whyPicked: (enriched as any)?._router?.whyPicked || 'health_scan_enrichment',
+          diagnostic: (enriched as any)?._router || null
         });
         
         console.log(`[HEALTHSCAN QA] ${query}: ${source}, ${ingredients_len} ingredients, ${pass_fail}, ${ms}ms (context: scan)`);
@@ -188,7 +197,9 @@ export default function QAPage() {
           confidence: null,
           ingredients_len: 0,
           kcal_100g: null,
-          pass_fail: 'FAIL'
+          pass_fail: 'FAIL',
+          whyPicked: 'error',
+          diagnostic: null
         });
       }
     }
@@ -368,7 +379,8 @@ export default function QAPage() {
                         <th className="border border-border p-2 text-left">Confidence</th>
                         <th className="border border-border p-2 text-left">Ingredients Len</th>
                         <th className="border border-border p-2 text-left">Kcal/100g</th>
-                        <th className="border border-border p-2 text-left">Time (ms)</th>
+                         <th className="border border-border p-2 text-left">Time (ms)</th>
+                         <th className="border border-border p-2 text-left">Result</th>
                          <th className="border border-border p-2 text-left">Why Picked</th>
                       </tr>
                     </thead>
@@ -392,7 +404,7 @@ export default function QAPage() {
                           <td className="border border-border p-2">
                             {result.kcal_100g ? Math.round(result.kcal_100g) : '-'}
                           </td>
-                          <td className="border border-border p-2">{result.ms || '-'}</td>
+                           <td className="border border-border p-2">{result.ms || '-'}</td>
                            <td className="border border-border p-2">
                              <Badge 
                                variant={result.pass_fail === 'PASS' ? 'default' : 'destructive'}
@@ -406,11 +418,15 @@ export default function QAPage() {
                              </Badge>
                            </td>
                            <td className="border border-border p-2 text-xs">
-                             {result.source && (
+                             {result.whyPicked && (
                                <div className="space-y-1">
-                                 <div>Source: {result.source}</div>
-                                 <div>Ingredients: {result.ingredients_len}</div>
-                                 {result.ms && <div>Time: {result.ms}ms</div>}
+                                 <div><strong>Decision:</strong> {result.diagnostic?.decision || 'unknown'}</div>
+                                 <div><strong>Why:</strong> {result.whyPicked}</div>
+                                 <div><strong>Source:</strong> {result.source}</div>
+                                 <div><strong>Ingredients:</strong> {result.ingredients_len}</div>
+                                 {result.diagnostic?.tried?.nutritionix && (
+                                   <div><strong>NIX calls:</strong> {result.diagnostic.tried.nutritionix.calls}</div>
+                                 )}
                                </div>
                              )}
                            </td>
@@ -456,8 +472,9 @@ export default function QAPage() {
                         <th className="border border-border p-2 text-left">Confidence</th>
                         <th className="border border-border p-2 text-left">Ingredients Len</th>
                         <th className="border border-border p-2 text-left">Kcal/100g</th>
-                        <th className="border border-border p-2 text-left">Time (ms)</th>
-                        <th className="border border-border p-2 text-left">Why Picked</th>
+                         <th className="border border-border p-2 text-left">Time (ms)</th>
+                         <th className="border border-border p-2 text-left">Result</th>
+                         <th className="border border-border p-2 text-left">Why Picked</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -480,7 +497,7 @@ export default function QAPage() {
                           <td className="border border-border p-2">
                             {result.kcal_100g ? Math.round(result.kcal_100g) : '-'}
                           </td>
-                          <td className="border border-border p-2">{result.ms || '-'}</td>
+                           <td className="border border-border p-2">{result.ms || '-'}</td>
                            <td className="border border-border p-2">
                              <Badge 
                                variant={result.pass_fail === 'PASS' ? 'default' : 'destructive'}
@@ -492,6 +509,19 @@ export default function QAPage() {
                                  <><XCircle className="w-3 h-3 mr-1" />FAIL</>
                                )}
                              </Badge>
+                           </td>
+                           <td className="border border-border p-2 text-xs">
+                             {result.whyPicked && (
+                               <div className="space-y-1">
+                                 <div><strong>Decision:</strong> {result.diagnostic?.decision || 'unknown'}</div>
+                                 <div><strong>Why:</strong> {result.whyPicked}</div>
+                                 <div><strong>Source:</strong> {result.source}</div>
+                                 <div><strong>Ingredients:</strong> {result.ingredients_len}</div>
+                                 {result.diagnostic?.tried?.nutritionix && (
+                                   <div><strong>NIX calls:</strong> {result.diagnostic.tried.nutritionix.calls}</div>
+                                 )}
+                               </div>
+                             )}
                            </td>
                            <td className="border border-border p-2 text-xs">
                              {result.source && (

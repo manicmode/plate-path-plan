@@ -1,5 +1,9 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { callEnrichment } from '@/lib/enrich/edgeClient';
+import { routeEnrichment } from '@/lib/enrich/router';
+import { aggregateResults, formatEnrichedFood } from '@/lib/enrich/aggregate';
+import { F } from '@/lib/flags';
 
 interface Nutrients {
   calories: number;
@@ -63,36 +67,33 @@ export function useManualFoodEnrichment() {
       const context = options?.context || 'manual';
       console.log(`[ENRICH][CLIENT] Calling enrich-manual-food: "${query}" (context: ${context})`);
       
-      // Build URL with cache busting for QA
-      let functionUrl = 'enrich-manual-food';
-      if (options?.noCache || options?.bust) {
-        const params = new URLSearchParams();
-        if (options.noCache) params.set('bust', '1');
-        if (options.bust) params.set('bust', options.bust);
-        functionUrl += '?' + params.toString();
+      // Try edge function first
+      const edgeResult = await callEnrichment(query, {
+        context,
+        locale,
+        diag: options?.diag,
+        noCache: options?.noCache,
+        bust: options?.bust
+      });
+      
+      // If edge function worked, return its result
+      if (!edgeResult.fallback && edgeResult.data && !edgeResult.error) {
+        console.log(`[ENRICH][SUCCESS] Edge function: Source: ${edgeResult.data.source}, Confidence: ${edgeResult.data.confidence}, Context: ${context}`);
+        return edgeResult.data;
       }
       
-      const { data, error: functionError } = await supabase.functions.invoke<EnrichedFood>(
-        functionUrl,
-        { 
-          body: { 
-            query: query.trim(), 
-            locale, 
-            context: options?.context || 'manual',
-            diag: options?.diag || false
-          } 
-        }
-      );
-
-      if (functionError) {
-        console.error('[ENRICH][ERROR]', functionError);
-        setError(functionError.message || 'Enrichment failed');
-        return null;
+      // Edge function failed or unavailable - use fallback routing
+      if (F.ENRICH_DIAG) {
+        console.log(`[ENRICH][FALLBACK] Edge unavailable, using local router`);
       }
-
-      if (data) {
-        console.log(`[ENRICH][SUCCESS] Source: ${data.source}, Confidence: ${data.confidence}, Context: ${context}`);
-        return data;
+      
+      const routerResult = await routeEnrichment(query, context);
+      const aggregated = aggregateResults(routerResult);
+      const formatted = formatEnrichedFood(aggregated, query);
+      
+      if (formatted) {
+        console.log(`[ENRICH][SUCCESS] Fallback router: Source: ${formatted.source}, Confidence: ${formatted.confidence}, Context: ${context}`);
+        return formatted;
       }
 
       return null;

@@ -41,8 +41,12 @@ export const F = {
   // New v2.2 routing flags
   ENRICH_V22_LOCK_SANDWICH: flag('VITE_ENRICH_V22_LOCK_SANDWICH', true),  // Hard-gate sandwich routing (on by default)
   ENRICH_FDC_GUARD: flag('VITE_ENRICH_FDC_GUARD', true),                  // Reject weak FDC when better exists (on by default)
-  ENRICH_NIX_CAP_PER_QUERY: intFlag('VITE_ENRICH_NIX_CAP_PER_QUERY', 2),  // Max 2 Nutritionix requests per query (on by default)
+  ENRICH_NIX_CAP_PER_QUERY: intFlag('VITE_ENRICH_NIX_CAP_PER_QUERY', 1),  // Max 1 Nutritionix requests per query (on by default)
   ENRICH_DIAG: flag('VITE_ENRICH_DIAG', false),                           // Structured console logs (off by default)
+  
+  // Edge function configuration
+  ENRICH_EDGE_FN_NAME: (import.meta as any).env?.VITE_ENRICH_EDGE_FN_NAME || 'enrich-manual-food',
+  ENRICH_EDGE_PING_MS: intFlag('VITE_ENRICH_EDGE_PING_MS', 1000),         // Health check timeout (1s default)
 };
 
 // Helper for sampling (dev-only randomness)
