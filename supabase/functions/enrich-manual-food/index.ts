@@ -735,6 +735,8 @@ const ENRICH_V2_ING_AWARE = flag('VITE_ENRICH_V2_ING_AWARE', true);
 const ENRICH_BRAND_FIRST = flag('VITE_ENRICH_BRAND_FIRST', true);
 const ENRICH_SANDWICH_ROUTING = flag('VITE_ENRICH_SANDWICH_ROUTING', true);
 const ENRICH_LOG_DIAG = flag('VITE_ENRICH_LOG_DIAG', false);
+const ENRICH_SAFE_MODE = flag('VITE_ENRICH_SAFE_MODE', false);
+const ENRICH_V2_ROUTER = flag('VITE_ENRICH_V2_ROUTER', true);
 const ENRICH_VERSION = "v2.3-unified"; // Updated for unified scoring
 
 // Query classification helpers
@@ -856,7 +858,16 @@ const enrichDish = async (query: string, options: {
   // Collect all candidates in parallel
   const candidatePromises: Promise<EnrichedFood | null>[] = [];
   
-  if (isSandwich || isMultiWordQuery) {
+  if (ENRICH_SAFE_MODE) {
+    // Safe mode: Edamam → FDC (bypass Nutritionix)
+    if (ENRICH_LOG_DIAG) {
+      console.log(`[ENRICH][SAFE_MODE] Bypassing Nutritionix for "${query}"`);
+    }
+    candidatePromises.push(
+      searchEdamam(query),
+      searchFDC(query)
+    );
+  } else if (isSandwich || isMultiWordQuery) {
     // Sandwich/multi-word: Nutritionix (branded deep-fetch) → Edamam → FDC (guarded)
     candidatePromises.push(
       searchNutritionix(query, breadKind, isSandwich),

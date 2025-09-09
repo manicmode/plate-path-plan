@@ -30,6 +30,13 @@ export const F = {
   FEATURE_ENRICH_HEALTHSCAN: flag('VITE_FEATURE_ENRICH_HEALTHSCAN', false),
   ENRICH_TIMEOUT_MS: Number((import.meta as any).env?.VITE_ENRICH_TIMEOUT_MS || 1200),
   HEALTHSCAN_SAMPLING_PCT: Number((import.meta as any).env?.VITE_HEALTHSCAN_SAMPLING_PCT || 0),
+  
+  // Investigation & QA flags
+  ENRICH_LOG_DIAG: flag('VITE_ENRICH_LOG_DIAG', false),          // Diagnostic logging (off by default)
+  ENRICH_SAFE_MODE: flag('VITE_ENRICH_SAFE_MODE', false),        // Disable Nutritionix, route Edamam→FDC (off by default) 
+  ENRICH_V2_ROUTER: flag('VITE_ENRICH_V2_ROUTER', true),         // Unified router for manual & health-scan (on by default)
+  ENRICH_BRAND_FIRST: flag('VITE_ENRICH_BRAND_FIRST', true),     // Brand-first enrichment (on by default)
+  ENRICH_SANDWICH_ROUTING: flag('VITE_ENRICH_SANDWICH_ROUTING', true), // Sandwich-specific routing (on by default)
 };
 
 // Helper for sampling (dev-only randomness)

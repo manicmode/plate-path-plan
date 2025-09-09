@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
-import { Loader2, CheckCircle, XCircle, Settings } from 'lucide-react';
+import { simulateHealthScanEnrichment } from '@/utils/healthScanSimulation';
+import { Loader2, CheckCircle, XCircle, Settings, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/auth';
 import { notify } from '@/lib/notify';
@@ -15,6 +16,7 @@ interface QAResult {
   ingredients_len: number;
   kcal_100g: number | null;
   pass_fail: 'PASS' | 'FAIL';
+  ms?: number;
 }
 
 const TEST_QUERIES = [
@@ -51,8 +53,38 @@ export default function QAPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [isRunningHealthScan, setIsRunningHealthScan] = useState(false);
   const [isTogglingEnrichment, setIsTogglingEnrichment] = useState(false);
+  const [isClearingCache, setIsClearingCache] = useState(false);
   const { enrich } = useManualFoodEnrichment();
   const { isAuthenticated, user } = useAuth();
+
+  const clearQACache = async () => {
+    setIsClearingCache(true);
+    try {
+      console.log('[QA] Clearing cache...');
+      
+      // Call edge function directly
+      const response = await supabase.functions.invoke('enrich-manual-food/clear-qa-cache', {
+        body: {}
+      });
+      
+      if (!response.error) {
+        const result = response.data;
+        if (result.success) {
+          notify.success('QA cache cleared successfully');
+          console.log('[QA] Cache cleared');
+        } else {
+          notify.error('Failed to clear QA cache');
+        }
+      } else {
+        notify.error('Failed to clear QA cache');
+      }
+    } catch (error) {
+      console.error('[QA] Cache clear error:', error);
+      notify.error('Failed to clear QA cache');
+    } finally {
+      setIsClearingCache(false);
+    }
+  };
 
   const runEnrichmentTest = async () => {
     setIsRunning(true);
@@ -64,7 +96,14 @@ export default function QAPage() {
       try {
         console.log(`[QA] Testing: "${query}"`);
         
-        const enriched = await enrich(query);
+        const start = performance.now();
+        // Use cache busting and manual context
+        const enriched = await enrich(query, 'auto', { 
+          noCache: true, 
+          bust: Date.now().toString(),
+          context: 'manual' 
+        });
+        const ms = Math.round(performance.now() - start);
         
         const source = enriched?.source || null;
         const confidence = enriched?.confidence || null;
@@ -79,10 +118,11 @@ export default function QAPage() {
           confidence,
           ingredients_len,
           kcal_100g,
-          pass_fail
+          pass_fail,
+          ms
         });
         
-        console.log(`[QA] ${query}: ${source}, ${ingredients_len} ingredients, ${pass_fail}`);
+        console.log(`[QA] ${query}: ${source}, ${ingredients_len} ingredients, ${pass_fail}, ${ms}ms (context: manual)`);
         
       } catch (error) {
         console.error(`[QA] ${query} failed:`, error);
@@ -111,32 +151,21 @@ export default function QAPage() {
       try {
         console.log(`[HEALTHSCAN QA] Testing: "${query}"`);
         
-        const start = performance.now();
-        // Call with noCache and scan context to bypass cache and use same router
-        const enriched = await enrich(query, 'auto', { 
-          noCache: true, 
-          bust: Date.now().toString(),
-          context: 'scan' 
-        });
-        const ms = Math.round(performance.now() - start);
+        const result = await simulateHealthScanEnrichment(query);
         
-        const source = enriched?.source || null;
-        const confidence = enriched?.confidence || null;
-        const ingredients_len = enriched?.ingredients?.length || 0;
-        const kcal_100g = enriched?.per100g?.calories || null;
-        
-        const pass_fail = getPassCriteria(query, source, ingredients_len) ? 'PASS' : 'FAIL';
+        const pass_fail = getPassCriteria(query, result.source, result.ingredients_len) ? 'PASS' : 'FAIL';
         
         testResults.push({
-          query,
-          source,
-          confidence,
-          ingredients_len,
-          kcal_100g,
-          pass_fail
+          query: result.query,
+          source: result.source,
+          confidence: result.confidence,
+          ingredients_len: result.ingredients_len,
+          kcal_100g: result.kcal_100g,
+          pass_fail,
+          ms: result.ms
         });
         
-        console.log(`[HEALTHSCAN QA] ${query}: ${source}, ${ingredients_len} ingredients, ${pass_fail}, ${ms}ms (context: scan)`);
+        console.log(`[HEALTHSCAN QA] ${query}: ${result.source}, ${result.ingredients_len} ingredients, ${pass_fail}, ${result.ms}ms (context: scan)`);
         
       } catch (error) {
         console.error(`[HEALTHSCAN QA] ${query} failed:`, error);
@@ -198,13 +227,18 @@ export default function QAPage() {
   const overallStatus = results.length > 0 && results.every(r => r.pass_fail === 'PASS') ? 'PASS' : 'FAIL';
   const healthScanOverallStatus = healthScanResults.length > 0 && healthScanResults.every(r => r.pass_fail === 'PASS') ? 'PASS' : 'FAIL';
 
+  // Expose window.clearQACache for dev console
+  if (typeof window !== 'undefined') {
+    (window as any).clearQACache = clearQACache;
+  }
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Enrichment QA Smoke Test
+              Enrichment QA Investigation
               {results.length > 0 && (
                 <Badge 
                   variant={overallStatus === 'PASS' ? 'default' : 'destructive'}
@@ -220,39 +254,58 @@ export default function QAPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Button 
-              onClick={runEnrichmentTest} 
-              disabled={isRunning}
-              className="mb-4"
-            >
-              {isRunning ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Running Tests...
-                </>
-              ) : (
-                'Run Enrichment QA'
-              )}
-            </Button>
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Button 
+                onClick={clearQACache} 
+                disabled={isClearingCache}
+                variant="outline"
+                size="sm"
+              >
+                {isClearingCache ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Clearing Cache...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Clear QA Cache
+                  </>
+                )}
+              </Button>
 
-            <Button 
-              onClick={runHealthScanTest} 
-              disabled={isRunningHealthScan}
-              className="mb-4 ml-4"
-              variant="outline"
-            >
-              {isRunningHealthScan ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Running Health Scan QA...
-                </>
-              ) : (
-                'Run Health Scan QA'
-              )}
-            </Button>
+              <Button 
+                onClick={runEnrichmentTest} 
+                disabled={isRunning}
+              >
+                {isRunning ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Running Manual QA...
+                  </>
+                ) : (
+                  'Run Manual QA'
+                )}
+              </Button>
+
+              <Button 
+                onClick={runHealthScanTest} 
+                disabled={isRunningHealthScan}
+                variant="outline"
+              >
+                {isRunningHealthScan ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Running Health Scan QA...
+                  </>
+                ) : (
+                  'Run Health Scan QA'
+                )}
+              </Button>
+            </div>
 
             {/* Health-Scan Enrichment Toggle Buttons */}
-            <div className="flex gap-2 ml-4 mb-4">
+            <div className="flex gap-2 mb-4">
               <Button
                 onClick={() => toggleHealthScanEnrichment(true)}
                 disabled={isTogglingEnrichment || !isAuthenticated}
@@ -283,14 +336,14 @@ export default function QAPage() {
             </div>
 
             {!isAuthenticated && (
-              <p className="text-sm text-muted-foreground mb-4 ml-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 Sign in to enable/disable Health-Scan enrichment for your account.
               </p>
             )}
 
             {results.length > 0 && (
               <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-4">Test Results</h3>
+                <h3 className="text-lg font-semibold mb-4">Manual QA Results</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse border border-border">
                     <thead>
@@ -300,6 +353,7 @@ export default function QAPage() {
                         <th className="border border-border p-2 text-left">Confidence</th>
                         <th className="border border-border p-2 text-left">Ingredients Len</th>
                         <th className="border border-border p-2 text-left">Kcal/100g</th>
+                        <th className="border border-border p-2 text-left">Time (ms)</th>
                         <th className="border border-border p-2 text-left">Result</th>
                       </tr>
                     </thead>
@@ -323,6 +377,7 @@ export default function QAPage() {
                           <td className="border border-border p-2">
                             {result.kcal_100g ? Math.round(result.kcal_100g) : '-'}
                           </td>
+                          <td className="border border-border p-2">{result.ms || '-'}</td>
                           <td className="border border-border p-2">
                             <Badge 
                               variant={result.pass_fail === 'PASS' ? 'default' : 'destructive'}
@@ -377,6 +432,7 @@ export default function QAPage() {
                         <th className="border border-border p-2 text-left">Confidence</th>
                         <th className="border border-border p-2 text-left">Ingredients Len</th>
                         <th className="border border-border p-2 text-left">Kcal/100g</th>
+                        <th className="border border-border p-2 text-left">Time (ms)</th>
                         <th className="border border-border p-2 text-left">Result</th>
                       </tr>
                     </thead>
@@ -400,6 +456,7 @@ export default function QAPage() {
                           <td className="border border-border p-2">
                             {result.kcal_100g ? Math.round(result.kcal_100g) : '-'}
                           </td>
+                          <td className="border border-border p-2">{result.ms || '-'}</td>
                           <td className="border border-border p-2">
                             <Badge 
                               variant={result.pass_fail === 'PASS' ? 'default' : 'destructive'}
@@ -429,6 +486,17 @@ export default function QAPage() {
                 </div>
               </div>
             )}
+
+            <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+              <h4 className="font-semibold mb-2">Investigation Notes:</h4>
+              <ul className="text-sm space-y-1 text-muted-foreground">
+                <li>• Manual QA uses context='manual', cache bypass with bust param</li>
+                <li>• Health Scan QA uses same unified router with context='scan'</li>
+                <li>• Both flows should produce identical results for same queries</li>
+                <li>• FDC guard rejects weak results (≤1 ingredient) when better options exist</li>
+                <li>• window.clearQACache() available in console for debugging</li>
+              </ul>
+            </div>
           </CardContent>
         </Card>
       </div>

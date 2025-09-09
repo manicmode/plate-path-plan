@@ -241,47 +241,100 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const perGram = storeAnalysis?.perGram || {};
   const perGramSum = Object.values(perGram).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
 
+  // Sanitize food data to prevent crashes from incomplete/null nutrition data
+  const safeHydrate = (item: any) => {
+    if (!item) return null;
+    
+    const coerceNum = (n: any) => (typeof n === 'number' && !Number.isNaN(n)) ? n : null;
+    
+    const per100g = item?.per100g ? {
+      calories: coerceNum(item.per100g.calories),
+      protein: coerceNum(item.per100g.protein),
+      carbs: coerceNum(item.per100g.carbs),
+      fat: coerceNum(item.per100g.fat),
+      fiber: coerceNum(item.per100g.fiber),
+      sugar: coerceNum(item.per100g.sugar),
+      sodium: coerceNum(item.per100g.sodium)
+    } : null;
+    
+    const perGram = item?.perGram ? {
+      calories: coerceNum(item.perGram.calories),
+      protein: coerceNum(item.perGram.protein),
+      carbs: coerceNum(item.perGram.carbs),
+      fat: coerceNum(item.perGram.fat),
+      fiber: coerceNum(item.perGram.fiber),
+      sugar: coerceNum(item.perGram.sugar),
+      sodium: coerceNum(item.perGram.sodium)
+    } : null;
+    
+    const servingG = coerceNum(item?.perServing?.serving_grams) || coerceNum(item?.serving_grams) || null;
+    const perServing = servingG ? { serving_grams: servingG } : null;
+
+    return {
+      ...item,
+      per100g,
+      perGram,
+      perServing
+    };
+  };
+
+  // Apply safety sanitization
+  const sanitizedFoodItem = currentFoodItem ? safeHydrate(currentFoodItem) : null;
+
   // Detect barcode immediately from stable signals present on first render
   const isBarcodeSource = !!(
-    (currentFoodItem as any)?.source === 'barcode' ||
-    (currentFoodItem as any)?.id?.startsWith?.('bc:') ||
-    (currentFoodItem as any)?.barcode
+    (sanitizedFoodItem as any)?.source === 'barcode' ||
+    (sanitizedFoodItem as any)?.id?.startsWith?.('bc:') ||
+    (sanitizedFoodItem as any)?.barcode
   );
 
   // Detect manual/voice sources for v3 handling
   const isManualVoiceSource = !!(
-    (currentFoodItem as any)?.__source === 'manual' || 
-    (currentFoodItem as any)?.__source === 'voice' ||
-    (currentFoodItem as any)?.source === 'manual' || 
-    (currentFoodItem as any)?.source === 'speech'
+    (sanitizedFoodItem as any)?.__source === 'manual' || 
+    (sanitizedFoodItem as any)?.__source === 'voice' ||
+    (sanitizedFoodItem as any)?.source === 'manual' || 
+    (sanitizedFoodItem as any)?.source === 'speech'
   );
+
+  const useHydration = !bypassHydration;
 
   const useHydration = !bypassHydration;
   // Check if nutrition is ready from various sources
   const perGramReady =
-    !!currentFoodItem?.perGram ||
-    (Array.isArray(currentFoodItem?.perGramKeys) && currentFoodItem.perGramKeys.length > 0) ||
-    (typeof currentFoodItem?.pgSum === 'number' && currentFoodItem.pgSum > 0);
+    !!sanitizedFoodItem?.perGram ||
+    (Array.isArray(sanitizedFoodItem?.perGramKeys) && sanitizedFoodItem.perGramKeys.length > 0) ||
+    (typeof sanitizedFoodItem?.pgSum === 'number' && sanitizedFoodItem.pgSum > 0);
   
+  // Zustand selector MUST run unconditionally on every render
+  const storeAnalysis = useNutritionStore(
+    s => (foodId ? s.byId[foodId] : undefined)
+  );
+
+  // Optional helpers (no new hooks below guards) 
+  const perGram = storeAnalysis?.perGram || {};
+  const perGramSum = Object.values(perGram).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
+
   const isNutritionReady = perGramReady
     || ((useHydration && !isBarcodeSource) ? (perGramSum > 0) : true);
   
   // Log mount and hydration states
   useEffect(() => {
-    if (isOpen && currentFoodItem) {
-      const source = (currentFoodItem as any)?.__source || (currentFoodItem as any)?.source || 'unknown';
+    if (isOpen && sanitizedFoodItem) {
+      const source = (sanitizedFoodItem as any)?.__source || (sanitizedFoodItem as any)?.source || 'unknown';
       console.log('[CONFIRM][MOUNT]', {
         source,
         useHydration,
         isNutritionReady,
-        isManualVoice: isManualVoiceSource
+        isManualVoice: isManualVoiceSource,
+        hasPer100g: !!sanitizedFoodItem?.per100g,
+        hasPerGram: !!sanitizedFoodItem?.perGram
       });
       
       if (!isNutritionReady && useHydration) {
         console.log('[CONFIRM][HYDRATE:PENDING]');
       }
     }
-  }, [isOpen, currentFoodItem, useHydration, isNutritionReady, isManualVoiceSource]);
+  }, [isOpen, sanitizedFoodItem, useHydration, isNutritionReady, isManualVoiceSource]);
 
   // Log when hydration completes
   useEffect(() => {
@@ -293,17 +346,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   
   // V3 nutrition hydration for manual/voice items
   useEffect(() => {
-    if (!currentFoodItem?.id || !isManualVoiceSource || !ENABLE_FOOD_TEXT_V3_NUTR) return;
+    if (!sanitizedFoodItem?.id || !isManualVoiceSource || !ENABLE_FOOD_TEXT_V3_NUTR) return;
     if (perGramReady) return; // Skip if already ready
     
     const controller = new AbortController();
     
     console.log('[NUTRITION][V3][START]', { 
-      name: currentFoodItem.name, 
-      id: currentFoodItem.id 
+      name: sanitizedFoodItem.name, 
+      id: sanitizedFoodItem.id 
     });
     
-    hydrateNutritionV3(currentFoodItem, { 
+    hydrateNutritionV3(sanitizedFoodItem, { 
       signal: controller.signal, 
       preferGeneric: true 
     }).then(result => {
@@ -332,7 +385,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     });
     
     return () => controller.abort();
-  }, [currentFoodItem?.id, isManualVoiceSource, perGramReady]);
+  }, [sanitizedFoodItem?.id, isManualVoiceSource, perGramReady]);
 
   // Log render guard state for diagnostics
   console.log('[CONFIRM][RENDER_GUARD]', {
@@ -345,21 +398,21 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   // Log nutrition readiness
   useEffect(() => {
-    if (isNutritionReady && currentFoodItem) {
+    if (isNutritionReady && sanitizedFoodItem) {
       const source = perGramReady ? 'item' : 'store';
-      const dataSource = currentFoodItem.dataSource || 'unknown';
-      const pgKeys = (currentFoodItem.perGramKeys?.length || 0);
+      const dataSource = sanitizedFoodItem.dataSource || 'unknown';
+      const pgKeys = (sanitizedFoodItem.perGramKeys?.length || 0);
       
       console.log('[NUTRITION][READY]', { 
         source, 
         dataSource, 
         pgKeys 
       });
-    } else if (!isNutritionReady && currentFoodItem) {
+    } else if (!isNutritionReady && sanitizedFoodItem) {
       const reason = !perGramReady && perGramSum === 0 ? 'NO_PER_GRAM_KEYS' : 'UNKNOWN';
       console.log('[NUTRITION][BLOCKED]', { reason });
     }
-  }, [isNutritionReady, perGramReady, perGramSum, currentFoodItem]);
+  }, [isNutritionReady, perGramReady, perGramSum, sanitizedFoodItem]);
 
   // Set body flag when reminder is open for CSS portal handling
   useEffect(() => {
@@ -378,16 +431,56 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return () => { delete document.body.dataset.modalOpen; };
   }, [isOpen]);
 
+// Sanitize food data to prevent crashes from incomplete/null nutrition data
+  const safeHydrate = (item: any) => {
+    if (!item) return null;
+    
+    const coerceNum = (n: any) => (typeof n === 'number' && !Number.isNaN(n)) ? n : null;
+    
+    const per100g = item?.per100g ? {
+      calories: coerceNum(item.per100g.calories),
+      protein: coerceNum(item.per100g.protein),
+      carbs: coerceNum(item.per100g.carbs),
+      fat: coerceNum(item.per100g.fat),
+      fiber: coerceNum(item.per100g.fiber),
+      sugar: coerceNum(item.per100g.sugar),
+      sodium: coerceNum(item.per100g.sodium)
+    } : null;
+    
+    const perGram = item?.perGram ? {
+      calories: coerceNum(item.perGram.calories),
+      protein: coerceNum(item.perGram.protein),
+      carbs: coerceNum(item.perGram.carbs),
+      fat: coerceNum(item.perGram.fat),
+      fiber: coerceNum(item.perGram.fiber),
+      sugar: coerceNum(item.perGram.sugar),
+      sodium: coerceNum(item.perGram.sodium)
+    } : null;
+    
+    const servingG = coerceNum(item?.perServing?.serving_grams) || coerceNum(item?.serving_grams) || null;
+    const perServing = servingG ? { serving_grams: servingG } : null;
+
+    return {
+      ...item,
+      per100g,
+      perGram,
+      perServing
+    };
+  };
+
+  // Apply safety sanitization
+  const sanitizedFoodItem = currentFoodItem ? safeHydrate(currentFoodItem) : null;
+
   // Force preferItem on barcode regardless of bypassHydration timing
   // Updated to prefer item-level per-gram data when available
   const preferItem =
     (perGramReady && (isManualVoiceSource || !storeAnalysis?.perGram || perGramSum === 0)) ||
     isBarcodeSource ||
-    (bypassHydration && ((currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech'));
+    (bypassHydration && ((sanitizedFoodItem as any)?.source === 'manual' || (sanitizedFoodItem as any)?.source === 'speech'));
 
   // Pick the per-gram basis we'll use everywhere below
   const basisPerGram: Record<string, number> | undefined =
-    (preferItem ? (currentFoodItem as any)?.perGram : storeAnalysis?.perGram) || undefined;
+    (preferItem ? (sanitizedFoodItem as any)?.perGram : storeAnalysis?.perGram) || undefined;
 
   // Normalize key aliases so different sources still render
   const getPG = (k: string) => {
@@ -411,13 +504,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   const sliderPct = portionPercentage[0] / 100;
   
-  // after you compute currentFoodItem, servingG and sliderPct…
-  const actualServingG = Math.max(0, Math.round(((currentFoodItem as any)?.servingGrams ?? 100) * sliderPct));
+  // after you compute sanitizedFoodItem, servingG and sliderPct…
+  const actualServingG = Math.max(0, Math.round(((sanitizedFoodItem as any)?.servingGrams ?? 100) * sliderPct));
 
   // Which basis are we on?
   // v3 manual/voice (canonical / Estimated / legacy_text_lookup) => per 1g
   // legacy store (photo/barcode)       => per 100g
-  const dataSource = (currentFoodItem as any)?.dataSource as string | undefined;
+  const dataSource = (sanitizedFoodItem as any)?.dataSource as string | undefined;
   const isPerGramBasis =
     isManualVoiceSource ||
     dataSource === 'canonical' ||
