@@ -439,7 +439,7 @@ export default function QAPage() {
                 <div className="mt-4 p-4 bg-muted rounded-lg">
                   <h4 className="font-semibold mb-2">PASS Criteria:</h4>
                   <ul className="text-sm space-y-1 text-muted-foreground">
-                    <li>• Club sandwich variants → source = NUTRITIONIX and ingredients_len ≥ 5</li>
+                    <li>• Club sandwich variants → source ∈ (NUTRITIONIX, EDAMAM) and ingredients_len ≥ 5</li>
                     <li>• Yakisoba / Aloo gobi → ingredients_len ≥ 2</li>
                     <li>• Pollo con rajas → source ∈ (EDAMAM, ESTIMATED, NUTRITIONIX) and ingredients_len ≥ 3</li>
                   </ul>
