@@ -112,7 +112,12 @@ export default function QAPage() {
         console.log(`[HEALTHSCAN QA] Testing: "${query}"`);
         
         const start = performance.now();
-        const enriched = await enrich(query);
+        // Call with noCache and scan context to bypass cache and use same router
+        const enriched = await enrich(query, 'auto', { 
+          noCache: true, 
+          bust: Date.now().toString(),
+          context: 'scan' 
+        });
         const ms = Math.round(performance.now() - start);
         
         const source = enriched?.source || null;
@@ -131,7 +136,7 @@ export default function QAPage() {
           pass_fail
         });
         
-        console.log(`[HEALTHSCAN QA] ${query}: ${source}, ${ingredients_len} ingredients, ${pass_fail}, ${ms}ms`);
+        console.log(`[HEALTHSCAN QA] ${query}: ${source}, ${ingredients_len} ingredients, ${pass_fail}, ${ms}ms (context: scan)`);
         
       } catch (error) {
         console.error(`[HEALTHSCAN QA] ${query} failed:`, error);

@@ -735,7 +735,7 @@ const ENRICH_V2_ING_AWARE = flag('VITE_ENRICH_V2_ING_AWARE', true);
 const ENRICH_BRAND_FIRST = flag('VITE_ENRICH_BRAND_FIRST', true);
 const ENRICH_SANDWICH_ROUTING = flag('VITE_ENRICH_SANDWICH_ROUTING', true);
 const ENRICH_LOG_DIAG = flag('VITE_ENRICH_LOG_DIAG', false);
-const ENRICH_VERSION = "v2.2";
+const ENRICH_VERSION = "v2.3-unified"; // Updated for unified scoring
 
 // Query classification helpers
 const SANDWICH_HINTS = ['sandwich', 'club sandwich', 'sub', 'hoagie', 'panini', 'wrap', 'burger', 'taco'];
@@ -756,140 +756,137 @@ function extractBreadHints(q: string) {
   return BREAD_HINTS.filter(h => s.includes(h));
 }
 
-// Enhanced provider ordering with FDC guards
-const calculateProviderScore = (candidate: EnrichedFood, query: string): number => {
-  let score = candidate.confidence ?? 0.75;
-  const ingredientCount = candidate.ingredients?.length ?? 0;
-  
-  // Ingredient scoring nudges
-  if (ingredientCount >= 5) {
-    score += 0.5;
-  } else if (ingredientCount >= 3) {
-    score += 0.25;
-  } else if (ingredientCount === 2) {
-    score += 0.10;
-  } else {
-    score -= 0.30;
-  }
-  
-  // Hard gate for FDC with ≤1 ingredients
-  if (candidate.source === 'FDC' && ingredientCount <= 1) {
-    score = -Infinity; // Never select weak FDC if others meet thresholds
-    candidate.low_value = true;
-  }
-  
-  return score;
-};
+// UNIFIED SCORING AND GUARD LOGIC (shared by manual and health scan flows)
+interface ScoringCandidate {
+  result: EnrichedFood;
+  source: string;
+  score: number;
+}
 
-// Provider ordering with ingredient-aware thresholds
-const tryProviderOrdering = async (query: string, breadKind?: string): Promise<EnrichedFood | null> => {
-  const isSandwich = isSandwichy(query);
-  const isMultiWordQuery = isMultiWord(query);
+const scoreAndPick = (
+  candidates: EnrichedFood[], 
+  isSandwich: boolean, 
+  breadTokens: string[] = []
+): EnrichedFood | null => {
+  if (!candidates.length) return null;
+  
+  // Step 1: REJECT RULE - Filter out weak FDC if better options exist
+  const hasQualifiedNonFDC = candidates.some(c => 
+    c.source !== 'FDC' && (c.ingredients?.length ?? 0) >= 2
+  );
+  
+  const filteredCandidates = candidates.filter(candidate => {
+    if (candidate.source === 'FDC' && 
+        (candidate.ingredients?.length ?? 0) <= 1 && 
+        hasQualifiedNonFDC) {
+      if (ENRICH_LOG_DIAG) {
+        console.log(`[ENRICH][REJECT] FDC candidate rejected: ${candidate.name} (${candidate.ingredients?.length ?? 0} ingredients, better options exist)`);
+      }
+      return false;
+    }
+    return true;
+  });
+  
+  if (!filteredCandidates.length) return null;
+  
+  // Step 2: SCORE RULE - Score remaining candidates
+  const scoredCandidates: ScoringCandidate[] = filteredCandidates.map(candidate => {
+    const ingredientCount = candidate.ingredients?.length ?? 0;
+    let score = candidate.confidence ?? 0.75;
+    
+    // Ingredient scoring
+    if (ingredientCount >= 5) {
+      score += 0.35;
+    } else if (ingredientCount >= 3) {
+      score += 0.15;
+    } else if (ingredientCount === 2) {
+      score += 0.05;
+    } else {
+      score -= 0.70; // 0-1 ingredients penalty
+    }
+    
+    // Sandwich-specific bonuses
+    if (isSandwich) {
+      if (candidate.source === 'NUTRITIONIX') {
+        score += 0.10;
+      }
+      
+      // Bread matching bonus
+      if (breadTokens.length > 0) {
+        const candidateName = (candidate.name || '').toLowerCase();
+        const hasMatchingBread = breadTokens.some(token => 
+          candidateName.includes(token.toLowerCase())
+        );
+        if (hasMatchingBread) {
+          score += 0.05;
+        }
+      }
+    }
+    
+    return { result: candidate, source: candidate.source, score };
+  });
+  
+  // Step 3: Sort by score and pick winner
+  scoredCandidates.sort((a, b) => b.score - a.score);
+  const winner = scoredCandidates[0];
   
   if (ENRICH_LOG_DIAG) {
-    console.log(`[ENRICH] Query classification: sandwich=${isSandwich}, multiWord=${isMultiWordQuery}`);
+    console.log(`[ENRICH][SCORE] Winner: ${winner.source} (${winner.result.ingredients?.length ?? 0} ingredients, score: ${winner.score.toFixed(3)})`);
   }
   
-  let nutritionixResult: EnrichedFood | null = null;
-  let edamamResult: EnrichedFood | null = null;
-  let fdcResult: EnrichedFood | null = null;
+  return winner.result;
+};
+
+// UNIFIED ENRICHMENT ROUTER (used by both manual and health scan flows)
+const enrichDish = async (query: string, options: { 
+  breadKind?: string; 
+  context?: 'manual' | 'scan';
+  noCache?: boolean;
+  bust?: string;
+}): Promise<EnrichedFood | null> => {
+  const { breadKind, context = 'manual' } = options;
+  const isSandwich = isSandwichy(query);
+  const isMultiWordQuery = isMultiWord(query);
+  const breadTokens = breadKind ? [breadKind] : extractBreadHints(query);
   
-  // Try providers in parallel for efficiency
-  const [nxi, eda, fdc] = await Promise.all([
-    searchNutritionix(query, breadKind, isSandwich),
-    searchEdamam(query),
-    searchFDC(query)
-  ]);
-  
-  nutritionixResult = nxi;
-  edamamResult = eda;
-  fdcResult = fdc;
-  
-  // Apply thresholds based on query type and provider
-  const getThreshold = (source: string, isSandwich: boolean, isMultiWordQuery: boolean): number => {
-    if (isSandwich) {
-      switch (source) {
-        case 'NUTRITIONIX': return 5;
-        case 'EDAMAM': return 3;
-        case 'FDC': return 2;
-        default: return 2;
-      }
-    } else if (isMultiWordQuery) {
-      switch (source) {
-        case 'NUTRITIONIX': return 3;
-        case 'EDAMAM': return 3;
-        case 'FDC': return 2;
-        default: return 2;
-      }
-    } else {
-      // Single word queries are more lenient
-      switch (source) {
-        case 'NUTRITIONIX': return 2;
-        case 'EDAMAM': return 2;
-        case 'FDC': return 1;
-        default: return 1;
-      }
-    }
-  };
-  
-  // Check if candidates meet thresholds
-  const candidates: Array<{result: EnrichedFood, score: number, source: string, meetsThreshold: boolean}> = [];
-  
-  if (nutritionixResult) {
-    const threshold = getThreshold('NUTRITIONIX', isSandwich, isMultiWordQuery);
-    const meetsThreshold = nutritionixResult.ingredients.length >= threshold;
-    const score = calculateProviderScore(nutritionixResult, query);
-    candidates.push({
-      result: nutritionixResult,
-      score: meetsThreshold ? score : -1,
-      source: 'NUTRITIONIX',
-      meetsThreshold
-    });
+  if (ENRICH_LOG_DIAG) {
+    console.log(`[ENRICH][ROUTE] Query="${query}", context=${context}, sandwich=${isSandwich}, multiWord=${isMultiWordQuery}, breadHints=${breadTokens.join(',')}`);
   }
   
-  if (edamamResult) {
-    const threshold = getThreshold('EDAMAM', isSandwich, isMultiWordQuery);
-    const meetsThreshold = edamamResult.ingredients.length >= threshold;
-    const score = calculateProviderScore(edamamResult, query);
-    candidates.push({
-      result: edamamResult,
-      score: meetsThreshold ? score : -1,
-      source: 'EDAMAM',
-      meetsThreshold
-    });
+  // Collect all candidates in parallel
+  const candidatePromises: Promise<EnrichedFood | null>[] = [];
+  
+  if (isSandwich || isMultiWordQuery) {
+    // Sandwich/multi-word: Nutritionix (branded deep-fetch) → Edamam → FDC (guarded)
+    candidatePromises.push(
+      searchNutritionix(query, breadKind, isSandwich),
+      searchEdamam(query),
+      searchFDC(query)
+    );
+  } else {
+    // Single-word: keep current path (FDC first) but still apply FDC reject when richer option exists
+    candidatePromises.push(
+      searchFDC(query),
+      searchNutritionix(query, breadKind, isSandwich),
+      searchEdamam(query)
+    );
   }
   
-  if (fdcResult) {
-    const threshold = getThreshold('FDC', isSandwich, isMultiWordQuery);
-    const meetsThreshold = fdcResult.ingredients.length >= threshold;
-    const score = calculateProviderScore(fdcResult, query);
-    
-    // Additional FDC guard: don't select if other providers meet their thresholds
-    const hasOtherQualified = candidates.some(c => c.meetsThreshold);
-    const finalScore = (hasOtherQualified && fdcResult.ingredients.length <= 1) ? -Infinity : score;
-    
-    candidates.push({
-      result: fdcResult,
-      score: meetsThreshold ? finalScore : -1,
-      source: 'FDC',
-      meetsThreshold
-    });
+  const results = await Promise.all(candidatePromises);
+  const validCandidates = results.filter(r => r !== null) as EnrichedFood[];
+  
+  if (ENRICH_LOG_DIAG && validCandidates.length > 0) {
+    console.log(`[ENRICH][CANDIDATES] Found ${validCandidates.length} candidates: ${validCandidates.map(c => `${c.source}(${c.ingredients?.length ?? 0})`).join(', ')}`);
   }
   
-  // Sort by score (highest first) and return best candidate
-  candidates.sort((a, b) => b.score - a.score);
+  // Use unified scoring to pick the best candidate
+  const winner = scoreAndPick(validCandidates, isSandwich, breadTokens);
   
-  if (candidates.length > 0 && candidates[0].score > -1) {
-    const winner = candidates[0];
-    
-    if (ENRICH_LOG_DIAG) {
-      console.log(`[ENRICH][SELECT] {source: "${winner.source}", ingredients_len: ${winner.result.ingredients.length}, threshold: ${getThreshold(winner.source, isSandwich, isMultiWordQuery)}, meetsThreshold: ${winner.meetsThreshold}}`);
-    }
-    
-    return winner.result;
+  if (winner && ENRICH_LOG_DIAG) {
+    console.log(`[ENRICH][WIN] q="${query}", source=${winner.source}, ingLen=${winner.ingredients?.length ?? 0}, context=${context}`);
   }
   
-  return null;
+  return winner;
 };
 
 // QA Cache clearing helper (dev/test only)
@@ -1052,14 +1049,18 @@ serve(async (req) => {
       }
     }
 
-    // INGREDIENT-AWARE V2 LOGIC WITH FINALIZED PROVIDER ORDER
+    // INGREDIENT-AWARE V2 LOGIC WITH UNIFIED ROUTER
     let result: EnrichedFood | null = null;
     
-    // Use new provider ordering system
-    result = await tryProviderOrdering(searchQuery, breadKind);
+    // Use unified enrichment router
+    result = await enrichDish(searchQuery, { 
+      breadKind, 
+      context: 'manual',
+      noCache: qaCache,
+      bust: bustParam
+    });
 
-    // still nothing? FDC fallback
-    if (!result) result = await searchFDC(searchQuery);
+    // Final fallback: GPT estimation (already handled below)
     
     // Telemetry for final decision
     if (result && ENRICH_LOG_DIAG) {

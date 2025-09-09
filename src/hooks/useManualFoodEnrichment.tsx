@@ -39,13 +39,17 @@ export function useManualFoodEnrichment() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const enrich = useCallback(async (query: string, locale: string = 'auto'): Promise<EnrichedFood | null> => {
+  const enrich = useCallback(async (
+    query: string, 
+    locale: string = 'auto',
+    options?: { noCache?: boolean; bust?: string; context?: 'manual' | 'scan' }
+  ): Promise<EnrichedFood | null> => {
     if (!query?.trim()) {
       setError('Query is required');
       return null;
     }
 
-    // Check feature flag
+    // Check feature flag (unified for both flows)
     const featureEnabled = localStorage.getItem('FEATURE_ENRICH_MANUAL_FOOD') !== 'false';
     if (!featureEnabled) {
       console.log('[ENRICH] Feature disabled, skipping enrichment');
@@ -56,11 +60,21 @@ export function useManualFoodEnrichment() {
     setError(null);
 
     try {
-      console.log(`[ENRICH][CLIENT] Calling enrich-manual-food: "${query}"`);
+      const context = options?.context || 'manual';
+      console.log(`[ENRICH][CLIENT] Calling enrich-manual-food: "${query}" (context: ${context})`);
+      
+      // Build URL with cache busting for QA
+      let functionUrl = 'enrich-manual-food';
+      if (options?.noCache || options?.bust) {
+        const params = new URLSearchParams();
+        if (options.noCache) params.set('bust', '1');
+        if (options.bust) params.set('bust', options.bust);
+        functionUrl += '?' + params.toString();
+      }
       
       const { data, error: functionError } = await supabase.functions.invoke<EnrichedFood>(
-        'enrich-manual-food',
-        { body: { query: query.trim(), locale } }
+        functionUrl,
+        { body: { query: query.trim(), locale, context } }
       );
 
       if (functionError) {
@@ -70,7 +84,7 @@ export function useManualFoodEnrichment() {
       }
 
       if (data) {
-        console.log(`[ENRICH][SUCCESS] Source: ${data.source}, Confidence: ${data.confidence}`);
+        console.log(`[ENRICH][SUCCESS] Source: ${data.source}, Confidence: ${data.confidence}, Context: ${context}`);
         return data;
       }
 

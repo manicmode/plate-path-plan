@@ -17,7 +17,7 @@ interface HealthScanSimulationResult {
   result: 'PASS' | 'FAIL';
 }
 
-// Simulate OCR dish name extraction and enrichment
+// Simulate OCR dish name extraction and enrichment using SAME ROUTER as manual
 export async function simulateHealthScanEnrichment(dishName: string): Promise<HealthScanSimulationResult> {
   const start = performance.now();
   
@@ -49,7 +49,12 @@ export async function simulateHealthScanEnrichment(dishName: string): Promise<He
     }, F.ENRICH_TIMEOUT_MS);
 
     try {
-      const enriched = await enrich(dishName, 'auto');
+      // Call the exact same enrichDish router that manual uses (with context: 'scan')
+      const enriched = await enrich(dishName, 'auto', { 
+        noCache: true, 
+        bust: Date.now().toString(), 
+        context: 'scan' 
+      });
       clearTimeout(timeout);
       
       const ms = Math.round(performance.now() - start);
@@ -128,7 +133,7 @@ export async function simulateHealthScanEnrichment(dishName: string): Promise<He
   }
 }
 
-function getPassCriteria(query: string, source: string | null, ingredients_len: number) {
+function getPassCriteria(query: string, source: string | null, ingredients_len: number): boolean {
   if (query.includes('club sandwich')) {
     return source === 'NUTRITIONIX' && ingredients_len >= 5;
   }
