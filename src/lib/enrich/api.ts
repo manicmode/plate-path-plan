@@ -17,19 +17,19 @@ export function buildEnrichUrl(fnName: string, params: Record<string, string>) {
 }
 
 export async function callEnrichEdge(fnName: string, params: Record<string, unknown>) {
-  const url = new URL(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${fnName}`);
-  url.searchParams.set('v', ENRICH_API_VERSION);
-  const res = await fetch(url.toString(), { 
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(params)
-  });
+  const { supabase } = await import('@/integrations/supabase/client');
   
-  if (!res.ok) {
-    throw new Error(`enrich ${fnName} ${res.status}`);
+  const { data, error } = await supabase.functions.invoke(fnName, {
+    body: params,
+    headers: { 
+      'x-enrich-ctx': String(params.context || 'manual'),
+      'x-enrich-version': ENRICH_API_VERSION
+    },
+  });
+
+  if (error) {
+    throw new Error(`enrich ${fnName} ${error.message || 'unknown_error'}`);
   }
   
-  return res.json();
+  return data;
 }
