@@ -17,19 +17,28 @@ export function buildEnrichUrl(fnName: string, params: Record<string, string>) {
 }
 
 export async function callEnrichEdge(fnName: string, params: Record<string, unknown>) {
-  const { supabase } = await import('@/integrations/supabase/client');
+  const { getSupabaseAuthHeaders } = await import('@/lib/net/authHeaders');
   
-  const { data, error } = await supabase.functions.invoke(fnName, {
-    body: params,
-    headers: { 
+  // Build URL via buildEnrichUrl
+  const url = buildEnrichUrl(fnName, {});
+  
+  // Get proper auth headers
+  const authHeaders = await getSupabaseAuthHeaders();
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders,
       'x-enrich-ctx': String(params.context || 'manual'),
       'x-enrich-version': ENRICH_API_VERSION
     },
+    body: JSON.stringify(params)
   });
 
-  if (error) {
-    throw new Error(`enrich ${fnName} ${error.message || 'unknown_error'}`);
+  if (!response.ok) {
+    throw new Error(`enrich ${fnName} ${response.status}`);
   }
   
-  return data;
+  return await response.json();
 }

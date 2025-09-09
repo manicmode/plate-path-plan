@@ -37,6 +37,13 @@ export const F = {
   ENRICH_SUGGESTIONS: flag('VITE_ENRICH_SUGGESTIONS', false),    // never enrich during typeahead
   ENRICH_CONFIRM_ENABLED: flag('VITE_ENRICH_CONFIRM_ENABLED', true), // confirm uses router
   ENRICH_SCAN_ENABLED: flag('VITE_ENRICH_SCAN_ENABLED', false),  // start disabled; QA can enable
+  
+  // New unified flags per requirements
+  ENRICH_SUGGEST_ENRICH: flag('VITE_ENRICH_SUGGEST_ENRICH', false), // never enrich during type-ahead
+  ENRICH_CONFIRM_ENRICH: flag('VITE_ENRICH_CONFIRM_ENRICH', true),  // confirm dialog uses router v2.2
+  ENRICH_SCAN_ENRICH: flag('VITE_ENRICH_SCAN_ENRICH', true),       // health-scan uses router after OCR
+  ENRICH_V2_ING_AWARE: flag('VITE_ENRICH_V2_ING_AWARE', true),     // ingredient-aware scoring
+  ENRICH_V22_ROUTER: flag('VITE_ENRICH_V22_ROUTER', true),         // router v2.2 with sandwich gating
   ENRICH_QA_SIMULATE: flag('VITE_ENRICH_QA_SIMULATE', false),    // no simulation
   ENRICH_V2_ROUTER: flag('VITE_ENRICH_V2_ROUTER', false),        // Unified router for manual & health-scan (off by default)
   ENRICH_BRAND_FIRST: flag('VITE_ENRICH_BRAND_FIRST', false),    // Brand-first enrichment (off by default)

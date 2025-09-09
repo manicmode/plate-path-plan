@@ -169,7 +169,10 @@ export const ImprovedManualEntry: React.FC<ImprovedManualEntryProps> = ({
       const ms = Date.now() - startTime;
       
       // Filter and ensure ≥3 suggestions when providers return data
-      const filtered = results.filter(r => r.name.toLowerCase() !== trimmed.toLowerCase());
+      const filtered = results.filter(r => {
+        // Remove exact echo matches and ensure we have genuine suggestions
+        return r.name.toLowerCase() !== trimmed.toLowerCase();
+      });
       
       console.info('[HEALTH][SEARCH] results', { q: trimmed, count: filtered.length, ms });
       

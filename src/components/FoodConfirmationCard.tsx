@@ -155,8 +155,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   useEffect(() => {
     if (!currentFoodItem || enrichedItem) return;
     
-    // Check if we should enrich (confirm enabled or QA mode)
-    const shouldEnrich = F.ENRICH_CONFIRM_ENABLED || (typeof window !== 'undefined' && /[?&]QA_ENRICH=1/.test(window.location.search));
+    // Check if we should enrich using new unified flags
+    const shouldEnrich = F.ENRICH_CONFIRM_ENRICH || (typeof window !== 'undefined' && /[?&]QA_ENRICH=1/.test(window.location.search));
     
     if (!shouldEnrich) {
       setEnrichedItem(currentFoodItem);
@@ -189,8 +189,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         setEnrichedItem(result); 
         setEnrichmentLoading(false); 
       }
-    }).catch(() => { 
+    }).catch((error) => { 
       if (!cancelled) {
+        // Fail-open: use original item if enrichment fails
+        console.warn('[ENRICH] Failed, using original item:', error);
         setEnrichedItem(currentFoodItem);
         setEnrichmentLoading(false); 
       }
@@ -352,7 +354,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const hasPerUnit = !!current?.perGram?.calories || !!current?.per100g?.calories;
   const ready = hasPerUnit && !!current;
   
-  // Show loader inside dialog until ready, no early return
+  // Show loading state inside dialog, not early return
+  const showLoader = enrichmentLoading || (!ready && !skipNutritionGuard) || isProcessingFood;
   
   // Log mount and hydration states
   useEffect(() => {
@@ -1144,6 +1147,28 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         >
           <VisuallyHidden><DialogTitle>Confirm Food Log</DialogTitle></VisuallyHidden>
           <div className="p-6">
+            {/* Show loader when processing */}
+            {showLoader && (
+              <div className="flex items-center justify-center min-h-[200px]">
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 dark:bg-emerald-900/20 rounded-full mb-4">
+                    <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {enrichmentLoading ? 'Enriching nutrition data...' : 'Loading next item...'}
+                  </p>
+                  {totalItems > 1 && (
+                    <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                      Item {((currentIndex ?? 0) + 1)} of {totalItems}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Main content - only show when not loading */}
+            {!showLoader && (
+              <>
             {/* Unknown Product Alert */}
             {isUnknownProduct && (
               <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800 mb-4">
@@ -1787,7 +1812,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 </>
               )}
             </div>
-          </div>
+            {/* Close main content wrapper */}
+            </>
+          )}
+        </div>
         </AccessibleDialogContent>
       </Dialog>
 
