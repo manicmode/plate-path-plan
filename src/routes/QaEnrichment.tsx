@@ -7,6 +7,13 @@ import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
 import { supabase } from '@/integrations/supabase/client';
 
+declare global {
+  interface Window {
+    testEnrichment?: () => Promise<void>;
+    clearQACache?: () => Promise<void>;
+  }
+}
+
 interface QAResult {
   query: string;
   source: string | null;
@@ -62,8 +69,19 @@ export default function QaEnrichment() {
   // Expose console helper
   useEffect(() => {
     (window as any).testEnrichment = runDirectTests;
+    (window as any).clearQACache = async () => {
+      try {
+        const { data } = await supabase.functions.invoke('clear-qa-cache');
+        if (data?.success) {
+          console.log('[QA] Cache cleared successfully');
+        }
+      } catch (error) {
+        console.error('[QA] Failed to clear cache:', error);
+      }
+    };
     return () => {
       delete (window as any).testEnrichment;
+      delete (window as any).clearQACache;
     };
   }, []);
 
@@ -91,8 +109,8 @@ export default function QaEnrichment() {
         
         const start = performance.now();
         
-        // Call edge function directly
-        const { data, error } = await supabase.functions.invoke('enrich-manual-food', {
+        // Call edge function directly with cache bust for QA
+        const { data, error } = await supabase.functions.invoke('enrich-manual-food?bust=1', {
           body: { query: query.trim(), locale: 'auto' }
         });
         
@@ -342,6 +360,14 @@ export default function QaEnrichment() {
                 ) : (
                   'Run Hook Tests'
                 )}
+              </Button>
+              
+              <Button 
+                onClick={() => window.clearQACache?.()}
+                variant="secondary"
+                className="min-w-[120px]"
+              >
+                Clear QA Cache
               </Button>
             </div>
 

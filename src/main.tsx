@@ -92,9 +92,9 @@ if (typeof window !== 'undefined' && window.location.search.includes('QA_ENRICH=
   }
 }
 
-// Expose testEnrichment console helper
+// Expose testEnrichment console helper with bust option
 if (import.meta.env.MODE !== 'production' || window?.location?.search?.includes('QA_ENRICH=1')) {
-  (window as any).testEnrichment = async () => {
+  (window as any).testEnrichment = async (options = { bust: false }) => {
     const queries = ['club sandwich','club sandwich on wheat','yakisoba','aloo gobi','pollo con rajas'];
     const results = [];
     
@@ -104,6 +104,11 @@ if (import.meta.env.MODE !== 'production' || window?.location?.search?.includes(
           const { supabase } = await import('@/lib/supabase');
           const session = await supabase.auth.getSession();
           const authToken = session.data.session?.access_token || '';
+          
+          const url = options.bust ? 'enrich-manual-food?bust=1' : 'enrich-manual-food';
+          const { data, error } = await supabase.functions.invoke(url, {
+            body: { query: q.trim(), locale: 'auto' }
+          });
           
           const res = await fetch('https://uzoiiijqtahohfafqirm.supabase.co/functions/v1/enrich-manual-food', {
             method: 'POST',
