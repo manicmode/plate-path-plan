@@ -170,242 +170,87 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
     const currentGen = ++searchGenRef.current;
     setState('searching');
-    logTelemetry('SEARCH', { query });
+    
+    // Flag: VITE_DISABLE_ENRICHMENT_ON_TYPE - avoid enrichment while typing
+    const disableEnrichmentOnType = (import.meta.env.VITE_DISABLE_ENRICHMENT_ON_TYPE ?? '1') === '1';
 
     try {
-      // Try enrichment first, with fallback to existing lookup
-      const { enriched, fallback } = await enrichWithFallback(
-        query,
-        'auto',
-        () => submitTextLookup(query, { source: 'manual' })
-      );
-      
-      // Check if this search result is still valid
-      if (currentGen !== searchGenRef.current || searchLockedRef.current) {
-        return; // Ignore stale results
-      }
-
-      if (enriched) {
-        // Use enriched data
-        logTelemetry('ENRICHED', { source: enriched.source, confidence: enriched.confidence });
-        setEnrichedData(enriched);
+      if (disableEnrichmentOnType) {
+        // Use cheap-first suggestions only, no enrichment while typing
+        console.log('[SUGGEST][CHEAP_FIRST] Using fast lookup without enrichment');
+        const fallback = await submitTextLookup(query, { source: 'manual' });
         
-        // Convert to candidate format
-        const enrichedCandidate: Candidate = {
-          id: 'enriched-primary',
-          name: sanitizeName(enriched.name),
-          isGeneric: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7,
-          portionHint: enriched.perServing ? `${enriched.perServing.serving_grams}g serving` : '100g',
-          defaultPortion: { 
-            amount: enriched.perServing?.serving_grams || 100, 
-            unit: 'g' 
-          },
-          provider: sourceBadge(enriched.source).label.toLowerCase(),
-          data: enrichedFoodToLogItem(enriched, 100)
-        };
+        // Check if this search result is still valid
+        if (currentGen !== searchGenRef.current || searchLockedRef.current) {
+          return; // Ignore stale results
+        }
 
-        setCandidates([enrichedCandidate]);
-        setState('candidates');
-        return;
-      }
+        // Process fallback results only
+        if (fallback) {
+          const items: any[] = Array.isArray(fallback?.items) ? fallback.items : [];
+          const count = Math.min(items.length, 8); // Limit to 5-8 suggestions
+          console.log(`[SUGGEST][CHEAP_FIRST] count=${count}, sources=[fdc,off]`);
+          logTelemetry('FALLBACK', { itemCount: count });
+          setEnrichedData(null);
 
-      // Fall back to existing lookup system
-      if (fallback) {
-        const items: any[] = Array.isArray(fallback?.items) ? fallback.items : [];
-        logTelemetry('FALLBACK', { itemCount: items.length });
-        setEnrichedData(null);
+          // Process candidates from fallback
+          const candidates = processCandidates(items, query);
+          setCandidates(candidates);
+          setState(candidates.length > 0 ? 'candidates' : 'idle');
+          return;
+        }
+      } else {
+        // Legacy enrichment path (when flag is off)
+        const { enriched, fallback } = await enrichWithFallback(
+          query,
+          'auto',
+          () => submitTextLookup(query, { source: 'manual' })
+        );
         
-        const list: Candidate[] = [];
+        // Check if this search result is still valid
+        if (currentGen !== searchGenRef.current || searchLockedRef.current) {
+          return; // Ignore stale results
+        }
 
-        if (items.length > 0) {
-          const primary = items[0];
-
-          // Primary
-          list.push({
-            id: 'candidate-0',
-            name: sanitizeName(primary.name),
-            isGeneric: looksGeneric(primary),
-            portionHint: primary.servingText || `${primary.servingGrams || 100}g default`,
-            defaultPortion: { amount: primary.servingGrams || 100, unit: 'g' },
-            provider: primary.provider,
-            imageUrl: primary.imageUrl,
-            data: primary
-          });
-
-          // v3 alt candidates (preferred)
-          const v3Alts = Array.isArray(primary.__altCandidates) ? primary.__altCandidates : [];
-
-          // legacy "multiple items" fallback as alts
-          const legacyAlts = items.length > 1 ? items.slice(1) : [];
-
-          const rawAlts = [...v3Alts, ...legacyAlts];
-          const filteredAlts = rawAlts.filter((c: any) => sharesCore(c?.name, primary?.name));
-
-          // Take up to 8 alts initially
-          filteredAlts.slice(0, 8).forEach((c: any, i: number) => {
-            list.push({
-              id: `candidate-alt-${i}`,
-              name: sanitizeName(c.name),
-              isGeneric: looksGeneric(c),
-              portionHint: `${c.servingG || 100}g default`,
-              defaultPortion: { amount: c.servingG || 100, unit: 'g' },
-              provider: c.kind || c.provider,
-              imageUrl: c.imageUrl,
-              data: c  
-            });
-          });
-
-          // fallback: if filtering removed everything and we had raw alts,
-          // allow the single best generic that shares the query token exactly
-          if (list.length === 1 && rawAlts.length > 0) {
-            const qCore = coreNoun(query);
-            const rescue = rawAlts.find((c: any) => _norm(c?.name).includes(qCore) && (
-              Boolean(c?.isGeneric) || c?.kind === 'generic' || c?.provider === 'generic'
-            ));
-            if (rescue) {
-              list.push({
-                id: `candidate-alt-rescue`,
-                name: sanitizeName(rescue?.name ?? 'Option'),
-                isGeneric: true,
-                portionHint: `${rescue?.servingG || primary?.servingGrams || 100}g default`,
-                defaultPortion: { amount: rescue?.servingG || primary?.servingGrams || 100, unit: 'g' },
-                provider: rescue?.provider ?? rescue?.kind,
-                imageUrl: rescue?.imageUrl,
-                data: rescue,
-              });
-            }
-          }
-
-          // Flag: VITE_MANUAL_INJECT_GENERIC (default ON) - Synthetic generic injection
-          const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '1') === '1';
+        if (enriched) {
+          // Use enriched data
+          logTelemetry('ENRICHED', { source: enriched.source, confidence: enriched.confidence });
+          setEnrichedData(enriched);
           
-          if (shouldInjectGeneric) {
-            const hasGeneric = list.some(c => c.isGeneric);
-            
-            if (!hasGeneric) {
-              const titleCase = (s: string) => s.replace(/\b\w/g, m => m.toUpperCase());
-              const core = coreNoun(query || primary?.name);
-              
-              if (core) {
-                const defaultMapping: Record<string, { grams: number; canonicalKey: string }> = {
-                  chicken: { grams: 113, canonicalKey: 'generic_chicken_breast' },
-                  fish: { grams: 85, canonicalKey: 'generic_fish_fillet' },
-                  egg: { grams: 50, canonicalKey: 'generic_egg' },
-                  rice: { grams: 158, canonicalKey: 'generic_rice_cooked' },
-                  pasta: { grams: 140, canonicalKey: 'generic_pasta_cooked' },
-                  pizza: { grams: 125, canonicalKey: 'generic_pizza_slice' },
-                  burger: { grams: 100, canonicalKey: 'generic_burger_patty' },
-                  sushi: { grams: 100, canonicalKey: 'generic_sushi' },
-                  cereal: { grams: 30, canonicalKey: 'generic_cereal' },
-                  apple: { grams: 182, canonicalKey: 'generic_apple' },
-                  yogurt: { grams: 170, canonicalKey: 'generic_yogurt_plain' },
-                  salad: { grams: 100, canonicalKey: 'generic_salad' }
-                };
-                
-                const mapping = defaultMapping[core.toLowerCase()] || { grams: 100, canonicalKey: `generic_${core.toLowerCase()}` };
-                const defaultG = mapping.grams;
+          // Convert to candidate format
+          const enrichedCandidate: Candidate = {
+            id: 'enriched-primary',
+            name: sanitizeName(enriched.name),
+            isGeneric: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7,
+            portionHint: enriched.perServing ? `${enriched.perServing.serving_grams}g serving` : '100g',
+            defaultPortion: { 
+              amount: enriched.perServing?.serving_grams || 100, 
+              unit: 'g' 
+            },
+            provider: sourceBadge(enriched.source).label.toLowerCase(),
+            data: enrichedFoodToLogItem(enriched, 100)
+          };
 
-                list.push({
-                  id: 'candidate-generic-synthetic',
-                  name: `Generic ${titleCase(core)}`,
-                  isGeneric: true,
-                  portionHint: `${defaultG}g default`,
-                  defaultPortion: { amount: defaultG, unit: 'g' },
-                  provider: 'generic',
-                  imageUrl: undefined,
-                  data: {
-                    name: `Generic ${titleCase(core)}`,
-                    source: 'manual',
-                    isGeneric: true,
-                    kind: 'generic',
-                    canonicalKey: mapping.canonicalKey,
-                    servingG: defaultG
-                  }
-                });
-              }
-            }
-          }
+          setCandidates([enrichedCandidate]);
+          setState('candidates');
+          return;
+        }
 
-          // FINAL relevance sieve: drop off-topic items (e.g., "Quaker Rolled Oats" for "california roll")
-          const strictCoreNounFilter = (import.meta.env.VITE_CORE_NOUN_STRICT ?? '0') === '1';
-          const relevant = strictCoreNounFilter ? list.filter(c => matchesQueryCore(query, c.data)) : list;
-
-          // Ensure minimum choices fallback
-          const MIN_CHOICES = Number(import.meta.env.VITE_MIN_MANUAL_CHOICES ?? '3') || 3;
-          let finalList = relevant.length >= MIN_CHOICES ? relevant : list.slice(0, MIN_CHOICES);
+        // Fall back to existing lookup system
+        if (fallback) {
+          const items: any[] = Array.isArray(fallback?.items) ? fallback.items : [];
+          logTelemetry('FALLBACK', { itemCount: items.length });
+          setEnrichedData(null);
           
-          // If we still don't have enough choices and need more synthetic generics
-          if (finalList.length < MIN_CHOICES) {
-            const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '1') === '1';
-            
-            if (shouldInjectGeneric) {
-              const titleCase = (s: string) => s.replace(/\b\w/g, m => m.toUpperCase());
-              const core = coreNoun(query);
-              
-              while (finalList.length < MIN_CHOICES && finalList.length < 5) {
-                const altName = finalList.length === 1 ? `${titleCase(core)} (medium)` : `${titleCase(core)} (large)`;
-                const baseGrams = 100;
-                const altGrams = finalList.length === 1 ? baseGrams * 1.5 : baseGrams * 2;
-                
-                finalList.push({
-                  id: `synthetic_generic_${finalList.length}`,
-                  name: altName,
-                  isGeneric: true,
-                  portionHint: `${Math.round(altGrams)}g default`,
-                  defaultPortion: { amount: Math.round(altGrams), unit: 'g' },
-                  provider: 'generic',
-                  imageUrl: undefined,
-                  data: {
-                    name: altName,
-                    source: 'manual',
-                    isGeneric: true,
-                    kind: 'generic',
-                    canonicalKey: `generic_${core.toLowerCase()}_${finalList.length}`,
-                    servingG: Math.round(altGrams)
-                  }
-                });
-              }
-            }
-          }
-
-          // Generics first
-          finalList.sort((a, b) => (a.isGeneric === b.isGeneric ? 0 : a.isGeneric ? -1 : 1));
-
-          setCandidates(finalList);
-          setState(finalList.length > 0 ? 'candidates' : 'idle');
-          
-          // Diagnostic logging
-          if ((import.meta.env.VITE_MANUAL_ENTRY_DIAG ?? '0') === '1') {
-            finalList.forEach((item, idx) => {
-              console.log('[MANUAL_DIAG][LABEL]', {
-                q: query,
-                name: item.name,
-                isGeneric_UI: item.isGeneric,
-                canonicalKey: item.data?.canonicalKey,
-                brand: item.data?.brand,
-                brands: item.data?.brands,
-                code: item.data?.code,
-                kind: item.data?.kind
-              });
-            });
-          }
-          
-          // optional: very light debug (leave in dev only if a flag exists)
-          if (FOOD_TEXT_DEBUG) {
-            console.log('[MANUAL_ENTRY][CANDS]', {
-              q: query,
-              total: finalList.length,
-              top: finalList[0]?.name,
-              topIsGeneric: finalList[0]?.isGeneric,
-            });
-          }
-          
-          logTelemetry('CANDIDATES', { count: finalList.length });
+          // Process candidates from fallback
+          const candidates = processCandidates(items, query);
+          setCandidates(candidates);
+          setState(candidates.length > 0 ? 'candidates' : 'idle');
           return;
         }
       }
 
-      // No results from either enrichment or fallback
+      // No results from either path
       setCandidates([]);
       setState('idle');
       setEnrichedData(null);
@@ -421,6 +266,135 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       toast.error('Search failed. Please try again.');
     }
   }, [enrichWithFallback]);
+
+  // Extract candidate processing logic for reuse
+  const processCandidates = (items: any[], query: string): Candidate[] => {
+    const list: Candidate[] = [];
+
+    if (items.length > 0) {
+      const primary = items[0];
+
+      // Primary
+      list.push({
+        id: 'candidate-0',
+        name: sanitizeName(primary.name),
+        isGeneric: looksGeneric(primary),
+        portionHint: primary.servingText || `${primary.servingGrams || 100}g default`,
+        defaultPortion: { amount: primary.servingGrams || 100, unit: 'g' },
+        provider: primary.provider,
+        imageUrl: primary.imageUrl,
+        data: primary
+      });
+
+      // v3 alt candidates (preferred)
+      const v3Alts = Array.isArray(primary.__altCandidates) ? primary.__altCandidates : [];
+
+      // legacy "multiple items" fallback as alts
+      const legacyAlts = items.length > 1 ? items.slice(1) : [];
+
+      const rawAlts = [...v3Alts, ...legacyAlts];
+      const filteredAlts = rawAlts.filter((c: any) => sharesCore(c?.name, primary?.name));
+
+      // Take up to 8 alts initially
+      filteredAlts.slice(0, 8).forEach((c: any, i: number) => {
+        list.push({
+          id: `candidate-alt-${i}`,
+          name: sanitizeName(c.name),
+          isGeneric: looksGeneric(c),
+          portionHint: `${c.servingG || 100}g default`,
+          defaultPortion: { amount: c.servingG || 100, unit: 'g' },
+          provider: c.kind || c.provider,
+          imageUrl: c.imageUrl,
+          data: c  
+        });
+      });
+
+      // fallback: if filtering removed everything and we had raw alts,
+      // allow the single best generic that shares the query token exactly
+      if (list.length === 1 && rawAlts.length > 0) {
+        const qCore = coreNoun(query);
+        const rescue = rawAlts.find((c: any) => _norm(c?.name).includes(qCore) && (
+          Boolean(c?.isGeneric) || c?.kind === 'generic' || c?.provider === 'generic'
+        ));
+        if (rescue) {
+          list.push({
+            id: `candidate-alt-rescue`,
+            name: sanitizeName(rescue?.name ?? 'Option'),
+            isGeneric: true,
+            portionHint: `${rescue?.servingG || primary?.servingGrams || 100}g default`,
+            defaultPortion: { amount: rescue?.servingG || primary?.servingGrams || 100, unit: 'g' },
+            provider: rescue?.provider ?? rescue?.kind,
+            imageUrl: rescue?.imageUrl,
+            data: rescue,
+          });
+        }
+      }
+
+      // Flag: VITE_MANUAL_INJECT_GENERIC (default OFF) - Synthetic generic injection
+      const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '0') === '1';
+      
+      if (shouldInjectGeneric) {
+        const hasGeneric = list.some(c => c.isGeneric);
+        
+        if (!hasGeneric) {
+          const titleCase = (s: string) => s.replace(/\b\w/g, m => m.toUpperCase());
+          const core = coreNoun(query || primary?.name);
+          
+          if (core) {
+            const defaultMapping: Record<string, { grams: number; canonicalKey: string }> = {
+              chicken: { grams: 113, canonicalKey: 'generic_chicken_breast' },
+              fish: { grams: 85, canonicalKey: 'generic_fish_fillet' },
+              egg: { grams: 50, canonicalKey: 'generic_egg' },
+              rice: { grams: 158, canonicalKey: 'generic_rice_cooked' },
+              pasta: { grams: 140, canonicalKey: 'generic_pasta_cooked' },
+              pizza: { grams: 125, canonicalKey: 'generic_pizza_slice' },
+              burger: { grams: 100, canonicalKey: 'generic_burger_patty' },
+              sushi: { grams: 100, canonicalKey: 'generic_sushi' },
+              cereal: { grams: 30, canonicalKey: 'generic_cereal' },
+              apple: { grams: 182, canonicalKey: 'generic_apple' },
+              yogurt: { grams: 170, canonicalKey: 'generic_yogurt_plain' },
+              salad: { grams: 100, canonicalKey: 'generic_salad' }
+            };
+            
+            const mapping = defaultMapping[core.toLowerCase()] || { grams: 100, canonicalKey: `generic_${core.toLowerCase()}` };
+            const defaultG = mapping.grams;
+
+            // Put generic at the end instead of first
+            list.push({
+              id: 'candidate-generic-synthetic',
+              name: `Generic ${titleCase(core)}`,
+              isGeneric: true,
+              portionHint: `${defaultG}g default`,
+              defaultPortion: { amount: defaultG, unit: 'g' },
+              provider: 'generic',
+              imageUrl: undefined,
+              data: {
+                name: `Generic ${titleCase(core)}`,
+                source: 'manual',
+                isGeneric: true,
+                kind: 'generic',
+                canonicalKey: mapping.canonicalKey,
+                servingG: defaultG
+              }
+            });
+          }
+        }
+      }
+
+      // FINAL relevance sieve: drop off-topic items (e.g., "Quaker Rolled Oats" for "california roll")
+      const strictCoreNounFilter = (import.meta.env.VITE_CORE_NOUN_STRICT ?? '0') === '1';
+      const relevant = strictCoreNounFilter ? list.filter(c => matchesQueryCore(query, c.data)) : list;
+
+      // Ensure minimum choices fallback (reduced for cheap-first)
+      const MIN_CHOICES = 3;
+      let finalList = relevant.length >= MIN_CHOICES ? relevant.slice(0, 8) : list.slice(0, Math.min(8, list.length));
+      
+      // Don't sort generics first for cheap-first mode - keep relevance order
+      return finalList;
+    }
+
+    return [];
+  };
 
   // Handle input changes with debouncing
   useEffect(() => {
@@ -467,6 +441,76 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     if (!foodName.trim()) {
       toast.error('Please enter a food name');
       return;
+    }
+
+    // Check if user selected a candidate - route directly to Confirm
+    if (selectedCandidate) {
+      console.log('[MANUAL][SELECT]', { 
+        name: selectedCandidate.name, 
+        source: selectedCandidate.provider || 'unknown' 
+      });
+
+      // Calculate portion scaling
+      const portionScale = amountEaten[0] / 100;
+      const portionOverrideGrams = portionAmount;
+
+      // If macros are sufficient, go directly to Confirm
+      const hasSufficientMacros = selectedCandidate.data && (
+        selectedCandidate.data.calories > 0 || 
+        selectedCandidate.data.protein_g > 0 || 
+        selectedCandidate.data.carbs_g > 0
+      );
+
+      if (hasSufficientMacros) {
+        // Build single result from selected candidate and route to Confirm
+        const scaledItem = {
+          ...selectedCandidate.data,
+          servingGrams: Math.round((selectedCandidate.data.servingGrams || portionAmount) * portionScale),
+          calories: Math.round((selectedCandidate.data.calories || 0) * portionScale),
+          protein_g: Math.round((selectedCandidate.data.protein_g || 0) * portionScale * 10) / 10,
+          carbs_g: Math.round((selectedCandidate.data.carbs_g || 0) * portionScale * 10) / 10,
+          fat_g: Math.round((selectedCandidate.data.fat_g || 0) * portionScale * 10) / 10,
+          fiber_g: Math.round((selectedCandidate.data.fiber_g || 2) * portionScale * 10) / 10,
+          sugar_g: Math.round((selectedCandidate.data.sugar_g || 3) * portionScale * 10) / 10,
+          source: 'manual',
+          mealType,
+          notes: notes.trim() || undefined
+        };
+
+        if (onResults) {
+          onResults([scaledItem]);
+        }
+
+        handleClose();
+        return;
+      } else {
+        // Run enrichment post-selection for insufficient macros
+        setState('loading');
+        try {
+          const startTime = performance.now();
+          const enriched = await enrichWithFallback(selectedCandidate.name, 'auto');
+          const enrichTime = Math.round(performance.now() - startTime);
+          
+          console.log(`[ENRICH][POST_SELECT] provider=${enriched.enriched?.source || 'fallback'} took=${enrichTime}ms`);
+
+          if (enriched.enriched) {
+            const enrichedItem = enrichedFoodToLogItem(enriched.enriched, portionAmount * portionScale);
+            // Add meal metadata
+            (enrichedItem as any).mealType = mealType;
+            (enrichedItem as any).notes = notes.trim() || undefined;
+            (enrichedItem as any).source = 'manual';
+
+            if (onResults) {
+              onResults([enrichedItem]);
+            }
+            handleClose();
+            return;
+          }
+        } catch (error) {
+          console.error('[ENRICH][POST_SELECT] Failed:', error);
+          // Continue to fallback lookup below
+        }
+      }
     }
 
     // Lock search to prevent race conditions

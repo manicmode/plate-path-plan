@@ -198,28 +198,33 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     ) : false
   );
 
-  // Watchdog effect to prevent stuck loader
+  // Fail-open watchdog effect to prevent stuck loader
+  const [loaderTimedOut, setLoaderTimedOut] = useState(false);
+  
   useEffect(() => {
-    if (!confirmModalOpen) return;
+    if (!confirmModalOpen) {
+      setLoaderTimedOut(false);
+      return;
+    }
     
+    const timeoutMs = Number(import.meta.env.VITE_CONFIRM_FAIL_OPEN_MS) || 3000;
     const start = Date.now();
     let cancelled = false;
     
     const tick = () => {
+      if (cancelled) return;
+      
       const cur = confirmModalItems[currentConfirmIndex];
-      const stuck = (hydrating || isHydrating || !cur || !cur.__hydrated);
+      const isLoading = hydrating || isHydrating || !cur || !cur.__hydrated;
       
-      if (!stuck || cancelled) return;
+      if (!isLoading) return; // No longer loading, no need to timeout
       
-      if (Date.now() - start > 12000) {
-        console.warn('[CONFIRM][LOADER_TIMEOUT] nutrition lookup took too long');
-        
-        // Stop the loader but keep panel open
+      const elapsed = Date.now() - start;
+      if (elapsed > timeoutMs) {
+        console.log('[CONFIRM][FAIL_OPEN] reason=timeout');
+        setLoaderTimedOut(true);
         setHydrating(false);
         setIsHydrating(false);
-        
-        // Show toast error instead of closing 
-        toast.error('Nutrition lookup took too long. Try selecting the item again.');
         return;
       }
       
@@ -784,21 +789,24 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       {confirmModalOpen && (() => {
         const cur = confirmModalItems[currentConfirmIndex];
         const hasItems = confirmModalItems.length > 0;
-        const shouldShowLoader = hydrating || isHydrating || !cur || !cur.__hydrated;
+        const shouldShowLoader = !loaderTimedOut && (hydrating || isHydrating || !cur || !cur.__hydrated);
+        const canRender = loaderTimedOut || (!shouldShowLoader && cur);
         
         console.log('[CONFIRM][RENDER_GUARD]', { 
           hasItems, 
           currentIndex: currentConfirmIndex, 
           hasCur: !!cur, 
           curHydrated: cur?.__hydrated,
-          shouldShowLoader 
+          shouldShowLoader,
+          loaderTimedOut,
+          canRender
         });
         
-        if (shouldShowLoader) {
+        if (shouldShowLoader && !canRender) {
           return <ConfirmLoaderMinimal />;
         }
         
-        if (cur) {
+        if (canRender && cur) {
           console.log('[CONFIRM][MOUNT]', { name: cur.name, id: cur.id });
           return (
             <FoodConfirmationCard
@@ -811,6 +819,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
               showSkip={true}
               currentIndex={currentConfirmIndex}
               totalItems={confirmModalItems.length}
+              bypassHydration={loaderTimedOut}
             />
           );
         }

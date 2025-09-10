@@ -317,8 +317,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     isManualVoice: isManualVoiceSource
   });
 
-  // Log nutrition readiness
+  // Log nutrition readiness and bypass hydration
   useEffect(() => {
+    if (bypassHydration) {
+      console.log('[CONFIRM][FAIL_OPEN] reason=bypass');
+    }
+    
     if (isNutritionReady && currentFoodItem) {
       const source = perGramReady ? 'item' : 'store';
       const dataSource = currentFoodItem.dataSource || 'unknown';
@@ -329,11 +333,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         dataSource, 
         pgKeys 
       });
-    } else if (!isNutritionReady && currentFoodItem) {
+    } else if (!isNutritionReady && currentFoodItem && !bypassHydration) {
       const reason = !perGramReady && perGramSum === 0 ? 'NO_PER_GRAM_KEYS' : 'UNKNOWN';
       console.log('[NUTRITION][BLOCKED]', { reason });
     }
-  }, [isNutritionReady, perGramReady, perGramSum, currentFoodItem]);
+  }, [isNutritionReady, perGramReady, perGramSum, currentFoodItem, bypassHydration]);
 
   // Set body flag when reminder is open for CSS portal handling
   useEffect(() => {

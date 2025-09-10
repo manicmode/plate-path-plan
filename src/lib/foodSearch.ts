@@ -72,11 +72,18 @@ export async function searchFoodByName(
     const timeoutController = new AbortController();
     const timeoutId = setTimeout(() => timeoutController.abort(), 10000);
     
+    // Flag: VITE_CHEAP_FIRST_SUGGESTIONS - use cheap sources for suggestions
+    const cheapFirstEnabled = (import.meta.env.VITE_CHEAP_FIRST_SUGGESTIONS ?? '1') === '1';
+    const sources = cheapFirstEnabled ? ['fdc', 'off'] : ['off'];
+    const actualMaxResults = cheapFirstEnabled ? Math.min(maxResults, 8) : maxResults;
+    
+    console.log(`[SUGGEST][CHEAP_FIRST] count=${actualMaxResults}, sources=[${sources.join(',')}]`);
+
     const { data, error } = await supabase.functions.invoke('food-search', {
       body: { 
         query: normalized,  // Use normalized query instead of trimmedQuery
-        maxResults,
-        sources: ['off'] // Start with OpenFoodFacts only
+        maxResults: actualMaxResults,
+        sources
       }
     });
     
