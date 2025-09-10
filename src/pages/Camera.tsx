@@ -411,6 +411,28 @@ const CameraPage = () => {
       }
     }
 
+    const isExplicitSingleManual = sourceHint === 'manual' && items.length === 1;
+    
+    if (isExplicitSingleManual) {
+      const item = items[0];
+      setRecognizedFoods([item]);
+      setInputSource('manual');
+      
+      // Allow confirm-card to bypass hydration gate for manual items
+      setBypassHydration(true);
+      setShowConfirmation(true);
+      setShowLogBarcodeScanner(false);
+      setShowCamera(false);
+      setForceConfirm(forceConfirm);
+      
+      console.info('[ROUTE][MANUAL]', { 
+        isExplicitSingleManual: true, 
+        hasAltCandidates: !!(item as any).__altCandidates?.length, 
+        itemsLen: items.length 
+      });
+      return;
+    }
+
     if (items.length === 1) {
       const item = items[0];
       setRecognizedFoods([item]);

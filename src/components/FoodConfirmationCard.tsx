@@ -266,6 +266,32 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const isNutritionReady = perGramReady
     || ((useHydration && !isBarcodeSource) ? (perGramSum > 0) : true);
   
+  // Add timeout and fail-open state
+  const [loaderTimedOut, setLoaderTimedOut] = useState(false);
+  const [isHydrating, setIsHydrating] = useState(false);
+  
+  // Timeout for hydration (fail-open after 3 seconds)
+  useEffect(() => {
+    if (!isNutritionReady && useHydration) {
+      setIsHydrating(true);
+      const timer = setTimeout(() => {
+        setLoaderTimedOut(true);
+        console.warn('[CONFIRM][FAIL_OPEN]', { bypassHydration, loaderTimedOut: true, isNutritionReady, isHydrating: true });
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setIsHydrating(false);
+    }
+  }, [isNutritionReady, useHydration]);
+
+  // Add fail-open logging
+  useEffect(() => {
+    if (bypassHydration || loaderTimedOut) {
+      console.warn('[CONFIRM][FAIL_OPEN]', { bypassHydration, loaderTimedOut, isNutritionReady, isHydrating });
+    }
+  }, [bypassHydration, loaderTimedOut, isNutritionReady, isHydrating]);
+  
   // Log mount and hydration states
   useEffect(() => {
     if (isOpen && currentFoodItem) {
@@ -1385,7 +1411,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             )}
 
             {/* Loading State for Nutrition Hydration */}
-            {(!isNutritionReady && useHydration && !skipNutritionGuard) && (
+            {(!bypassHydration && !loaderTimedOut && (!isNutritionReady && useHydration && !skipNutritionGuard)) && (
               <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
                 <div className="flex items-center gap-3">
                   <div className="animate-spin h-5 w-5 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full"></div>
@@ -1412,7 +1438,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               <TabsContent value="nutrition" className="space-y-3 mt-4">
                 
                 {/* Show skeleton when nutrition is loading */}
-                {(!isNutritionReady && useHydration && !skipNutritionGuard) ? (
+                {(!bypassHydration && !loaderTimedOut && (!isNutritionReady && useHydration && !skipNutritionGuard)) ? (
                   <div className="space-y-3">
                     <div className="grid grid-cols-3 gap-3">
                       {[...Array(3)].map((_, i) => (

@@ -19,7 +19,7 @@ export const intFlag = (name: string, def = 3) => {
 // Defaults ON unless explicitly set off
 export const F = {
   MANUAL_ENTRY_LABEL_TIGHT: flag('VITE_MANUAL_ENTRY_LABEL_TIGHT', true),
-  MANUAL_INJECT_GENERIC:    flag('VITE_MANUAL_INJECT_GENERIC', true),
+  MANUAL_INJECT_GENERIC: flag('VITE_MANUAL_INJECT_GENERIC', false), // default OFF
   CANDIDATE_CLASSIFIER_SAFE:flag('VITE_CANDIDATE_CLASSIFIER_SAFE', true),
   V3_ALT_BRAND_FIELDS:      flag('VITE_V3_ALT_BRAND_FIELDS', true),
   CORE_NOUN_STRICT:         flag('VITE_CORE_NOUN_STRICT', true),
@@ -30,6 +30,9 @@ export const F = {
   FEATURE_ENRICH_HEALTHSCAN: flag('VITE_FEATURE_ENRICH_HEALTHSCAN', false),
   ENRICH_TIMEOUT_MS: Number((import.meta as any).env?.VITE_ENRICH_TIMEOUT_MS || 1200),
   HEALTHSCAN_SAMPLING_PCT: Number((import.meta as any).env?.VITE_HEALTHSCAN_SAMPLING_PCT || 0),
+  
+  // New cheap-first suggestions flag
+  CHEAP_FIRST_SUGGESTIONS: flag('VITE_CHEAP_FIRST_SUGGESTIONS', true), // default ON
 };
 
 // Helper for sampling (dev-only randomness)

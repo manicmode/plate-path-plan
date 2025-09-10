@@ -32,20 +32,24 @@ serve(async (req) => {
 
   try {
     const body: SearchRequest = await req.json();
-    const { 
-      query, 
-      maxResults = 10, 
-      sources = ['nutritionix', 'edamam'], 
-      fallbackToOff = true 
-    } = body;
+const {
+  query,
+  maxResults = 8,
+  policy = 'cheap-first',
+  sources = policy === 'cheap-first' ? ['fdc','off'] : ['nutritionix','edamam'],
+  fallbackToOff = true
+} = body ?? {};
 
-    console.log(`[FOOD_SEARCH] Query: "${query}", Sources: ${JSON.stringify(sources)}`);
+    console.log(`[FOOD_SEARCH] Query: "${query}", Policy: "${policy}", Sources: ${JSON.stringify(sources)}`);
 
     let results: SearchResult[] = [];
 
     // Try primary providers first
     try {
-      if (sources.includes('nutritionix') || sources.includes('edamam')) {
+      if (policy === 'cheap-first') {
+        console.log('[FOOD_SEARCH] Using cheap-first policy...');
+        results = generateMockProviderResults(query, maxResults);
+      } else if (sources.includes('nutritionix') || sources.includes('edamam')) {
         // For now, simulate provider results since we don't have actual API integrations
         // In a real implementation, you would call actual APIs here
         console.log('[FOOD_SEARCH] Attempting provider search...');
@@ -68,8 +72,8 @@ serve(async (req) => {
       console.warn('[FOOD_SEARCH] Provider error:', err);
     }
 
-    // Fallback to OpenFoodFacts if enabled
-    if (fallbackToOff) {
+    // Fallback to OpenFoodFacts if enabled and no results yet
+    if (!results.length && fallbackToOff && !sources.includes('off')) {
       console.log('[FOOD_SEARCH] Falling back to OpenFoodFacts...');
       results = await searchOpenFoodFacts(query, maxResults);
     }
@@ -77,7 +81,7 @@ serve(async (req) => {
     console.log(`[FOOD_SEARCH] Final results count: ${results.length}`);
     
     return new Response(
-      JSON.stringify({ results }), 
+      JSON.stringify({ results: results?.slice(0, maxResults) ?? [] }), 
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

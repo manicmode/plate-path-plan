@@ -280,13 +280,10 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             }
           }
 
-          // Flag: VITE_MANUAL_INJECT_GENERIC (default ON) - Synthetic generic injection
-          const shouldInjectGeneric = F.MANUAL_INJECT_GENERIC;
+          // Flag: VITE_MANUAL_INJECT_GENERIC (now default OFF) - Synthetic generic injection
+          const realCount = list.filter(c => !c.isGeneric).length;
           
-          if (shouldInjectGeneric) {
-            const hasGeneric = list.some(c => c.isGeneric);
-            
-            if (!hasGeneric) {
+          if (F.MANUAL_INJECT_GENERIC && realCount < 3) {
               const titleCase = (s: string) => s.replace(/\b\w/g, m => m.toUpperCase());
               const core = coreNoun(query || primary?.name);
               
@@ -309,10 +306,11 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                 const mapping = defaultMapping[core.toLowerCase()] || { grams: 100, canonicalKey: `generic_${core.toLowerCase()}` };
                 const defaultG = mapping.grams;
 
-                list.push({
+                const syntheticGeneric = {
                   id: 'candidate-generic-synthetic',
                   name: `Generic ${titleCase(core)}`,
                   isGeneric: true,
+                  requiresEnrichment: true,
                   portionHint: `${defaultG}g default`,
                   defaultPortion: { amount: defaultG, unit: 'g' },
                   provider: 'generic',
@@ -325,9 +323,9 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                     canonicalKey: mapping.canonicalKey,
                     servingG: defaultG
                   }
-                });
+                };
+                list.push(syntheticGeneric); // place LAST, never first
               }
-            }
           }
 
           // FINAL relevance sieve: drop off-topic items (e.g., "Quaker Rolled Oats" for "california roll")

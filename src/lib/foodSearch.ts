@@ -4,6 +4,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { isFeatureEnabled } from './featureFlags';
+import { F } from './flags';
 
 export interface CanonicalSearchResult {
   source: 'off' | 'fdc' | 'local';
@@ -41,9 +42,9 @@ export function mapOFFItem(item: any): CanonicalSearchResult {
  */
 export async function searchFoodByName(
   query: string, 
-  options: { timeout?: number; maxResults?: number; finalItemsLength?: number; bypassGuard?: boolean } = {}
+  options: { timeout?: number; maxResults?: number; finalItemsLength?: number; bypassGuard?: boolean; policy?: string } = {}
 ): Promise<CanonicalSearchResult[]> {
-  const { timeout = 6000, maxResults = 50, finalItemsLength = 0, bypassGuard = false } = options;
+  const { timeout = 6000, maxResults = 50, finalItemsLength = 0, bypassGuard = false, policy } = options;
   
   if (!isFeatureEnabled('fallback_text_enabled')) {
     console.log('🚫 [FoodSearch] Text fallback disabled');
@@ -75,8 +76,11 @@ export async function searchFoodByName(
     const { data, error } = await supabase.functions.invoke('food-search', {
       body: { 
         query: normalized,  // Use normalized query instead of trimmedQuery
-        maxResults,
-        sources: ['nutritionix', 'edamam'], // primary providers
+        maxResults: Math.max(8, maxResults ?? 8),
+        policy: options?.policy ?? 'cheap-first',
+        sources: options?.policy === 'cheap-first'
+          ? ['fdc', 'off']
+          : ['nutritionix', 'edamam'],
         fallbackToOff: true                  // fallback to OFF if providers fail
       }
     });
@@ -108,7 +112,7 @@ export async function searchFoodByName(
     }
     
     const results = data.results as CanonicalSearchResult[];
-    console.log(`✅ [FoodSearch] Found ${results.length} results`);
+    console.log('[SUGGESTIONS][CHEAP_FIRST]', { policy: F.CHEAP_FIRST_SUGGESTIONS ? 'cheap-first' : 'default', count: results.length });
     
     // Apply enhanced ranking with word matching and category boosts
     const ranked = reorderForQuery(results, trimmedQuery);
