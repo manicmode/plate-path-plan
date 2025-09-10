@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { FlaggedIngredient } from "@/components/IngredientAlert";
+import type { FlaggedIngredient } from "@/types/ingredients";
 
 export interface CoachMessage {
   id: string;

@@ -1,12 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export interface FlaggedIngredient {
-  name: string;
-  category: string;
-  description: string;
-  severity: string;
-}
+import type { FlaggedIngredient } from "@/types/ingredients";
 
 export function useIngredientAlert() {
   const [flaggedIngredients, setFlaggedIngredients] = useState<FlaggedIngredient[]>([]);

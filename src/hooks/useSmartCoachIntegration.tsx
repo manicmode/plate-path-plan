@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { FlaggedIngredient } from "@/components/IngredientAlert";
+import type { FlaggedIngredient } from "@/types/ingredients";
 import { useCoachFlaggedResponse } from "@/hooks/useCoachFlaggedResponse";
 import { useNutrition } from "@/contexts/NutritionContext";
 import { useAuth } from "@/contexts/auth";

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
-import { IngredientAlert, FlaggedIngredient } from "@/components/IngredientAlert";
+import { IngredientAlert } from "@/components/IngredientAlert";
+import type { FlaggedIngredient } from "@/types/ingredients";
 
 interface IngredientAlertContextType {
   showAlert: (ingredients: FlaggedIngredient[]) => void;

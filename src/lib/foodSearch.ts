@@ -76,7 +76,8 @@ export async function searchFoodByName(
       body: { 
         query: normalized,  // Use normalized query instead of trimmedQuery
         maxResults,
-        sources: ['off'] // Start with OpenFoodFacts only
+        sources: ['nutritionix', 'edamam'], // primary providers
+        fallbackToOff: true                  // fallback to OFF if providers fail
       }
     });
     

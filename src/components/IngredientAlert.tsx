@@ -4,18 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-export interface FlaggedIngredient {
-  name: string;
-  category: string;
-  description: string;
-  severity: string;
-}
-
-interface IngredientAlertProps {
-  flaggedIngredients: FlaggedIngredient[];
-  onDismiss: () => void;
-  autoHideDuration?: number;
-}
+import type { FlaggedIngredient, IngredientAlertProps } from "@/types/ingredients";
 
 const getSeverityColor = (severity: string) => {
   switch (severity.toLowerCase()) {
