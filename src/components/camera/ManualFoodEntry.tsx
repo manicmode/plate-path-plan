@@ -5,25 +5,21 @@ import { DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
 import { 
   X, Sparkles, Search, Loader2, Check, AlertCircle, 
-  Zap, UtensilsCrossed, ChevronDown, ChevronUp
+  UtensilsCrossed
 } from 'lucide-react';
 import { toast } from 'sonner';
-import confetti from 'canvas-confetti';
 import { submitTextLookup } from '@/lib/food/textLookup';
 import { CandidateList } from '@/components/food/CandidateList';
-import { PortionUnitField } from '@/components/food/PortionUnitField';
 import { FOOD_TEXT_DEBUG } from '@/lib/flags';
 import { ThreeCirclesLoader } from '@/components/loaders/ThreeCirclesLoader';
 import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
 import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
 import { useManualFlowStatus } from '@/hooks/useManualFlowStatus';
 import { enrichCandidate } from '@/utils/enrichCandidate';
-import { SmartPortionModal } from './SmartPortionModal';
+import SmartPortionModal from './SmartPortionModal';
 import { DataSourceChip } from '@/components/ui/data-source-chip';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import { sourceBadge } from '@/utils/helpers/sourceBadge';
@@ -62,13 +58,6 @@ const SUGGESTION_PHRASES = [
   "chicken teriyaki bowl",
   "acai bowl with granola",
   "protein smoothie"
-];
-
-const MEAL_TYPE_CHIPS = [
-  { value: 'breakfast', label: 'Breakfast', emoji: '🌅' },
-  { value: 'lunch', label: 'Lunch', emoji: '☀️' },
-  { value: 'dinner', label: 'Dinner', emoji: '🌙' },
-  { value: 'snack', label: 'Snack', emoji: '🍿' }
 ];
 
 // --- BEGIN local helpers (duplicate of search-side, kept local to avoid imports)
@@ -140,11 +129,11 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const [candidates, setCandidates] = useState<LocalCandidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<LocalCandidate | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showDialog, setShowDialog] = useState(false);
   const [enriched, setEnriched] = useState<any>(null);
   
   // Track loading & suggestion availability for button guarding  
   const isSearching = state === 'searching';
+  
   // Remove unused state variables
   const [amountEaten] = useState([100]);
   const [mealType] = useState<MealType>('');
@@ -455,41 +444,58 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       name: sanitizeName(item.name),
       isGeneric: looksGeneric(item),
       portionHint: item?.servingText || `${item?.servingGrams || 100}g default`,
-      defaultPortion: { amount: item?.servingGrams || 100, unit: 'g' },
-      provider: item?.provider || item?.kind,
+      defaultPortion: { 
+        amount: item?.servingGrams || 100, 
+        unit: 'g' 
+      },
+      provider: item?.provider || 'fdc',
       imageUrl: item?.imageUrl,
-      data: { ...item, brand: item?.brand },
+      data: {
+        name: sanitizeName(item.name),
+        servingGrams: item?.servingGrams || 100,
+        calories: item?.calories || 0,
+        protein_g: item?.protein || item?.protein_g || 0,
+        carbs_g: item?.carbs || item?.carbs_g || 0,  
+        fat_g: item?.fat || item?.fat_g || 0,
+        fiber_g: item?.fiber || item?.fiber_g || 2,
+        sugar_g: item?.sugar || item?.sugar_g || 3,
+        sodium_mg: item?.sodium || item?.sodium_mg || 0,
+        brand: item?.brand,
+        code: item?.code
+      },
       // NEW: stable identity fields
-      providerRef: item?.id || item?.providerRef,
+      providerRef: item?.provider,
       canonicalKey: item?.canonicalKey,
       brand: item?.brand || null,
       classId: item?.classId || null,
       flags: {
         generic: looksGeneric(item),
         brand: !!(item?.brand || item?.brands),
-        restaurant: item?.kind === 'restaurant'
+        restaurant: false
       }
     }));
   };
 
-  // Handle input changes with debouncing
+  // Search debouncing effect  
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    searchTimeoutRef.current = setTimeout(() => {
-      debouncedSearch(foodName);
-    }, 200);
-
-    return () => {
+    if (foodName.trim()) {
+      searchTimeoutRef.current = setTimeout(() => {
+        debouncedSearch(foodName);
+      }, 300); // 300ms debounce
+    } else {
+      setCandidates([]);
+      setState('idle');
+      setEnriched(null);
+      setSelectedCandidate(null);
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
-    };
-  // Calculate whether to show portion dialog
-  const showPortionDialog = manualFlow.selectedCandidate && manualFlow.enrichmentReady && !manualFlow.uiCommitted;
-
+    }
+  }, [foodName, debouncedSearch]);
 
   // Handle candidate selection - start enrichment and show portion dialog
   const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
@@ -595,6 +601,13 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
   }, [isOpen]);
 
+  // Calculate whether to show portion dialog (derived flag, no hooks)
+  const showPortionModal = Boolean(
+    manualFlow.selectedCandidate &&
+    manualFlow.enrichmentReady &&
+    !manualFlow.uiCommitted
+  );
+
   // Accessibility live region message
   const ariaLiveMessage = {
     idle: '',
@@ -604,14 +617,15 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     error: 'Search failed'
   }[state];
 
+  // ALWAYS return a single fragment — both branches are siblings
   return (
     <>
-      {showPortionDialog && (
+      {showPortionModal && (
         <SmartPortionModal
           input={{
             item: {
               name: manualFlow.selectedCandidate?.name || '',
-              classId: manualFlow.selectedCandidate?.classId || undefined,
+              classId: manualFlow.selectedCandidate?.classId || '',
               providerRef: manualFlow.selectedCandidate?.isGeneric ? 'generic' : 'brand',
               baseServingG: manualFlow.portionDraft?.servingGrams,
               servingSizeText: manualFlow.selectedCandidate?.portionHint
@@ -622,18 +636,18 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
               servingGrams: manualFlow.portionDraft?.servingGrams
             }
           }}
-          onContinue={(finalData) => {
+          onContinue={(portionData) => {
             console.log('[FLOW][CONTINUE]', { 
-              servingG: finalData?.servingG,
-              unit: finalData?.unit,
-              quantity: finalData?.quantity,
-              confidence: finalData?.confidence
+              servingG: portionData?.servingG,
+              unit: portionData?.unit,
+              quantity: portionData?.quantity,
+              confidence: portionData?.confidence
             });
-            manualFlow.setState(s => ({ ...s, uiCommitted: true }));
+            manualFlow.setState(prev => ({ ...prev, uiCommitted: true }));
             console.log('[FLOW][CONFIRM_OPEN]', { 
-              ingredientsCount: finalData?.ingredientsList?.length || 0
+              ingredientsCount: portionData?.ingredientsList?.length || 0
             });
-            onResults?.([(finalData as any)]); // downstream route handler receives enriched item
+            onResults?.([{ ...manualFlow.portionDraft, ...portionData }]);
           }}
           onCancel={() => {
             manualFlow.reset();
@@ -641,8 +655,9 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           }}
         />
       )}
-      {!showPortionDialog && (
-        <>
+
+      {!showPortionModal && (
+        <div data-mfe="main-ui" className="manual-food-entry">
           {/* Three Circles Loader - Full screen overlay during loading */}
           <AnimatePresence>
             {state === 'loading' && (
@@ -651,236 +666,237 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           </AnimatePresence>
 
           <Dialog open={isOpen && state !== 'loading'} onOpenChange={(open) => !open && handleClose()}>
-        <DialogContent 
-          showCloseButton={false}
-          className="max-w-md mx-auto bg-slate-900/70 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl/20 p-0 overflow-hidden max-h-[90vh] overflow-y-auto"
-        >
-        <VisuallyHidden>
-          <DialogTitle>Add Food Manually</DialogTitle>
-        </VisuallyHidden>
-        <VisuallyHidden>
-          <DialogDescription>
-            Search and add food items with custom portions
-          </DialogDescription>
-        </VisuallyHidden>
-
-        {/* Accessibility announcements */}
-        <div aria-live="polite" aria-atomic="true" className="sr-only">
-          {ariaLiveMessage}
-        </div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.98 }}
-          transition={{ duration: 0.14, ease: "easeInOut" }}
-          className="p-6 md:p-7"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            {/* Left: Icon in branded pill */}
-            <div className="flex items-center gap-3">
-              <motion.div 
-                className="px-3 py-2 rounded-full bg-gradient-to-r from-sky-400 to-emerald-400 flex items-center gap-2"
-                animate={{ rotate: [0, 5, -5, 0] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-              >
-                <UtensilsCrossed className="h-4 w-4 text-white" />
-                <Sparkles className="h-3 w-3 text-white" />
-              </motion.div>
-              <h3 className="text-lg font-semibold text-white">
-                Add Food Manually
-              </h3>
-            </div>
-            
-            {/* Right: Close button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClose}
-              className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full w-8 h-8 p-0 focus:ring-2 focus:ring-sky-400"
-              aria-label="Close modal"
+            <DialogContent 
+              showCloseButton={false}
+              className="max-w-md mx-auto bg-slate-900/70 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl/20 p-0 overflow-hidden max-h-[90vh] overflow-y-auto"
             >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+              <VisuallyHidden>
+                <DialogTitle>Add Food Manually</DialogTitle>
+              </VisuallyHidden>
+              <VisuallyHidden>
+                <DialogDescription>
+                  Search and add food items with custom portions
+                </DialogDescription>
+              </VisuallyHidden>
 
-          {/* Main Input */}
-          <div className="mb-6">
-            <div className="relative">
-              <Input
-                ref={inputRef}
-                value={foodName}
-                onChange={(e) => setFoodName(e.target.value)}
-                placeholder="What did you eat?"
-                className="text-lg h-14 pl-4 pr-12 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:bg-white/15 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/50 rounded-xl"
-                disabled={state === 'loading'}
-              />
-              
-              {/* Search icon or loading spinner */}
-              <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                {state === 'searching' ? (
-                  <Loader2 className="h-5 w-5 text-slate-400 animate-spin" />
-                ) : (
-                  <Search className="h-5 w-5 text-slate-400" />
-                )}
+              {/* Accessibility announcements */}
+              <div aria-live="polite" aria-atomic="true" className="sr-only">
+                {ariaLiveMessage}
               </div>
-            </div>
 
-            {/* Helper text */}
-            <p className="text-xs text-slate-400 mt-2 text-center">
-              Press Enter to search • Esc to close
-            </p>
-          </div>
-
-          {/* Suggestions (Idle state) */}
-          <AnimatePresence>
-            {state === 'idle' && !foodName && (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="mb-6"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.14, ease: "easeInOut" }}
+                className="p-6 md:p-7"
               >
-                <p className="text-sm text-slate-400 text-center mb-3">Try searching for:</p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {SUGGESTION_PHRASES.slice(0, 3).map((phrase, index) => (
-                    <motion.button
-                      key={phrase}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.04 }}
-                      onClick={() => handleSuggestionSelect(phrase)}
-                      className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-sm text-slate-300 hover:text-white transition-all hover:-translate-y-0.5 focus:ring-2 focus:ring-sky-400"
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
+                  {/* Left: Icon in branded pill */}
+                  <div className="flex items-center gap-3">
+                    <motion.div 
+                      className="px-3 py-2 rounded-full bg-gradient-to-r from-sky-400 to-emerald-400 flex items-center gap-2"
+                      animate={{ rotate: [0, 5, -5, 0] }}
+                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
                     >
-                      "{phrase}"
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Candidates */}
-          <AnimatePresence>
-            {state === 'candidates' && candidates.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="mb-6"
-              >
-                <CandidateList
-                  candidates={candidates} // Show all candidates (6-8) without slicing
-                  selectedCandidate={selectedCandidate}
-                  onSelect={handleCandidateSelect}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Selection Status */}
-          <AnimatePresence>
-            {selectedCandidate && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="mb-6 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl"
-              >
-                <div className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-400" />
-                  <span className="text-sm text-emerald-400 font-medium">
-                    Selected: {selectedCandidate.name}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  {isLoading ? 'Preparing portion options...' : 'Opening portion dialog...'}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Error State */}
-          <AnimatePresence>
-            {state === 'error' && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl"
-              >
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
-                  <div>
-                    <h4 className="text-red-400 font-medium mb-1">Search Failed</h4>
-                    <p className="text-sm text-slate-300">
-                      Try a different spelling or use "Manual Name Only" to proceed anyway
-                    </p>
+                      <UtensilsCrossed className="h-4 w-4 text-white" />
+                      <Sparkles className="h-3 w-3 text-white" />
+                    </motion.div>
+                    <h3 className="text-lg font-semibold text-white">
+                      Add Food Manually
+                    </h3>
                   </div>
+                  
+                  {/* Right: Close button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClose}
+                    className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full w-8 h-8 p-0 focus:ring-2 focus:ring-sky-400"
+                    aria-label="Close modal"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-between gap-3">
-            <Button
-              variant="ghost"
-              onClick={handleClose}
-              disabled={state === 'loading'}
-              className="text-slate-400 hover:text-white hover:bg-white/10 focus:ring-2 focus:ring-slate-400"
-            >
-              Cancel
-            </Button>
-            
-            <div className="flex items-center gap-2">
-              {/* Manual Name Only for no results */}
-              {state === 'error' && foodName.trim() && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleManualEntry}
-                  className="border-slate-600 text-slate-300 hover:text-white text-xs"
-                >
-                  Use Manual Name Only
-                </Button>
-              )}
-              
-              {/* Status Button - No longer directly adds items */}
-              <motion.div
-                animate={foodName.trim() && state !== 'loading' ? { scale: [1, 1.02, 1] } : {}}
-                transition={{ duration: 0.3, repeat: foodName.trim() ? Infinity : 0, repeatDelay: 2 }}
-              >
-                <Button
-                  onClick={() => {/* Search only - selection triggers modal */}}
-                  disabled={isSearching || !foodName.trim()}
-                  className="bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-500 hover:to-emerald-500 text-white font-medium px-6 focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSearching ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Searching…
-                    </>
-                  ) : selectedCandidate ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Selected
-                    </>
-                  ) : (
-                    <>
-                       <Search className="h-4 w-4 mr-2" />
-                       Search
-                     </>
-                   )}
-                 </Button>
+                {/* Main Input */}
+                <div className="mb-6">
+                  <div className="relative">
+                    <Input
+                      ref={inputRef}
+                      value={foodName}
+                      onChange={(e) => setFoodName(e.target.value)}
+                      placeholder="What did you eat?"
+                      className="text-lg h-14 pl-4 pr-12 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:bg-white/15 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/50 rounded-xl"
+                      disabled={state === 'loading'}
+                    />
+                    
+                    {/* Search icon or loading spinner */}
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      {state === 'searching' ? (
+                        <Loader2 className="h-5 w-5 text-slate-400 animate-spin" />
+                      ) : (
+                        <Search className="h-5 w-5 text-slate-400" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Helper text */}
+                  <p className="text-xs text-slate-400 mt-2 text-center">
+                    Press Enter to search • Esc to close
+                  </p>
+                </div>
+
+                {/* Suggestions (Idle state) */}
+                <AnimatePresence>
+                  {state === 'idle' && !foodName && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="mb-6"
+                    >
+                      <p className="text-sm text-slate-400 text-center mb-3">Try searching for:</p>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {SUGGESTION_PHRASES.slice(0, 3).map((phrase, index) => (
+                          <motion.button
+                            key={phrase}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: index * 0.04 }}
+                            onClick={() => handleSuggestionSelect(phrase)}
+                            className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-sm text-slate-300 hover:text-white transition-all hover:-translate-y-0.5 focus:ring-2 focus:ring-sky-400"
+                          >
+                            "{phrase}"
+                          </motion.button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Candidates */}
+                <AnimatePresence>
+                  {state === 'candidates' && candidates.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="mb-6"
+                    >
+                      <CandidateList
+                        candidates={candidates}
+                        selectedCandidate={selectedCandidate}
+                        onSelect={handleCandidateSelect}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Selection Status */}
+                <AnimatePresence>
+                  {selectedCandidate && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="mb-6 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-emerald-400" />
+                        <span className="text-sm text-emerald-400 font-medium">
+                          Selected: {selectedCandidate.name}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {isLoading ? 'Preparing portion options...' : 'Opening portion dialog...'}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Error State */}
+                <AnimatePresence>
+                  {state === 'error' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl"
+                    >
+                      <div className="flex items-center gap-3">
+                        <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
+                        <div>
+                          <h4 className="text-red-400 font-medium mb-1">Search Failed</h4>
+                          <p className="text-sm text-slate-300">
+                            Try a different spelling or use "Manual Name Only" to proceed anyway
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between gap-3">
+                  <Button
+                    variant="ghost"
+                    onClick={handleClose}
+                    disabled={state === 'loading'}
+                    className="text-slate-400 hover:text-white hover:bg-white/10 focus:ring-2 focus:ring-slate-400"
+                  >
+                    Cancel
+                  </Button>
+                  
+                  <div className="flex items-center gap-2">
+                    {/* Manual Name Only for no results */}
+                    {state === 'error' && foodName.trim() && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleManualEntry}
+                        className="border-slate-600 text-slate-300 hover:text-white text-xs"
+                      >
+                        Use Manual Name Only
+                      </Button>
+                    )}
+                    
+                    {/* Status Button - No longer directly adds items */}
+                    <motion.div
+                      animate={foodName.trim() && state !== 'loading' ? { scale: [1, 1.02, 1] } : {}}
+                      transition={{ duration: 0.3, repeat: foodName.trim() ? Infinity : 0, repeatDelay: 2 }}
+                    >
+                      <Button
+                        onClick={() => {/* Search only - selection triggers modal */}}
+                        disabled={isSearching || !foodName.trim()}
+                        className="bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-500 hover:to-emerald-500 text-white font-medium px-6 focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSearching ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Searching…
+                          </>
+                        ) : selectedCandidate ? (
+                          <>
+                            <Check className="h-4 w-4 mr-2" />
+                            Selected
+                          </>
+                        ) : (
+                          <>
+                             <Search className="h-4 w-4 mr-2" />
+                             Search
+                           </>
+                         )}
+                       </Button>
+                     </motion.div>
+                   </div>
+                 </div>
                </motion.div>
-             </div>
-           </div>
-         </motion.div>
-       </DialogContent>
-        </Dialog>
-      )}
-    </>
-  );
-};
+             </DialogContent>
+           </Dialog>
+         </div>
+       )}
+     </>
+   );
+ };

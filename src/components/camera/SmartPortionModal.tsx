@@ -8,8 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 interface PortionModalInput {
   item: {
     name: string;
-    classId?: string;
-    providerRef?: 'generic' | 'brand' | 'vault';
+    classId: string;
+    providerRef: 'generic' | 'brand' | 'vault';
     baseServingG?: number;
     packSizeG?: number;
     servingSizeText?: string;
@@ -30,11 +30,11 @@ interface PortionModalOutput {
   userConfirmed: true;
 }
 
-interface Props {
+type SmartPortionModalProps = {
   input: PortionModalInput;
-  onContinue: (output: PortionModalOutput & { [key: string]: any }) => void;
+  onContinue: (out: PortionModalOutput & { [key: string]: any }) => void;
   onCancel: () => void;
-}
+};
 
 interface PortionPreset {
   label: string;
@@ -148,7 +148,7 @@ const getPortionPresetsAndUnits = (classId?: string, name?: string): { presets: 
   };
 };
 
-export function SmartPortionModal({ input, onContinue, onCancel }: Props) {
+export default function SmartPortionModal({ input, onContinue, onCancel }: SmartPortionModalProps) {
   const defaultServingG = input.enrichedData.servingGrams || input.item.baseServingG || 100;
   const [customGrams, setCustomGrams] = useState(defaultServingG);
   const [selectedPreset, setSelectedPreset] = useState<PortionPreset | null>(null);
