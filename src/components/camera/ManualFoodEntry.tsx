@@ -187,7 +187,22 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
         // Process fallback results only
         if (fallback) {
-          const items: any[] = Array.isArray(fallback?.items) ? fallback.items : [];
+          // Log what arrives from textLookup
+          console.log('[TRACE] UI receive', {
+            hasItems: Array.isArray(fallback?.items),
+            hasRankedAll: Array.isArray(fallback?.rankedAll),
+            itemsCount: fallback?.items?.length,
+            rankedAllCount: fallback?.rankedAll?.length
+          });
+
+          // Use full set in this precedence:
+          const items: any[] =
+            fallback?.rankedAll ||
+            fallback?.results ||
+            fallback?.items ||
+            fallback?.rankedTop3 ||
+            [];
+
           const count = Math.min(items.length, 8); // Limit to 5-8 suggestions
           console.log(`[SUGGEST][CHEAP_FIRST] count=${count}, sources=[fdc,off]`);
           logTelemetry('FALLBACK', { itemCount: count });
@@ -195,7 +210,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
           // Process candidates from fallback (V3 returns full list now)
           const candidates = processCandidates(items, query);
-          console.log(`[MANUAL][RENDER_LIST] ui_render_count=${candidates.length}`);
           setCandidates(candidates);
           setState(candidates.length > 0 ? 'candidates' : 'idle');
           return;
@@ -239,12 +253,26 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
         // Fall back to existing lookup system
         if (fallback) {
-          const items: any[] = Array.isArray(fallback?.items) ? fallback.items : [];
+          // Log what arrives from textLookup  
+          console.log('[TRACE] UI receive', {
+            hasItems: Array.isArray(fallback?.items),
+            hasRankedAll: Array.isArray(fallback?.rankedAll),
+            itemsCount: fallback?.items?.length,
+            rankedAllCount: fallback?.rankedAll?.length
+          });
+
+          // Use full set in this precedence:
+          const items: any[] =
+            fallback?.rankedAll ||
+            fallback?.results ||
+            fallback?.items ||
+            fallback?.rankedTop3 ||
+            [];
+
           logTelemetry('FALLBACK', { itemCount: items.length });
           setEnrichedData(null);
           // Process candidates from fallback
           const candidates = processCandidates(items, query);
-          console.log(`[MANUAL][RENDER_LIST] ui_render_count=${candidates.length}`);
           setCandidates(candidates);
           setState(candidates.length > 0 ? 'candidates' : 'idle');
           return;
@@ -270,27 +298,27 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
   // Extract candidate processing logic for reuse
   const processCandidates = (items: any[], query: string): Candidate[] => {
-    const list: any[] = [];
     const src = Array.isArray(items) ? items : [];
+    console.log('[CANDIDATES][PROCESS_START]', { sourceCount: src.length });
+
+    const norm = (s: string) => (s || '').toLowerCase().trim();
+    const seen = new Set<string>();
+    const list: any[] = [];
 
     src.slice(0, 8).forEach((item: any, index: number) => {
-      const norm = (s: string) => (s || '').toLowerCase().trim();
-      const key = `${norm(item.name)}|${norm(item.brand ?? '')}`;
-      const exists = list.some(x => {
-        const existingKey = `${norm(x.name)}|${norm(x.data?.brand ?? '')}`;
-        return existingKey === key;
+      const key = `${item.source || 'unknown'}|${item.id || ''}|${norm(item.name)}|${item.brand || ''}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      list.push({
+        id: `candidate-${index}`,
+        name: item.name,
+        isGeneric: !!item.isGeneric,
+        data: item,
       });
-      if (!exists) {
-        list.push({
-          id: `candidate-${index}`,
-          name: item.name,
-          isGeneric: !!item.isGeneric,
-          data: item,
-        });
-      }
     });
 
     const finalList = list.slice(0, 8);
+    console.log('[CANDIDATES][DEDUP_COMPLETE]', { beforeDedup: src.length, afterDedup: finalList.length });
     console.log('[MANUAL][RENDER_LIST]', { ui_render_count: finalList.length });
     
     // Map to Candidate format

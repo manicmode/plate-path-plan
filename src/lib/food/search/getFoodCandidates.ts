@@ -79,6 +79,9 @@ export interface CandidateOpts {
   preferGeneric?: boolean;      // default true
   requireCoreToken?: boolean;   // default true
   maxPerFamily?: number;        // default 1
+  disableBrandInterleave?: boolean;  // default false
+  allowMoreBrands?: boolean;    // default false
+  source?: string;             // for logging
 }
 
 // Core noun tokens for filtering
@@ -353,8 +356,18 @@ export async function getFoodCandidates(
     preferGeneric: true,
     requireCoreToken: true,
     maxPerFamily: 1,
+    disableBrandInterleave: false,
+    allowMoreBrands: false,
+    source,
     ...opts
   };
+
+  console.log('[CANDIDATES][OPTIONS]', {
+    source,
+    maxPerFamily: options.maxPerFamily,
+    disableBrandInterleave: options.disableBrandInterleave,
+    allowMoreBrands: options.allowMoreBrands
+  });
   
   const normalizedQuery = normalizeQuery(rawQuery);
   console.log(`[CANDIDATES] Starting search for "${rawQuery}" -> "${normalizedQuery}"`);
@@ -507,16 +520,21 @@ export async function getFoodCandidates(
       }
     }
     
-    // Interleave: generics first, then max 2 brands
-    const reordered = [
-      ...sortedCandidates.filter(c => c.kind === 'generic'),
-      ...sortedCandidates.filter(c => c.kind === 'brand').slice(0, 2)
-    ];
-    
-    // after computing `reordered`
+    // Configurable brand interleaving
+    let reordered;
+    if (options.disableBrandInterleave) {
+      reordered = sortedCandidates;
+    } else {
+      const brandLimit = options.allowMoreBrands ? 4 : 2;
+      reordered = [
+        ...sortedCandidates.filter(c => c.kind === 'generic'),
+        ...sortedCandidates.filter(c => c.kind === 'brand').slice(0, brandLimit)
+      ];
+    }
     console.log('[CANDIDATES][INTERLEAVE]', {
       beforeReorder: sortedCandidates.length,
       afterReorder: reordered.length,
+      disabled: options.disableBrandInterleave
     });
     sortedCandidates = reordered;
   }
@@ -543,7 +561,7 @@ export async function getFoodCandidates(
 
   console.log('[CANDIDATES][DIVERSITY_FILTER][AFTER]', {
     maxPerFamily: options.maxPerFamily,
-    count: sortedCandidates.length,
+    afterFilter: sortedCandidates.length,
   });
   
   // final cap to 8
@@ -553,8 +571,36 @@ export async function getFoodCandidates(
     capCount: finalCandidates.length,
   });
   
-  // Generic injection policy: only inject when real results < 3, and put it last
-  const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '0') === '1';
+  // Optional generic fallback for manual typing
+  if (
+    finalCandidates.length === 0 &&
+    normalizedQuery.length >= 3 &&
+    source === 'manual' &&
+    import.meta.env.VITE_MANUAL_INJECT_GENERIC === '1'
+  ) {
+    finalCandidates.push({
+      id: `generic-${normalizedQuery}`,
+      name: `${normalizedQuery.charAt(0).toUpperCase() + normalizedQuery.slice(1)} (generic)`,
+      kind: 'generic',
+      classId: 'generic_food',
+      score: 30,
+      confidence: 0.3,
+      explanation: 'Generic fallback for manual entry',
+      source: 'lexical',
+      servingGrams: 100,
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      sodium: 0,
+    });
+    console.log('[CANDIDATES][GENERIC_FALLBACK]', { query: normalizedQuery });
+  }
+
+  // Legacy generic injection policy: only inject when real results < 3, and put it last
+  const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC_LEGACY ?? '0') === '1';
   const isManual = source === 'manual';
   const realResultCount = finalCandidates.filter(c => c.kind !== 'generic').length;
 

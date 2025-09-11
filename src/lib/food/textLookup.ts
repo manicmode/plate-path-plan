@@ -78,11 +78,16 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
       maxPerFamily,
     });
 
+    // Detect manual source and pass relaxed options to getFoodCandidates
+    const isManual = options.source === 'manual';
+    
     // Get ranked candidates
     const candidates = await getFoodCandidates(query, facets, {
       preferGeneric: true,
       requireCoreToken: true,
-      maxPerFamily
+      maxPerFamily,
+      disableBrandInterleave: isManual, // keep all brands for manual typing
+      allowMoreBrands: isManual
     }, source);
 
     if (FOOD_TEXT_DEBUG) {
