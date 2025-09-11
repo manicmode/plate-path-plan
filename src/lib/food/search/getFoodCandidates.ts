@@ -513,10 +513,20 @@ export async function getFoodCandidates(
       ...sortedCandidates.filter(c => c.kind === 'brand').slice(0, 2)
     ];
     
+    // after computing `reordered`
+    console.log('[CANDIDATES][INTERLEAVE]', {
+      beforeReorder: sortedCandidates.length,
+      afterReorder: reordered.length,
+    });
     sortedCandidates = reordered;
   }
   
   // Apply diversity filter (max per family)
+  console.log('[CANDIDATES][DIVERSITY_FILTER][BEFORE]', {
+    maxPerFamily: options.maxPerFamily,
+    count: sortedCandidates.length,
+  });
+
   if (options.maxPerFamily && options.maxPerFamily > 0) {
     const familyCounts = new Map<string, number>();
     sortedCandidates = sortedCandidates.filter(candidate => {
@@ -530,8 +540,18 @@ export async function getFoodCandidates(
       return false;
     });
   }
+
+  console.log('[CANDIDATES][DIVERSITY_FILTER][AFTER]', {
+    maxPerFamily: options.maxPerFamily,
+    count: sortedCandidates.length,
+  });
   
-  const finalCandidates = sortedCandidates.slice(0, 8); // Keep up to 8 candidates instead of 6
+  // final cap to 8
+  const finalCandidates = sortedCandidates.slice(0, 8);
+  console.log('[CANDIDATES][CAP]', {
+    capReason: 'final_8_limit',
+    capCount: finalCandidates.length,
+  });
   
   // Generic injection policy: only inject when real results < 3, and put it last
   const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '0') === '1';
@@ -606,7 +626,17 @@ export async function getFoodCandidates(
   const v3Count = 0; // V3 candidates handled elsewhere  
   const mergeUsed = cheapFirstCount >= 2 ? 'cheap-first' : finalCandidates.length === 0 ? 'none' : 'mixed';
   
-  console.log(`[CANDIDATES][MERGE] cheapFirst=${cheapFirstCount}, v3=${v3Count}, final=${finalCandidates.length}, used="${mergeUsed}"`);
+  console.log('[CANDIDATES][MERGE]', {
+    cheapFirst: sortedCandidates.filter(c => c.source === 'lexical').length,
+    v3: 0,
+    final: finalCandidates.length,
+    used:
+      sortedCandidates.filter(c => c.source === 'lexical').length >= 2
+        ? 'cheap-first'
+        : finalCandidates.length === 0
+        ? 'none'
+        : 'mixed',
+  });
   
   console.log('[CANDIDATES] Final results:', {
     count: finalCandidates.length,

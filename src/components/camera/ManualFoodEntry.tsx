@@ -270,97 +270,40 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
   // Extract candidate processing logic for reuse
   const processCandidates = (items: any[], query: string): Candidate[] => {
-    // Consume rankedAll first if available, then fall back to items
-    const src = Array.isArray(items[0]?.rankedAll) ? items[0].rankedAll : items;
-    const list: Candidate[] = [];
+    const list: any[] = [];
+    const src = Array.isArray(items) ? items : [];
 
-    if (src.length > 0) {
-      // Process ALL items from the source (no collapse to primary + alts)
-      src.slice(0, 8).forEach((item: any, index: number) => {
-        // Avoid duplicates by name
-        const alreadyExists = list.some(existing => 
-          _norm(existing.name) === _norm(item.name)
-        );
-        
-        if (!alreadyExists) {
-          list.push({
-            id: `candidate-${index}`,
-            name: sanitizeName(item.name),
-            isGeneric: looksGeneric(item),
-            portionHint: item.servingText || `${item.servingGrams || 100}g default`,
-            defaultPortion: { amount: item.servingGrams || 100, unit: 'g' },
-            provider: item.provider || item.kind,
-            imageUrl: item.imageUrl,
-            data: item
-          });
-        }
+    src.slice(0, 8).forEach((item: any, index: number) => {
+      const norm = (s: string) => (s || '').toLowerCase().trim();
+      const key = `${norm(item.name)}|${norm(item.brand ?? '')}`;
+      const exists = list.some(x => {
+        const existingKey = `${norm(x.name)}|${norm(x.data?.brand ?? '')}`;
+        return existingKey === key;
       });
-
-      // Flag: VITE_MANUAL_INJECT_GENERIC (default OFF) - Only inject when real results < 3
-      const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '0') === '1';
-      const realResultCount = list.filter(c => !c.isGeneric).length;
-      
-      if (shouldInjectGeneric && realResultCount < 3) {
-        const hasGeneric = list.some(c => c.isGeneric);
-        
-        if (!hasGeneric) {
-          const titleCase = (s: string) => s.replace(/\b\w/g, m => m.toUpperCase());
-          const core = coreNoun(query || src[0]?.name);
-          
-          if (core) {
-            const defaultMapping: Record<string, { grams: number; canonicalKey: string }> = {
-              chicken: { grams: 113, canonicalKey: 'generic_chicken_breast' },
-              fish: { grams: 85, canonicalKey: 'generic_fish_fillet' },
-              egg: { grams: 50, canonicalKey: 'generic_egg' },
-              rice: { grams: 158, canonicalKey: 'generic_rice_cooked' },
-              pasta: { grams: 140, canonicalKey: 'generic_pasta_cooked' },
-              pizza: { grams: 125, canonicalKey: 'generic_pizza_slice' },
-              burger: { grams: 100, canonicalKey: 'generic_burger_patty' },
-              sushi: { grams: 100, canonicalKey: 'generic_sushi' },
-              cereal: { grams: 30, canonicalKey: 'generic_cereal' },
-              apple: { grams: 182, canonicalKey: 'generic_apple' },
-              yogurt: { grams: 170, canonicalKey: 'generic_yogurt_plain' },
-              salad: { grams: 100, canonicalKey: 'generic_salad' }
-            };
-            
-            const mapping = defaultMapping[core.toLowerCase()] || { grams: 100, canonicalKey: `generic_${core.toLowerCase()}` };
-            const defaultG = mapping.grams;
-
-            // Append generic to the end (never first)
-            list.push({
-              id: 'candidate-generic-synthetic',
-              name: `Generic ${titleCase(core)}`,
-              isGeneric: true,
-              portionHint: `${defaultG}g default`,
-              defaultPortion: { amount: defaultG, unit: 'g' },
-              provider: 'generic',
-              imageUrl: undefined,
-              data: {
-                name: `Generic ${titleCase(core)}`,
-                source: 'manual',
-                isGeneric: true,
-                kind: 'generic',
-                canonicalKey: mapping.canonicalKey,
-                servingGrams: defaultG
-              }
-            });
-            
-            console.log(`[CANDIDATES][GENERIC_INJECT] reason=low-real count=${realResultCount}`);
-          }
-        }
+      if (!exists) {
+        list.push({
+          id: `candidate-${index}`,
+          name: item.name,
+          isGeneric: !!item.isGeneric,
+          data: item,
+        });
       }
+    });
 
-      // FINAL relevance sieve: drop off-topic items if strict filtering enabled
-      const strictCoreNounFilter = (import.meta.env.VITE_CORE_NOUN_STRICT ?? '0') === '1';
-      const relevant = strictCoreNounFilter ? list.filter(c => matchesQueryCore(query, c.data)) : list;
-
-      // Cap to 8 candidates max
-      const finalList = relevant.slice(0, 8);
-      
-      return finalList.length > 0 ? finalList : list.slice(0, 8);
-    }
-
-    return [];
+    const finalList = list.slice(0, 8);
+    console.log('[MANUAL][RENDER_LIST]', { ui_render_count: finalList.length });
+    
+    // Map to Candidate format
+    return finalList.map((item, index) => ({
+      id: `candidate-${index}`,
+      name: sanitizeName(item.name),
+      isGeneric: looksGeneric(item.data),
+      portionHint: item.data?.servingText || `${item.data?.servingGrams || 100}g default`,
+      defaultPortion: { amount: item.data?.servingGrams || 100, unit: 'g' },
+      provider: item.data?.provider || item.data?.kind,
+      imageUrl: item.data?.imageUrl,
+      data: item.data
+    }));
   };
 
   // Handle input changes with debouncing

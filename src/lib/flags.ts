@@ -29,3 +29,6 @@ export const isUserInRollout = (userId?: string) => false;
 export const USE_SERVER_STT = false;
 export const SHOW_SUPP_EDU = false;
 export const PARTNER_ACME = false;
+
+export const MAX_PER_FAMILY_MANUAL =
+  Number(import.meta.env.VITE_MAX_PER_FAMILY_MANUAL ?? '6');

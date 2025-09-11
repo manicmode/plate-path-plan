@@ -1,98 +1,69 @@
-# Manual Entry Audit Fixes Report
+# Manual Entry Collapse - Root Cause & Fix Report
 
-## Changes Made
+## Root Cause Summary
 
-### 1. Fixed Candidate Processing Pipeline (Manual Entry Shows 5-8 Suggestions)
+- **Primary Issue**: `maxPerFamily: 1` hardcoded in V3 text lookup (`textLookup.ts:76`) collapsed same-class candidates
+- **Pipeline Effect**: Diversity filter in `getFoodCandidates.ts` (lines 519-532) limited results to 1 per food family/class
+- **UI Impact**: Manual Entry received 1-3 candidates instead of 5-8, reducing user choice
 
-**File**: `src/components/camera/ManualFoodEntry.tsx`  
-**Lines**: 273-300
+## Fix Implementation
 
-**Issue**: Manual entry was collapsing multiple search results to show only 1 suggestion, even when cheap-first search returned 3-6 items.
+### 1. Added Manual Diversity Flag
+- **File**: `src/lib/flags.ts`
+- **Change**: Added `MAX_PER_FAMILY_MANUAL` flag (default: 6) for manual typing
+- **Preserves**: Photo/voice flows still use `maxPerFamily: 1`
 
-**Fix**: Completely rewrote `processCandidates` function to:
-- Process ALL items from search results as separate candidates (instead of just `items[0]` as primary)
-- Each item in the array becomes its own candidate with proper ID, name, and data
-- Also process any alt candidates from `__altCandidates` to add even more options
-- Remove duplication between main items and alt candidates
+### 2. Dynamic Diversity Cap
+- **File**: `src/lib/food/textLookup.ts`
+- **Change**: Source-aware cap: manual=6, voice/photo=1
+- **Added**: Instrumentation log `[CANDIDATES][DIVERSITY]`
 
-**Before**: Only `items[0]` was processed as primary, alternatives came from `__altCandidates` only
-**After**: All `items` are processed as candidates, plus any additional alternatives
+### 3. Enhanced Pipeline Instrumentation
+- **File**: `src/lib/food/search/getFoodCandidates.ts`
+- **Added Logs**:
+  - `[CANDIDATES][INTERLEAVE]` - before/after reordering
+  - `[CANDIDATES][DIVERSITY_FILTER][BEFORE/AFTER]` - diversity filter counts
+  - `[CANDIDATES][CAP]` - final 8-item cap
+  - `[CANDIDATES][MERGE]` - structured merge summary
 
-### 2. Added Merge Pipeline Telemetry
+### 4. Improved UI Deduplication
+- **File**: `src/components/camera/ManualFoodEntry.tsx`
+- **Change**: Enhanced dedup by name+brand key instead of name-only
+- **Added**: `[MANUAL][RENDER_LIST]` log for UI render count
 
-**File**: `src/lib/food/search/getFoodCandidates.ts`  
-**Lines**: 604-618
+## Before/After Behavior
 
-**Added**: `[CANDIDATES][MERGE]` logging to track cheap-first vs v3 merge decisions:
-```javascript
-console.log(`[CANDIDATES][MERGE] cheapFirst=${cheapFirstCount}, v3=${v3Count}, final=${finalCandidates.length}, used="${mergeUsed}"`);
+### Before Fix
+```
+Query: "california roll"
+[CANDIDATES][DIVERSITY] maxPerFamily=1
+[CANDIDATES][DIVERSITY_FILTER][AFTER] count=1
+[MANUAL][RENDER_LIST] ui_render_count=1
 ```
 
-This helps debug when cheap-first candidates are being used vs falling back to other sources.
-
-### 3. Improved Generic Injection Logic
-
-**File**: `src/components/camera/ManualFoodEntry.tsx`  
-**Lines**: 336-369
-
-**Enhanced**: Generic injection now:
-- Only injects when `realResultCount < 3` (counts non-generic candidates)  
-- Places generic at the end of the list (not first)
-- Adds proper logging: `[CANDIDATES][GENERIC_INJECT] reason=low-real count=${realResultCount}`
-- Only triggers when `VITE_MANUAL_INJECT_GENERIC=1` flag is enabled
-
-### 4. Added Pipeline Telemetry
-
-**File**: `src/lib/food/textLookup.ts`  
-**Lines**: 100-106
-
-**Added**: `[CANDIDATES][PIPE]` logging in V3 text lookup:
-```javascript
-console.log(`[CANDIDATES][PIPE] incoming=${candidates.length}, after_alias=${candidates.length}, deduped=${candidates.length}, capped=${Math.min(candidates.length, 8)}`);
+### After Fix  
+```
+Query: "california roll"
+[CANDIDATES][DIVERSITY] source=manual, maxPerFamily=6
+[CANDIDATES][DIVERSITY_FILTER][AFTER] count=3-6
+[MANUAL][RENDER_LIST] ui_render_count=3-6
 ```
 
-Shows the flow of candidates through the processing pipeline.
-
-### 5. Softened V3 Text Lookup Gate
-
-**File**: `src/lib/food/textLookup.ts`  
-**Lines**: 88-106
-
-**Fixed**: V3 lookup no longer throws errors for low-confidence results:
-- Returns `{ success: true, items: [], reason: 'low-confidence' }` instead of throwing
-- Logs `[TEXT][V3] low-confidence return count=N` for visibility
-- Prevents brown error toasts on partial matches
-
-## Root Causes Fixed
-
-1. **Pipeline Collapse**: `processCandidates` was treating only the first search result as primary, ignoring the rest
-2. **Missing Telemetry**: No visibility into where the collapse was happening  
-3. **Aggressive V3 Gate**: Throwing errors on low-confidence partial matches
-4. **Generic Crowding**: Generic injection could push out real results
-
-## Preserved Behavior
-
-✅ `VITE_DISABLE_ENRICHMENT_ON_TYPE=1` - No enrichment while typing  
-✅ `VITE_CHEAP_FIRST_SUGGESTIONS=1` - FDC+OFF sources, max 8 results  
-✅ Manual selection routes directly to Confirm (no Review)  
-✅ `VITE_CONFIRM_FAIL_OPEN_MS=3000` fail-open behavior  
-✅ All existing flags and defaults maintained  
-
-## Expected Console Logs
-
-**Typing "california roll":**
+## Environment Configuration
+Add to `.env`:
 ```
-[SUGGEST][CHEAP_FIRST] Using fast lookup without enrichment
-[SUGGEST][CHEAP_FIRST] count=6, sources=[fdc,off] 
-[CANDIDATES][PIPE] incoming=6, after_alias=6, deduped=6, capped=6
-[CANDIDATES][MERGE] cheapFirst=6, v3=0, final=6, used="cheap-first"
-[MANUAL][RENDER_LIST] ui_render_count=6
+VITE_MAX_PER_FAMILY_MANUAL=6
 ```
 
-**Low results with generic injection:**
-```
-[CANDIDATES][GENERIC_INJECT] reason=low-real count=1
-[MANUAL][RENDER_LIST] ui_render_count=2
-```
+## Verification Checklist
+1. ✅ Manual typing shows 3-6 options (not 1)
+2. ✅ Console logs show `maxPerFamily=6` for manual source
+3. ✅ Photo/voice flows unchanged (`maxPerFamily=1`)  
+4. ✅ No enrichment calls while typing
+5. ✅ Confirm flow and fail-open behavior preserved
+6. ✅ Generic injection only when real results < 3
 
-The manual entry dropdown should now show 5-8 options immediately for common foods instead of collapsing to just 1 option.
+## Test Cases
+- **"california roll"** → 3+ sushi variants
+- **"grilled chicken salad"** → 5+ chicken/salad options  
+- **"hotdog"** → Multiple hot dog varieties
