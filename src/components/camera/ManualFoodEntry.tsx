@@ -28,7 +28,7 @@ import { labelFromFlags, type Candidate as SearchCandidate } from '@/lib/food/se
 interface ManualFoodEntryProps {
   isOpen: boolean;
   onClose: () => void;
-  onResults?: (items: any[]) => void;
+  onSubmit?: (item: any) => void;
 }
 
 type ModalState = 'idle' | 'searching' | 'candidates' | 'loading' | 'error';
