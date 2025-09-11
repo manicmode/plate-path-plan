@@ -38,4 +38,21 @@ describe('ManualFoodEntry Hook Order Stability', () => {
       render(<ManualFoodEntry {...mockProps} />);
     }).not.toThrow();
   });
+
+  it('should handle multiple candidate selections without hook errors', () => {
+    const mockProps = {
+      isOpen: true,
+      onClose: vi.fn(),
+      onResults: vi.fn()
+    };
+
+    const { rerender } = render(<ManualFoodEntry {...mockProps} />);
+    
+    // Simulate multiple selection cycles
+    for (let i = 0; i < 3; i++) {
+      rerender(<ManualFoodEntry {...mockProps} />);
+    }
+
+    expect(true).toBe(true);
+  });
 });

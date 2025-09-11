@@ -65,6 +65,7 @@ interface FoodItem {
   confidence?: number; // Confidence score for the nutrition estimation
   enrichmentSource?: string; // Add enrichment metadata
   enrichmentConfidence?: number; // Add enrichment confidence
+  selectionSource?: string; // Source of selection (manual, voice, standard)
   // Additional data for flag detection from health report prefill
   allergens?: string[];
   additives?: string[];
@@ -100,7 +101,10 @@ interface FoodItem {
   selectionFlags?: { generic?: boolean; brand?: boolean; restaurant?: boolean };
 }
 
+type ConfirmMode = 'manual' | 'standard';
+
 interface FoodConfirmationCardProps {
+  mode?: ConfirmMode; // default 'standard'
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (foodItem: FoodItem) => void;
@@ -123,6 +127,7 @@ interface FoodConfirmationCardProps {
 const CONFIRM_FIX_REV = "2025-08-31T15:43Z-r11";
 
 const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
+  mode = 'standard',
   isOpen,
   onClose,
   onConfirm,
@@ -261,27 +266,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const isNutritionReady = perGramReady
     || ((useHydration && !isBarcodeSource) ? (perGramSum > 0) : true);
   
-  // Check enrichment readiness early - render skeleton instead of early return
-  if (!foodItem?.enrichmentSource || !Array.isArray(foodItem?.ingredientsList)) {
-    console.log('[CONFIRM][NOT_READY]', { 
-      enrichment: !!foodItem?.enrichmentSource, 
-      hasList: Array.isArray(foodItem?.ingredientsList) 
-    });
-    return (
-      <div className="fixed inset-0 grid place-items-center bg-black/40 z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-          <div className="animate-pulse space-y-4">
-            <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-            <div className="space-y-2">
-              <div className="h-4 bg-gray-200 rounded"></div>
-              <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Check if this is a manual entry that needs enrichment
+  const isManual = mode === 'manual' || foodItem?.selectionSource === 'manual';
+  const readyForManual = !!foodItem?.enrichmentSource && Array.isArray(foodItem?.ingredientsList);
 
   // Build and route sentinels on mount
   useEffect(() => {
@@ -1217,6 +1204,21 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         >
           <VisuallyHidden><DialogTitle>Confirm Food Log</DialogTitle></VisuallyHidden>
           <div className="p-6">
+            {/* Manual Entry Enrichment Loading */}
+            {(isManual && !readyForManual) ? (
+              <div className="space-y-4">
+                <div className="animate-pulse space-y-3">
+                  <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-1/2"></div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-5/6"></div>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground text-center">Loading enrichment data...</p>
+              </div>
+            ) : (
+              <>
             {/* Unknown Product Alert */}
             {isUnknownProduct && (
               <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800 mb-4">
@@ -1813,9 +1815,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                       'Log Food'
                     )}
                   </Button>
-                </>
-              )}
+                 </>
+               )}
             </div>
+            </>
+            )}
           </div>
         </AccessibleDialogContent>
       </Dialog>

@@ -1079,15 +1079,18 @@ const Home = () => {
       />
 
       {/* Food Confirmation Card */}
-      <FoodConfirmationCard
-        isOpen={showConfirmationCard}
-        onClose={() => {
-          setShowConfirmationCard(false);
-          setSelectedFood(null);
-        }}
-        onConfirm={handleConfirmFood}
-        foodItem={selectedFood}
-      />
+      {showConfirmationCard && selectedFood && (
+        <FoodConfirmationCard
+          mode="standard"
+          isOpen={showConfirmationCard}
+          onClose={() => {
+            setShowConfirmationCard(false);
+            setSelectedFood(null);
+          }}
+          onConfirm={handleConfirmFood}
+          foodItem={selectedFood}
+        />
+      )}
 
       {/* Exercise Log Form */}
       <ExerciseLogForm

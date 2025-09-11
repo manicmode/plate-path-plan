@@ -186,6 +186,7 @@ export function MealReportStack({ data, onClose }: MealReportStackProps) {
       {/* Confirm Modal */}
       {showConfirm && confirmData && (
         <FoodConfirmationCard
+          mode="manual"
           isOpen={showConfirm}
           onClose={handleConfirmClose}
           foodItem={confirmData}

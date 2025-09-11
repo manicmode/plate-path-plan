@@ -3871,6 +3871,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         return null;
       })()}
       <FoodConfirmationCard
+        mode={inputSource === 'manual' || inputSource === 'voice' ? 'manual' : 'standard'}
         isOpen={showConfirmation}
         isProcessingFood={isProcessingFood}
         forceConfirm={forceConfirm}
