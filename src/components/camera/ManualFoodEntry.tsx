@@ -195,6 +195,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
           // Process candidates from fallback
           const candidates = processCandidates(items, query);
+          console.log(`[MANUAL][RENDER_LIST] ui_render_count=${candidates.length}`);
           setCandidates(candidates);
           setState(candidates.length > 0 ? 'candidates' : 'idle');
           return;
@@ -244,6 +245,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           
           // Process candidates from fallback
           const candidates = processCandidates(items, query);
+          console.log(`[MANUAL][RENDER_LIST] ui_render_count=${candidates.length}`);
           setCandidates(candidates);
           setState(candidates.length > 0 ? 'candidates' : 'idle');
           return;
@@ -804,25 +806,10 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                 className="mb-6"
               >
                 <CandidateList
-                candidates={showMoreCandidates ? candidates : candidates.slice(0, Math.max(6, Number(import.meta.env.VITE_MIN_MANUAL_CHOICES ?? '3') || 3))}
+                  candidates={candidates} // Show all candidates (6-8) without slicing
                   selectedCandidate={selectedCandidate}
                   onSelect={handleCandidateSelect}
                 />
-                
-                {/* Show More Button */}
-                {candidates.length > Math.max(6, Number(import.meta.env.VITE_MIN_MANUAL_CHOICES ?? '3') || 3) && (
-                  <div className="mt-3 text-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowMoreCandidates(!showMoreCandidates)}
-                      className="text-slate-400 hover:text-white text-xs"
-                    >
-                      {showMoreCandidates ? 'Show Less' : `Show ${candidates.length - Math.max(6, Number(import.meta.env.VITE_MIN_MANUAL_CHOICES ?? '3') || 3)} More Results`}
-                      {showMoreCandidates ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
-                    </Button>
-                  </div>
-                )}
               </motion.div>
             )}
           </AnimatePresence>

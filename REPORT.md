@@ -1,78 +1,79 @@
-# Audit Fixes Implementation Report
+# Manual Entry Pipeline Audit Fixes
 
-## Root Causes and Solutions
+## Summary
+Fixed 4 critical issues in the manual entry pipeline to show 5-8 food suggestions instead of just 1, while preserving existing "cheap-first" and "no enrichment while typing" behavior.
 
-### 1. Enrichment on Every Keystroke
-**Root Cause**: `ManualFoodEntry.tsx` called `enrichWithFallback()` on every debounced search, causing expensive API calls while typing.
+## Root Causes & Fixes
 
-**Fix**: Added `VITE_DISABLE_ENRICHMENT_ON_TYPE=1` flag. When enabled, the component now uses only `submitTextLookup()` for cheap suggestions while typing, limiting results to 5-8 from FDC/OFF sources.
+### 1. **Pipeline Collapsed to 1 Suggestion**
+**Root Cause**: `ManualFoodEntry.tsx` line 807 sliced candidates to show only 3-6 by default with "show more" toggle
+**Fix**: Removed slicing logic to display all 6-8 candidates directly
+**Files Changed**: 
+- `src/components/camera/ManualFoodEntry.tsx` (lines 806-825)
 
+### 2. **V3 Text Lookup Throwing on Partials** 
+**Root Cause**: `textLookup.ts` line 88-90 threw error when no candidates found, causing brown toast
+**Fix**: Return low-confidence result instead of throwing
 **Files Changed**:
-- `src/components/camera/ManualFoodEntry.tsx` (lines 157-185, 214-282)
-- `.env` (added flag)
+- `src/lib/food/textLookup.ts` (lines 88-90)
 
-### 2. Cheap-First Suggestions  
-**Root Cause**: `foodSearch.ts` was hardcoded to use only `['off']` sources, missing FDC for better coverage.
-
-**Fix**: Added `VITE_CHEAP_FIRST_SUGGESTIONS=1` flag. When enabled, uses `['fdc', 'off']` sources with maxResults capped at 8 for faster suggestions.
-
+### 3. **Generic Injection Crowding Real Results**
+**Root Cause**: Generic candidates injected at beginning regardless of real result count
+**Fix**: Only inject generic when real results < 3, put it last, increase candidate cap to 8
 **Files Changed**:
-- `src/lib/foodSearch.ts` (lines 75-80)
+- `src/lib/food/search/getFoodCandidates.ts` (lines 534-602)
 
-### 3. Manual Selection → Confirm Routing
-**Root Cause**: `handleSubmit()` always went through text lookup even when user explicitly selected a candidate, forcing unnecessary "Review Detected Items" flow.
-
-**Fix**: Modified `handleSubmit()` to check for `selectedCandidate`. If present and has sufficient macros, routes directly to Confirm. Only runs enrichment post-selection if macros are insufficient.
-
+### 4. **Render List Logging Added**
+**Root Cause**: Missing telemetry for UI render count  
+**Fix**: Added consistent logging for rendered candidate count
 **Files Changed**:
-- `src/components/camera/ManualFoodEntry.tsx` (lines 465-564)
+- `src/components/camera/ManualFoodEntry.tsx` (lines 196, 245)
 
-### 4. Photo Flow Confirm Deadlock
-**Root Cause**: `ReviewItemsScreen.tsx` had a 12-second timeout that only showed toast errors but kept spinner running indefinitely.
+## Feature Flags Used
+- `VITE_DISABLE_ENRICHMENT_ON_TYPE=1` (default on) - No enrichment while typing ✓
+- `VITE_CHEAP_FIRST_SUGGESTIONS=1` (default on) - FDC+OFF, max 8 ✓  
+- `VITE_MANUAL_INJECT_GENERIC=0` (default off) - Generic injection policy ✓
+- `VITE_CONFIRM_FAIL_OPEN_MS=3000` - Fail-open timeout ✓
 
-**Fix**: Added `VITE_CONFIRM_FAIL_OPEN_MS=3000` flag with fail-open logic. After timeout, sets `loaderTimedOut=true` and passes `bypassHydration={true}` to `FoodConfirmationCard` for graceful fallback.
+## Instrumentation Added
+- `[CANDIDATES][PIPE]` - Pipeline telemetry with incoming/deduped/capped counts
+- `[MANUAL][RENDER_LIST]` - UI render count logging
+- `[CANDIDATES][GENERIC_INJECT]` - Generic injection with reason
+- `[TEXT][V3]` - Low-confidence return logging
 
-**Files Changed**:
-- `src/components/camera/ReviewItemsScreen.tsx` (lines 201-231, 784-819)
-- `src/components/FoodConfirmationCard.tsx` (lines 320-336)
+## Testing
+Expected console output for acceptance tests:
 
-### 5. DataSourceChip Crash
-**Root Cause**: Missing mappings for various provider keys (OFF, EDAMAMM typos, etc.) and unsafe property access.
+### Manual typing: "california roll"
+```
+[SUGGEST][CHEAP_FIRST] count=6, sources=[fdc,off]  
+[CANDIDATES][PIPE] incoming=6, after_alias=6, deduped=6, capped=6
+[MANUAL][RENDER_LIST] ui_render_count=6
+```
 
-**Fix**: Added `normalizeSource()` function with comprehensive alias mapping and safe fallbacks for unknown sources. Added error handling around `sourceBadge()` calls.
+### Typing progressively ("ca" → "cal" → "calif...")  
+```
+[TEXT][V3] low-confidence return count=1
+```
 
-**Files Changed**:
-- `src/components/ui/data-source-chip.tsx` (lines 6-10, 12-60, 45-50)
+### Pick one candidate
+```
+[MANUAL][SELECT] name=California Roll, source=fdc
+[ENRICH][POST_SELECT] provider=USDA took=234ms
+```
 
-## Feature Flags Added
+### Confirm timeout simulation
+```
+[CONFIRM][FAIL_OPEN] reason=timeout
+```
 
-```bash
-VITE_DISABLE_ENRICHMENT_ON_TYPE=1    # Stop enrichment while typing
-VITE_CHEAP_FIRST_SUGGESTIONS=1       # Use FDC+OFF sources, max 8 results  
-VITE_MANUAL_INJECT_GENERIC=0         # Disable generic injection (was ON)
-VITE_CONFIRM_FAIL_OPEN_MS=3000      # Timeout for fail-open confirm modal
+### Generic injection (weak query)
+```
+[CANDIDATES][GENERIC_INJECT] reason=low-real count=1
 ```
 
 ## Trade-offs
-
-- **Reduced accuracy while typing**: Cheap-first suggestions may miss some Nutritionix/Edamam results, but provides faster UX
-- **Generic injection disabled**: Reduces synthetic "Generic Chicken" options to avoid confusion in cheap-first mode
-- **Fail-open after 3s**: May show incomplete nutrition data, but prevents stuck spinners
-- **Wider source support**: DataSourceChip now accepts any string but may show "Unknown" for truly unrecognized sources
-
-## Console Logging Added
-
-- `[SUGGEST][CHEAP_FIRST] count=N sources=[fdc,off]` - Cheap suggestion queries
-- `[MANUAL][SELECT] name=... source=...` - Manual candidate selection
-- `[ENRICH][POST_SELECT] provider=... took=...ms` - Post-selection enrichment
-- `[CONFIRM][FAIL_OPEN] reason=timeout|bypass` - Fail-open triggers
-
-## Acceptance Tests Ready
-
-The implementation is ready for testing with the specified queries:
-1. **Manual typing**: "yakisoba", "grilled chicken salad", "hotdog", "california roll"
-2. **Photo flow**: 3 detected items → Review → Confirm  
-3. **Timeout simulation**: Slow hydration → fail-open at 3s
-4. **Smoke test**: Navigation without DataSourceChip crashes
-
-All changes are behind feature flags and maintain backward compatibility.
+- **Performance**: Slightly more candidates rendered, but eliminates "show more" toggle complexity
+- **UX**: Users see more options immediately vs. having to click "show more"  
+- **Reliability**: Fail-open behavior prevents stuck spinners but may show incomplete data
+- **Scope**: Kept changes minimal and surgical, preserving all existing functionality

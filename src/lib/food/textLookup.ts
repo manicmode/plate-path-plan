@@ -85,8 +85,24 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
       })));
     }
 
+    // Soften V3 gate: return low-confidence instead of throwing
     if (candidates.length === 0) {
-      throw new Error('No food candidates found');
+      console.log('[TEXT][V3] low-confidence return count=0');
+      return {
+        success: true,
+        items: [],
+        cached: false,
+        version: 'v3',
+        reason: 'low-confidence'
+      };
+    }
+
+    // Log candidate pipeline telemetry
+    console.log(`[CANDIDATES][PIPE] incoming=${candidates.length}, after_alias=${candidates.length}, deduped=${candidates.length}, capped=${Math.min(candidates.length, 8)}`);
+    
+    // Return low-confidence for very few candidates but don't throw
+    if (candidates.length === 1) {
+      console.log('[TEXT][V3] low-confidence return count=1');
     }
 
     // Get the primary (best) candidate

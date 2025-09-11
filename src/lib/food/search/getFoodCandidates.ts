@@ -531,16 +531,14 @@ export async function getFoodCandidates(
     });
   }
   
-  const finalCandidates = sortedCandidates.slice(0, 6);
+  const finalCandidates = sortedCandidates.slice(0, 8); // Keep up to 8 candidates instead of 6
   
-  // Manual-only guaranteed generic candidate injection
+  // Generic injection policy: only inject when real results < 3, and put it last
+  const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '0') === '1';
   const isManual = source === 'manual';
-  const hasGenericTop = finalCandidates[0] && 
-    finalCandidates[0].kind === 'generic' &&
-    !(finalCandidates[0] as any).brand &&
-    !(finalCandidates[0] as any).barcode;
+  const realResultCount = finalCandidates.filter(c => c.kind !== 'generic').length;
 
-  if (isManual && !hasGenericTop && finalCandidates.length > 0) {
+  if (shouldInjectGeneric && isManual && realResultCount < 3) {
     // Try to infer class/canonical using existing logic
     const inferredClassId = finalCandidates[0]?.classId || null;
     const inferredCanonical = null; // No canonical key logic in current implementation
@@ -591,14 +589,15 @@ export async function getFoodCandidates(
     );
     
     if (!duplicate) {
-      finalCandidates.unshift(genericCandidate);
-      console.log('[CANDIDATES][GENERIC_INJECT]', { 
+      // Put generic at the end, not beginning
+      finalCandidates.push(genericCandidate);
+      console.log(`[CANDIDATES][GENERIC_INJECT] reason=low-real count=${realResultCount}`, { 
         q: normalizedQuery, 
         name: genericCandidate.name 
       });
       
-      // Keep only top 6 after injection
-      finalCandidates.splice(6);
+      // Keep only top 8 after injection
+      finalCandidates.splice(8);
     }
   }
   
