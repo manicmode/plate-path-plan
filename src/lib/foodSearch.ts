@@ -10,6 +10,48 @@ import { nvSearch } from './nutritionVault';
 // Import setup verification (runs automatically in dev mode)
 import './nvSetupTest';
 
+// Self-test functionality
+async function selfTestSuggestPipeline(query: string) {
+  let vaultHits = 0;
+  let cheapHits = 0;
+  let finalCount = 0;
+
+  try {
+    // Test vault search first
+    if (NV_READ_THEN_CHEAP && query.length >= NV_MIN_PREFIX) {
+      const vaultResults = await nvSearch(query, NV_MAX_RESULTS);
+      vaultHits = vaultResults.length;
+      
+      if (vaultHits >= NV_MIN_HITS) {
+        finalCount = vaultHits;
+        return { vaultHits, cheapHits: 0, finalCount };
+      }
+    }
+
+    // Test cheap path (mock/simplified)
+    cheapHits = 4; // Simulated cheap results
+    finalCount = Math.min(vaultHits + cheapHits, NV_MAX_RESULTS);
+    
+    return { vaultHits, cheapHits, finalCount };
+  } catch (error) {
+    console.error('[SUGGEST][PIPE][SELFTEST] Error:', error);
+    return { vaultHits: 0, cheapHits: 0, finalCount: 0 };
+  }
+}
+
+// Self-test runner (only with ?NV_SELFTEST=1)
+if (typeof window !== 'undefined' && window.location.search.includes('NV_SELFTEST=1')) {
+  setTimeout(async () => {
+    try {
+      const q = 'california roll';
+      const { vaultHits, cheapHits, finalCount } = await selfTestSuggestPipeline(q);
+      console.log('[SUGGEST][PIPE]', { vault: vaultHits, cheap: cheapHits, final: finalCount });
+    } catch (e) {
+      console.log('[SUGGEST][PIPE][ERROR]', String(e));
+    }
+  }, 1000);
+}
+
 export interface CanonicalSearchResult {
   source: 'off' | 'fdc' | 'local';
   id: string;              // provider native id

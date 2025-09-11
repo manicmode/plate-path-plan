@@ -55,6 +55,27 @@ console.log('[BCF][ENV]', {
   projectUrl: import.meta.env.VITE_SUPABASE_URL
 });
 
+// Nutrition Vault runtime verification
+if (typeof window !== 'undefined') {
+  import('./lib/flags').then(({ 
+    NV_READ_THEN_CHEAP, 
+    NV_WRITE_THROUGH, 
+    NV_MAX_RESULTS, 
+    NV_MIN_PREFIX, 
+    NV_MIN_HITS 
+  }) => {
+    console.log('[NV][SETUP]', {
+      env: {
+        NV_READ_THEN_CHEAP,
+        NV_WRITE_THROUGH,
+        NV_MAX_RESULTS,
+        NV_MIN_PREFIX,
+        NV_MIN_HITS,
+      }
+    });
+  });
+}
+
 // Test instructions for diagnostics run
 console.log(`[BCF][TEST_INSTRUCTIONS]
 1) DevTools → Console: enable "Preserve log" + "Log XMLHttpRequests".
