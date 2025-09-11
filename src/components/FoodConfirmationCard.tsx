@@ -460,7 +460,34 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     ...currentFoodItem,
     portionSource: (currentFoodItem as any)?.portionSource || 'inferred',
     providerRef: (currentFoodItem as any)?.providerRef || 'generic',
+    classId: (currentFoodItem as any)?.classId || 'generic_food',
+    hasIngredients: Boolean(
+      (currentFoodItem as any)?.ingredientsList?.length ||
+      (currentFoodItem as any)?.ingredients?.length ||
+      (currentFoodItem as any)?.ingredientsText
+    ),
   }), [currentFoodItem]);
+
+  // Normalized ingredient list for UI
+  const ingredientsList = useMemo(() => {
+    const i = (currentFoodItem as any);
+    if (Array.isArray(i?.ingredientsList)) return i.ingredientsList;
+    if (Array.isArray(i?.ingredients)) return i.ingredients.map((ing: any) => ing.name || ing);
+    if (typeof i?.ingredientsText === 'string') {
+      return i.ingredientsText.split(',').map((s: string) => s.trim()).filter(Boolean);
+    }
+    return [];
+  }, [currentFoodItem]);
+
+  // Log for diagnostics
+  console.log('[CONFIRM][LAYOUT]', {
+    providerRef: normalizedItem.providerRef,
+    portionSource: normalizedItem.portionSource,
+    classId: normalizedItem.classId,
+    hasIngredients: normalizedItem.hasIngredients,
+    ingredientsLength: ingredientsList.length,
+    cardLayoutClass: `food-confirm-card ${normalizedItem.hasIngredients ? 'with-ingredients' : 'no-ingredients'}`
+  });
   
   // Normalize name at render level with extractName utility
   const rawName = currentFoodItem?.name ?? 'Unknown Product';
@@ -1042,8 +1069,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   };
 
   const isFromBarcode = currentFoodItem?.barcode ? true : false;
-  const hasIngredients = currentFoodItem?.ingredientsAvailable && 
-    (currentFoodItem?.ingredientsText?.length || 0) > 0;
+  const hasIngredients = normalizedItem.hasIngredients;
   const needsManualIngredients = isFromBarcode && !hasIngredients;
 
   const healthScore = getHealthScore(currentFoodItem);
@@ -1518,74 +1544,80 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </TabsContent>
               
               <TabsContent value="ingredients" className="space-y-4 mt-4">
-                {hasIngredients ? (
-                  <div className="space-y-3">
-                    {/* Flagged Ingredients Alert */}
-                    {flaggedIngredients.length > 0 && (
-                      <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
-                        <div className="flex items-start gap-2">
-                          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5" />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
-                              ⚠️ {flaggedIngredients.length} Concerning Ingredient{flaggedIngredients.length > 1 ? 's' : ''} Found
-                            </p>
-                            <div className="space-y-1">
-                              {flaggedIngredients.slice(0, 3).map((ingredient, index) => (
-                                <div key={index} className="text-xs text-red-700 dark:text-red-300">
-                                  <span className="font-medium">{ingredient.name}</span> - {ingredient.description}
-                                </div>
-                              ))}
-                              {flaggedIngredients.length > 3 && (
-                                <p className="text-xs text-red-700 dark:text-red-300">
-                                  +{flaggedIngredients.length - 3} more flagged ingredients
-                                </p>
-                              )}
+                <div className="ingredients-panel min-h-24">
+                  {ingredientsList.length > 0 ? (
+                    <div className="space-y-3">
+                      {/* Flagged Ingredients Alert */}
+                      {flaggedIngredients.length > 0 && (
+                        <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
+                                ⚠️ {flaggedIngredients.length} Concerning Ingredient{flaggedIngredients.length > 1 ? 's' : ''} Found
+                              </p>
+                              <div className="space-y-1">
+                                {flaggedIngredients.slice(0, 3).map((ingredient, index) => (
+                                  <div key={index} className="text-xs text-red-700 dark:text-red-300">
+                                    <span className="font-medium">{ingredient.name}</span> - {ingredient.description}
+                                  </div>
+                                ))}
+                                {flaggedIngredients.length > 3 && (
+                                  <p className="text-xs text-red-700 dark:text-red-300">
+                                    +{flaggedIngredients.length - 3} more flagged ingredients
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
+                      )}
+
+                      {/* Ingredients List Display */}
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                          Ingredients List:
+                        </h4>
+                        <ul className="space-y-1">
+                          {ingredientsList.map((ingredient: string, index: number) => (
+                            <li key={index} className="text-xs text-gray-700 dark:text-gray-300">
+                              • {ingredient}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                    )}
 
-                    {/* Ingredients Text Display */}
-                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
-                      <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                        Ingredients List:
-                      </h4>
-                      <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-                        {currentFoodItem?.ingredientsText || manualIngredients}
-                      </p>
-                    </div>
-
-                    {flaggedIngredients.length === 0 && (
-                      <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                          <span className="text-sm text-green-800 dark:text-green-200">
-                            ✅ No concerning ingredients detected
-                          </span>
+                      {flaggedIngredients.length === 0 && (
+                        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                            <span className="text-sm text-green-800 dark:text-green-200">
+                              ✅ No concerning ingredients detected
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                      No ingredients information available
-                    </p>
-                    {isFromBarcode && (
-                      <Button
-                        onClick={() => setShowManualIngredientEntry(true)}
-                        size="sm"
-                        variant="outline"
-                        className="border-orange-300 text-orange-600 hover:bg-orange-50"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Ingredients Manually
-                      </Button>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        No ingredients information available
+                      </p>
+                      {isFromBarcode && (
+                        <Button
+                          onClick={() => setShowManualIngredientEntry(true)}
+                          size="sm"
+                          variant="outline"
+                          className="border-orange-300 text-orange-600 hover:bg-orange-50"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Ingredients Manually
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </TabsContent>
             </Tabs>
 

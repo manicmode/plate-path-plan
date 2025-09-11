@@ -12,7 +12,7 @@ export function enrichedFoodToLogItem(x: EnrichedFood, portionGrams: number = 10
     sourceId: x.source_id,
     confidence: x.confidence,
     
-    // Ingredients for FoodConfirmationCard compatibility
+    // Normalize all ingredient variants into ingredientsList
     ingredients: (x.ingredients ?? []).map(i => ({
       name: i.name,
       grams: i.grams,
@@ -20,6 +20,9 @@ export function enrichedFoodToLogItem(x: EnrichedFood, portionGrams: number = 10
     })),
     ingredientsAvailable: (x.ingredients ?? []).length > 0,
     ingredientsText: (x.ingredients ?? []).map(i => i.name).join(', '),
+    
+    // Unified ingredient field for UI
+    ingredientsList: Array.isArray(x.ingredients) ? x.ingredients.map(i => i.name) : [],
     
     // Scaled macros for the specified portion size
     calories: Math.round((per100.calories ?? 0) * scale),

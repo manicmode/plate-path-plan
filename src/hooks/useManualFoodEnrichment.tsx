@@ -64,6 +64,23 @@ export function useManualFoodEnrichment() {
         selectedCandidate.canonicalKey || selectedCandidate.name
       );
       
+      // For diagnostic: log present keys
+      console.log('[ENRICH][GENERIC][KEYS]', { 
+        genericHasIngredients: false,
+        canonicalKey: selectedCandidate.canonicalKey,
+        computed: ['name', 'per100g', 'portions']
+      });
+      
+      const baseIngredients = selectedCandidate.canonicalKey && selectedCandidate.classId === 'club_sandwich' 
+        ? [
+            { name: 'Bread', grams: 60 },
+            { name: 'Turkey', grams: 45 },
+            { name: 'Bacon', grams: 15 },
+            { name: 'Lettuce', grams: 15 },
+            { name: 'Tomato', grams: 15 }
+          ]
+        : [];
+      
       return {
         name: selectedCandidate.name, // Keep exact name from selection
         displayName: selectedCandidate.displayName ?? selectedCandidate.name,
@@ -72,7 +89,7 @@ export function useManualFoodEnrichment() {
         canonicalKey: selectedCandidate.canonicalKey,
         aliases: [],
         locale: locale || 'en',
-        ingredients: [],
+        ingredients: baseIngredients, // Don't blank ingredients
         per100g: {
           calories: genericData.per100g.kcal,
           protein: genericData.per100g.protein_g,
