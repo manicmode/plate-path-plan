@@ -630,10 +630,10 @@ export async function getFoodCandidates(
   const sig = significantTokens(normalizedQuery, 3);
   const isManualTyping = options?.source === 'manual';
 
-  function hasAllTokens(text: string, toks: string[]) {
-    const t = text.toLowerCase();
-    return toks.every(tok => t.includes(tok));
-  }
+function hasAllTokens(text: string, toks: string[]) {
+  const t = text.toLowerCase();
+  return toks.every(tok => t.includes(tok));
+}
 
   if (isManualTyping && sig.length >= 2) {
     sortedCandidates = sortedCandidates.filter(c => {
@@ -795,7 +795,12 @@ export async function getFoodCandidates(
       id: `generic-${canonicalKey}`,
       name: `${titleCase(normalizedQuery)} (generic)`,
       kind: 'generic',
-      classId: 'generic_food',
+      classId: normalizedQuery.toLowerCase().includes('club sandwich') ? 'club_sandwich' : 'generic_food',
+      flags: {
+        generic: true,
+        brand: false,
+        restaurant: false
+      },
       score: 35,
       confidence: 0.35,
       explanation: 'Generic option for brand-heavy results',

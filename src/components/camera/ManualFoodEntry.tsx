@@ -231,7 +231,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         const { enriched, fallback } = await enrichWithFallback(
           query,
           'auto',
-          () => submitTextLookup(query, { source: 'manual' })
+          () => submitTextLookup(query, { source: 'manual' }),
+          selectedCandidate
         );
         
         // Check if this search result is still valid
@@ -254,7 +255,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
               amount: enriched.perServing?.serving_grams || 100, 
               unit: 'g' 
             },
-            provider: sourceBadge(enriched.source).label.toLowerCase(),
+            provider: enriched.source === 'GENERIC' ? 'generic' : sourceBadge(enriched.source).label.toLowerCase(),
             data: enrichedFoodToLogItem(enriched, 100),
             // NEW: stable identity fields
             flags: {
@@ -996,11 +997,20 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
               >
                 <Button
                   onClick={handleSubmit}
-                  disabled={!foodName.trim() || state === 'loading'}
+                  disabled={!canAdd}
                   className="bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-500 hover:to-emerald-500 text-white font-medium px-6 focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Zap className="h-4 w-4 mr-2" />
-                  Add Item
+                  {isSearching ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Searching…
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4 mr-2" />
+                      Add Item
+                    </>
+                  )}
                 </Button>
               </motion.div>
             </div>

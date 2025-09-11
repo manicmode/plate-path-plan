@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { NV_WRITE_THROUGH } from '@/lib/flags';
 import { nvWrite } from '@/lib/nutritionVault';
+import { enrichFromGeneric } from '@/lib/food/generic';
 
 interface Nutrients {
   calories: number;
@@ -24,7 +25,7 @@ interface EnrichedFood {
   ingredients: { name: string; grams?: number; amount?: string }[];
   per100g: Nutrients;
   perServing?: Nutrients & { serving_grams?: number };
-  source: "FDC" | "EDAMAM" | "NUTRITIONIX" | "CURATED" | "ESTIMATED";
+  source: "FDC" | "EDAMAM" | "NUTRITIONIX" | "CURATED" | "ESTIMATED" | "GENERIC";
   source_id?: string;
   confidence: number;
 }
@@ -41,10 +42,52 @@ export function useManualFoodEnrichment() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const enrich = useCallback(async (query: string, locale: string = 'auto'): Promise<EnrichedFood | null> => {
+  const enrich = useCallback(async (query: string, locale: string = 'auto', selectedCandidate?: any): Promise<EnrichedFood | null> => {
     if (!query?.trim()) {
       setError('Query is required');
       return null;
+    }
+
+    // Handle generic candidates locally
+    if (selectedCandidate?.flags?.generic === true) {
+      console.info('[ENRICH][GENERIC]', { 
+        name: selectedCandidate.name, 
+        classId: selectedCandidate.classId 
+      });
+      
+      const genericData = enrichFromGeneric(
+        selectedCandidate.classId || 'generic_food', 
+        selectedCandidate.canonicalKey || selectedCandidate.name
+      );
+      
+      return {
+        name: selectedCandidate.name, // Keep exact name from selection
+        aliases: [],
+        locale: locale || 'en',
+        ingredients: [],
+        per100g: {
+          calories: genericData.per100g.kcal,
+          protein: genericData.per100g.protein_g,
+          fat: genericData.per100g.fat_g,
+          carbs: genericData.per100g.carbs_g,
+          fiber: genericData.per100g.fiber_g,
+          sugar: genericData.per100g.sugar_g,
+          sodium: genericData.per100g.sodium_mg
+        },
+        perServing: genericData.portions?.[1] ? {
+          serving_grams: genericData.portions[1].g,
+          calories: Math.round(genericData.per100g.kcal * genericData.portions[1].g / 100),
+          protein: Math.round(genericData.per100g.protein_g * genericData.portions[1].g / 100),
+          fat: Math.round(genericData.per100g.fat_g * genericData.portions[1].g / 100),
+          carbs: Math.round(genericData.per100g.carbs_g * genericData.portions[1].g / 100),
+          fiber: genericData.per100g.fiber_g ? Math.round(genericData.per100g.fiber_g * genericData.portions[1].g / 100) : undefined,
+          sugar: genericData.per100g.sugar_g ? Math.round(genericData.per100g.sugar_g * genericData.portions[1].g / 100) : undefined,
+          sodium: genericData.per100g.sodium_mg ? Math.round(genericData.per100g.sodium_mg * genericData.portions[1].g / 100) : undefined
+        } : undefined,
+        source: "GENERIC",
+        source_id: selectedCandidate.classId || 'generic_food',
+        confidence: 0.8
+      };
     }
 
     // Check feature flag
@@ -128,9 +171,10 @@ export function useManualFoodEnrichment() {
   const enrichWithFallback = useCallback(async (
     query: string, 
     locale: string = 'auto',
-    fallbackFn?: () => Promise<any>
+    fallbackFn?: () => Promise<any>,
+    selectedCandidate?: any
   ): Promise<{ enriched: EnrichedFood | null; fallback: any }> => {
-    const enriched = await enrich(query, locale);
+    const enriched = await enrich(query, locale, selectedCandidate);
     
     // If enrichment failed and we have a fallback, use it
     if (!enriched && fallbackFn) {
