@@ -23,7 +23,7 @@ import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
 import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
 import { useManualFlowStatus } from '@/hooks/useManualFlowStatus';
 import { enrichCandidate } from '@/utils/enrichCandidate';
-import { ManualPortionDialog } from './ManualPortionDialog';
+import { SmartPortionModal } from './SmartPortionModal';
 import { DataSourceChip } from '@/components/ui/data-source-chip';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import { sourceBadge } from '@/utils/helpers/sourceBadge';
@@ -143,17 +143,14 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const [showDialog, setShowDialog] = useState(false);
   const [enriched, setEnriched] = useState<any>(null);
   
-  // Track loading & suggestion availability for button guarding
+  // Track loading & suggestion availability for button guarding  
   const isSearching = state === 'searching';
-  const hasSuggestions = candidates.length > 0;
-  const canAdd = !isSearching && selectedCandidate != null;
-  const [portionAmount, setPortionAmount] = useState<number>(100);
-  const [portionUnit, setPortionUnit] = useState('g');
-  const [amountEaten, setAmountEaten] = useState([100]);
-  const [mealType, setMealType] = useState<MealType>('');
-  const [notes, setNotes] = useState('');
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showMoreCandidates, setShowMoreCandidates] = useState(false);
+  // Remove unused state variables
+  const [amountEaten] = useState([100]);
+  const [mealType] = useState<MealType>('');
+  const [notes] = useState('');
+  const [showAdvanced] = useState(false);
+  const [showMoreCandidates] = useState(false);
   const [recentItems, setRecentItems] = useState<string[]>([]);
 
   // Refs
@@ -187,11 +184,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     const run = async () => {
       if (!manualFlow.selectedCandidate || manualFlow.enrichmentReady) return;
       
-      console.log('[MANUAL][SELECT]', { 
-        isGeneric: manualFlow.selectedCandidate?.isGeneric, 
-        canonicalKey: manualFlow.selectedCandidate?.canonicalKey 
-      });
-      
       try {
         setIsLoading(true);
         manualFlow.setState(s => ({ ...s, enrichmentReady: false, nutritionReady: false }));
@@ -199,9 +191,9 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         const enrichedData = await enrichCandidate(manualFlow.selectedCandidate);
         if (dead) return;
         
-        console.log('[ENRICH][DONE]', { 
-          hasIngredients: !!enrichedData?.ingredientsList?.length,
-          count: enrichedData?.ingredientsList?.length || 0
+        console.log('[FLOW][ENRICH]', { 
+          enrichmentSource: enrichedData?.enrichmentSource,
+          ingredientsCount: enrichedData?.ingredientsList?.length || 0
         });
         
         setEnriched(enrichedData);
@@ -212,8 +204,10 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           portionDraft: enrichedData
         }));
         
-        console.log('[DIALOG][OPEN]');
-        setShowDialog(true);
+        console.log('[FLOW][PORTION_MODAL_OPEN]', { 
+          presets: enrichedData?.servingGrams || 100,
+          defaultServingG: enrichedData?.servingGrams || 100
+        });
         
       } catch (error) {
         console.error('[ENRICH][ERROR]', error);
@@ -493,10 +487,9 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [foodName, debouncedSearch]);
-
-  // Calculate whether to show portion dialog (conditional JSX, not early return)
+  // Calculate whether to show portion dialog
   const showPortionDialog = manualFlow.selectedCandidate && manualFlow.enrichmentReady && !manualFlow.uiCommitted;
+
 
   // Handle candidate selection - start enrichment and show portion dialog
   const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
@@ -504,28 +497,19 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     setFoodName(candidate.name);
     
     const labelKind = labelFromFlags(candidate.flags);
-    console.log('[MANUAL][SELECT]', { 
-      isGeneric: candidate.isGeneric,
+    console.log('[FLOW][SELECT]', { 
+      source: candidate.isGeneric ? 'generic' : 'brand',
+      providerRef: candidate.providerRef,
+      classId: candidate.classId,
       canonicalKey: candidate.canonicalKey,
+      isGeneric: candidate.isGeneric,
       name: candidate.name, 
       provider: candidate.provider, 
-      key: candidate.providerRef ?? candidate.canonicalKey, 
       labelKind 
     });
     
-    // NEW: Begin enrichment and hold user on portion dialog
+    // Set candidate and trigger enrichment
     manualFlow.setState(s => ({ ...s, selectedCandidate: candidate }));
-    try {
-      const enriched = await enrichCandidate(candidate);
-      manualFlow.setState(s => ({
-        ...s,
-        enrichmentReady: true,
-        nutritionReady: true,
-        portionDraft: enriched
-      }));
-    } catch (e) {
-      console.error('[ENRICH][ERROR]', e);
-    }
   }, [manualFlow]);
 
   // Handle suggestion chip selection
@@ -534,136 +518,29 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     inputRef.current?.focus();
   };
 
-  // Handle form submission with proper guards
-  const handleSubmit = async () => {
-    if (isSearching || !selectedCandidate) {
-      if (isSearching) {
-        console.info('[MANUAL][GUARD]', { disabled: true, isSearching: true, reason: 'searching' });
-        return;
-      }
-      if (!selectedCandidate) {
-        console.info('[MANUAL][GUARD]', { disabled: true, isSearching: false, reason: 'no selection' });
-        toast.error('Pick an item first.');
-        return;
-      }
-    }
-
-    console.info('[MANUAL][GUARD]', { disabled: false, isSearching: false, reason: 'ok' });
-
-    // Route directly to confirmation for manual single-select (no review modal)
-    if (selectedCandidate) {
-      console.info('[CONFIRM][OPEN]', { source: 'manual', labelKind: labelFromFlags(selectedCandidate.flags) });
-      
-      // Calculate portion scaling
-      const portionScale = amountEaten[0] / 100;
-
-      // Prepare the data for confirmation
-      const itemData = {
-        ...selectedCandidate.data,
-        __source: 'manual',
-        selectionFlags: selectedCandidate.flags,
-        selectionId: selectedCandidate.id,
-        providerRef: selectedCandidate.providerRef,
-        canonicalKey: selectedCandidate.canonicalKey,
-        servingGrams: Math.round((selectedCandidate.data?.servingGrams || portionAmount) * portionScale),
-        calories: Math.round((selectedCandidate.data?.calories || 0) * portionScale),
-        protein_g: Math.round((selectedCandidate.data?.protein_g || 0) * portionScale * 10) / 10,
-        carbs_g: Math.round((selectedCandidate.data?.carbs_g || 0) * portionScale * 10) / 10,
-        fat_g: Math.round((selectedCandidate.data?.fat_g || 0) * portionScale * 10) / 10,
-        fiber_g: Math.round((selectedCandidate.data?.fiber_g || 2) * portionScale * 10) / 10,
-        sugar_g: Math.round((selectedCandidate.data?.sugar_g || 3) * portionScale * 10) / 10,
-        mealType,
-        notes: notes.trim() || undefined
-      };
-      
-      if (onResults) {
-        onResults([itemData]);
-      }
-      handleClose();
-      return;
-    }
-
-    // Legacy fallback for when no candidate is selected (should not happen)
-    searchLockedRef.current = true;
+  // Manual entry name-only fallback (for error state)
+  const handleManualEntry = async () => {
+    if (!foodName.trim()) return;
     
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    searchGenRef.current++;
-    setState('loading');
+    console.log('[FLOW][MANUAL_ENTRY]', { name: foodName.trim() });
     
-    try {
-      const portionScale = amountEaten[0] / 100;
-      const portionOverrideGrams = portionAmount;
-
-      logTelemetry('SUBMIT', {
-        portion: portionAmount,
-        unit: portionUnit,
-        slider: amountEaten[0]
-      });
-
-      const { items } = await submitTextLookup(foodName.trim(), {
-        source: 'manual',
-        portionOverrideGrams
-      });
-
-      if (!items || items.length === 0) {
-        setState('error');
-        searchLockedRef.current = false;
-        toast.error('No nutrition data found. Try a different name or spelling.');
-        return;
-      }
-
-      const scaledItems = items.map((item: any) => ({
-        ...item,
-        servingGrams: Math.round((item.servingGrams || portionAmount) * portionScale),
-        calories: Math.round(item.calories * portionScale),
-        protein_g: Math.round(item.protein_g * portionScale * 10) / 10,
-        carbs_g: Math.round(item.carbs_g * portionScale * 10) / 10,
-        fat_g: Math.round(item.fat_g * portionScale * 10) / 10,
-        fiber_g: Math.round((item.fiber_g || 2) * portionScale * 10) / 10,
-        sugar_g: Math.round((item.sugar_g || 3) * portionScale * 10) / 10,
-        source: 'manual',
-        mealType,
-        notes: notes.trim() || undefined
-      }));
-
-      confetti({
-        particleCount: 12,
-        spread: 45,
-        origin: { y: 0.7 },
-        colors: ['#10b981', '#34d399', '#6ee7b7']
-      });
-
-      toast.success(
-        <div className="flex items-center gap-2">
-          <Check className="h-4 w-4 text-emerald-500" />
-          <span>Added <strong>{foodName}</strong> • {scaledItems[0].calories} cal</span>
-        </div>
-      );
-
-      if (onResults) {
-        const enrichedItem = enriched;
-        console.log("[CONFIRM][ENRICHED]", {
-          name: enrichedItem?.name,
-          source: enrichedItem?.source,
-          confidence: enrichedItem?.confidence,
-          ingLen: enrichedItem?.ingredients?.length ?? 0,
-          perServingG: enrichedItem?.perServing?.serving_grams,
-        });
-        
-        onResults(scaledItems);
-      }
-
-      handleClose();
-
-    } catch (error) {
-      setState('error');
-      searchLockedRef.current = false;
-      logTelemetry('ERROR', { message: (error as Error).message });
-      toast.error('Failed to add food. Please try again.');
+    // Create basic manual entry
+    const manualData = {
+      name: foodName.trim(),
+      calories: 0,
+      protein_g: 0,
+      carbs_g: 0,
+      fat_g: 0,
+      servingGrams: 100,
+      source: 'manual',
+      mealType: 'lunch',
+      userConfirmed: true
+    };
+    
+    if (onResults) {
+      onResults([manualData]);
     }
+    handleClose();
   };
 
   // Handle modal close
@@ -685,13 +562,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       setFoodName('');
       setCandidates([]);
       setSelectedCandidate(null);
-      setPortionAmount(100);
-      setPortionUnit('g');
-      setAmountEaten([100]);
-      setMealType('');
-      setNotes('');
-      setShowAdvanced(false);
-      setShowMoreCandidates(false);
     }, 200);
   };
 
@@ -707,8 +577,9 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
       if (e.key === 'Enter' && e.ctrlKey) {
         e.preventDefault();
-        if (foodName.trim() && state !== 'loading') {
-          handleSubmit();
+        // Enter to search if no candidate selected
+        if (foodName.trim() && state !== 'loading' && !selectedCandidate) {
+          // Trigger search by updating foodName (already handled by useEffect)
         }
       }
     };
@@ -736,15 +607,38 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   return (
     <>
       {showPortionDialog && (
-        <ManualPortionDialog
-          candidate={manualFlow.selectedCandidate}
-          enrichedData={manualFlow.portionDraft}
-          onContinue={(finalData) => {
-            console.log('[DIALOG][COMMIT]', { hasIngredients: !!finalData?.ingredientsList?.length });
-            manualFlow.setState(s => ({ ...s, uiCommitted: true }));
-            onResults?.([finalData]); // downstream route handler receives enriched item
+        <SmartPortionModal
+          input={{
+            item: {
+              name: manualFlow.selectedCandidate?.name || '',
+              classId: manualFlow.selectedCandidate?.classId || undefined,
+              providerRef: manualFlow.selectedCandidate?.isGeneric ? 'generic' : 'brand',
+              baseServingG: manualFlow.portionDraft?.servingGrams,
+              servingSizeText: manualFlow.selectedCandidate?.portionHint
+            },
+            enrichedData: {
+              ingredientsList: manualFlow.portionDraft?.ingredientsList || [],
+              nutrition: manualFlow.portionDraft || {},
+              servingGrams: manualFlow.portionDraft?.servingGrams
+            }
           }}
-          onCancel={() => manualFlow.reset()}
+          onContinue={(finalData) => {
+            console.log('[FLOW][CONTINUE]', { 
+              servingG: finalData?.servingG,
+              unit: finalData?.unit,
+              quantity: finalData?.quantity,
+              confidence: finalData?.confidence
+            });
+            manualFlow.setState(s => ({ ...s, uiCommitted: true }));
+            console.log('[FLOW][CONFIRM_OPEN]', { 
+              ingredientsCount: finalData?.ingredientsList?.length || 0
+            });
+            onResults?.([(finalData as any)]); // downstream route handler receives enriched item
+          }}
+          onCancel={() => {
+            manualFlow.reset();
+            setSelectedCandidate(null);
+          }}
         />
       )}
       {!showPortionDialog && (
@@ -885,102 +779,24 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             )}
           </AnimatePresence>
 
-          {/* Portion and Advanced Options */}
+          {/* Selection Status */}
           <AnimatePresence>
-            {(selectedCandidate || showAdvanced) && (
+            {selectedCandidate && (
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-4 mb-6"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-6 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl"
               >
-                {/* Portion */}
-                <PortionUnitField
-                  amount={portionAmount}
-                  unit={portionUnit}
-                  onAmountChange={setPortionAmount}
-                  onUnitChange={setPortionUnit}
-                />
-
-                {/* Amount Eaten Slider */}
-                <div className="space-y-2">
-                  <Label className="text-sm text-slate-300">Amount Eaten</Label>
-                  <div className="px-3">
-                    <Slider
-                      value={amountEaten}
-                      onValueChange={setAmountEaten}
-                      max={100}
-                      min={10}
-                      step={5}
-                      disabled={state === 'loading'}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-xs text-slate-400 mt-1">
-                      <span>10%</span>
-                      <span className="font-medium text-emerald-400">{amountEaten[0]}%</span>
-                      <span>100%</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-400">
-                    We'll scale nutrition to your portion
-                  </p>
+                <div className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-emerald-400" />
+                  <span className="text-sm text-emerald-400 font-medium">
+                    Selected: {selectedCandidate.name}
+                  </span>
                 </div>
-
-                {/* Advanced Toggle */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="w-full text-slate-400 hover:text-white"
-                >
-                  Advanced Options
-                  {showAdvanced ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
-                </Button>
-
-                {/* Advanced Fields */}
-                <AnimatePresence>
-                  {showAdvanced && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-4 pt-2 border-t border-white/10"
-                    >
-                      {/* Meal Type */}
-                      <div>
-                        <Label className="text-sm text-slate-300 mb-2 block">Meal Type</Label>
-                        <div className="flex flex-wrap gap-2">
-                          {MEAL_TYPE_CHIPS.map((meal) => (
-                            <button
-                              key={meal.value}
-                              onClick={() => setMealType(mealType === meal.value ? '' : meal.value as MealType)}
-                              className={`px-3 py-2 rounded-lg text-sm transition-all focus:ring-2 focus:ring-sky-400 ${
-                                mealType === meal.value
-                                  ? 'bg-sky-400 text-white'
-                                  : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
-                              }`}
-                            >
-                              {meal.emoji} {meal.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Notes */}
-                      <div>
-                        <Label htmlFor="notes" className="text-sm text-slate-300 mb-2 block">Notes</Label>
-                        <Textarea
-                          id="notes"
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          placeholder="Optional notes about this food..."
-                          className="bg-white/5 border-white/20 text-white placeholder:text-slate-400 focus:bg-white/10 focus:border-sky-400 resize-none h-16"
-                          disabled={state === 'loading'}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <p className="text-xs text-slate-400 mt-1">
+                  {isLoading ? 'Preparing portion options...' : 'Opening portion dialog...'}
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -1024,21 +840,21 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleSubmit}
+                  onClick={handleManualEntry}
                   className="border-slate-600 text-slate-300 hover:text-white text-xs"
                 >
                   Use Manual Name Only
                 </Button>
               )}
               
-              {/* Main Add Button */}
+              {/* Status Button - No longer directly adds items */}
               <motion.div
                 animate={foodName.trim() && state !== 'loading' ? { scale: [1, 1.02, 1] } : {}}
                 transition={{ duration: 0.3, repeat: foodName.trim() ? Infinity : 0, repeatDelay: 2 }}
               >
                 <Button
-                  onClick={handleSubmit}
-                  disabled={!canAdd}
+                  onClick={() => {/* Search only - selection triggers modal */}}
+                  disabled={isSearching || !foodName.trim()}
                   className="bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-500 hover:to-emerald-500 text-white font-medium px-6 focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSearching ? (
@@ -1046,10 +862,15 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Searching…
                     </>
+                  ) : selectedCandidate ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Selected
+                    </>
                   ) : (
                     <>
-                       <Zap className="h-4 w-4 mr-2" />
-                       Add Item
+                       <Search className="h-4 w-4 mr-2" />
+                       Search
                      </>
                    )}
                  </Button>
@@ -1058,8 +879,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
            </div>
          </motion.div>
        </DialogContent>
-          </Dialog>
-        </>
+        </Dialog>
       )}
     </>
   );
