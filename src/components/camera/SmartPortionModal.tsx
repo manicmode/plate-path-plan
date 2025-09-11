@@ -1,327 +1,153 @@
-import { useState, useCallback, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Slider } from '@/components/ui/slider';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import React, { useMemo, useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
+import { getPresets, getQuickUnits } from "@/utils/portionPresets";
+import { parseToken } from "@/utils/portionTokens";
+import { mlToGrams } from "@/utils/portionConvert";
+import { logPortionEvent } from "@/utils/portionTelemetry";
 
-interface PortionModalInput {
+type Confidence = "high" | "medium" | "estimated";
+
+export type SmartPortionModalProps = {
   item: {
     name: string;
     classId: string;
-    providerRef: 'generic' | 'brand' | 'vault';
+    providerRef: "generic" | "brand" | "vault";
     baseServingG?: number;
-    packSizeG?: number;
     servingSizeText?: string;
-    brandSizes?: string[];
   };
-  enrichedData: {
-    ingredientsList: string[];
-    nutrition: Record<string, any>;
+  enrichedData: { 
+    ingredientsList: string[]; 
+    nutrition: Record<string, any>; 
     servingGrams?: number;
   };
-}
-
-interface PortionModalOutput {
-  servingG: number;
-  unit: string;
-  quantity: number;
-  confidence: 'high' | 'medium' | 'estimated';
-  userConfirmed: true;
-}
-
-type SmartPortionModalProps = {
-  input: PortionModalInput;
-  onContinue: (out: PortionModalOutput & { [key: string]: any }) => void;
+  onContinue: (out: { servingG: number; unit: string; quantity: number; confidence: Confidence; userConfirmed: true }) => void;
   onCancel: () => void;
 };
 
-interface PortionPreset {
-  label: string;
-  grams: number;
-  unit: string;
-  quantity: number;
-}
+export default function SmartPortionModal({ item, enrichedData, onContinue, onCancel }: SmartPortionModalProps) {
+  const presets = useMemo(() => getPresets(item.classId), [item.classId]);
+  const quickUnits = useMemo(() => getQuickUnits(item.classId), [item.classId]);
 
-interface QuickUnit {
-  label: string;
-  unit: string;
-  gramsPerUnit: number;
-}
+  const tokenHit = useMemo(() => parseToken(item.name), [item.name]);
 
-const getPortionPresetsAndUnits = (classId?: string, name?: string): { presets: PortionPreset[], quickUnits: QuickUnit[] } => {
-  const lowerName = name?.toLowerCase() || '';
-  const lowerClassId = classId?.toLowerCase() || '';
-  
-  // Sandwich presets & units
-  if (lowerName.includes('sandwich') || lowerClassId.includes('sandwich')) {
-    return {
-      presets: [
-        { label: '½ sandwich', grams: 75, unit: 'half', quantity: 0.5 },
-        { label: '1 sandwich', grams: 150, unit: 'whole', quantity: 1 },
-        { label: '1½ sandwiches', grams: 225, unit: 'whole', quantity: 1.5 }
-      ],
-      quickUnits: [
-        { label: 'Half', unit: 'half', gramsPerUnit: 75 },
-        { label: 'Whole', unit: 'whole', gramsPerUnit: 150 },
-        { label: '6-inch', unit: '6-inch', gramsPerUnit: 225 },
-        { label: '12-inch', unit: '12-inch', gramsPerUnit: 450 }
-      ]
-    };
-  }
-  
-  // Beverage presets & units
-  if (lowerName.includes('drink') || lowerName.includes('beverage') || lowerName.includes('soda') || 
-      lowerName.includes('juice') || lowerName.includes('coffee') || lowerName.includes('tea')) {
-    return {
-      presets: [
-        { label: '1 can', grams: 355, unit: 'can', quantity: 1 },
-        { label: '1 bottle', grams: 500, unit: 'bottle', quantity: 1 },
-        { label: '1 cup', grams: 240, unit: 'cup', quantity: 1 }
-      ],
-      quickUnits: [
-        { label: 'ml', unit: 'ml', gramsPerUnit: 1 },
-        { label: 'fl oz', unit: 'fl oz', gramsPerUnit: 30 },
-        { label: 'Can', unit: 'can', gramsPerUnit: 355 },
-        { label: 'Bottle', unit: 'bottle', gramsPerUnit: 500 }
-      ]
-    };
-  }
-  
-  // Cereal presets & units
-  if (lowerName.includes('cereal') || lowerName.includes('granola')) {
-    return {
-      presets: [
-        { label: '½ cup', grams: 30, unit: 'cup', quantity: 0.5 },
-        { label: '1 cup', grams: 60, unit: 'cup', quantity: 1 },
-        { label: '1 bowl', grams: 45, unit: 'bowl', quantity: 1 }
-      ],
-      quickUnits: [
-        { label: 'Cup', unit: 'cup', gramsPerUnit: 60 },
-        { label: 'Bowl', unit: 'bowl', gramsPerUnit: 45 },
-        { label: 'Grams', unit: 'g', gramsPerUnit: 1 }
-      ]
-    };
-  }
-  
-  // Bread presets & units
-  if (lowerName.includes('bread') || lowerName.includes('toast')) {
-    return {
-      presets: [
-        { label: '1 slice', grams: 28, unit: 'slice', quantity: 1 },
-        { label: '2 slices', grams: 56, unit: 'slice', quantity: 2 }
-      ],
-      quickUnits: [
-        { label: 'Slice', unit: 'slice', gramsPerUnit: 28 },
-        { label: 'Grams', unit: 'g', gramsPerUnit: 1 }
-      ]
-    };
-  }
-  
-  // Pizza presets & units
-  if (lowerName.includes('pizza')) {
-    return {
-      presets: [
-        { label: '1 slice', grams: 125, unit: 'slice', quantity: 1 },
-        { label: '2 slices', grams: 250, unit: 'slice', quantity: 2 },
-        { label: 'Personal pizza', grams: 200, unit: 'personal', quantity: 1 }
-      ],
-      quickUnits: [
-        { label: 'Slice', unit: 'slice', gramsPerUnit: 125 },
-        { label: 'Personal', unit: 'personal', gramsPerUnit: 200 },
-        { label: 'Grams', unit: 'g', gramsPerUnit: 1 }
-      ]
-    };
-  }
-  
-  // Default presets & units
-  return {
-    presets: [
-      { label: '50g serving', grams: 50, unit: 'g', quantity: 1 },
-      { label: '100g serving', grams: 100, unit: 'g', quantity: 1 },
-      { label: '150g serving', grams: 150, unit: 'g', quantity: 1 }
-    ],
-    quickUnits: [
-      { label: 'Grams', unit: 'g', gramsPerUnit: 1 },
-      { label: 'Serving', unit: 'serving', gramsPerUnit: 100 }
-    ]
-  };
-};
+  // pick default grams: provider > token > class default
+  const defaultG = useMemo(() => {
+    if (typeof enrichedData?.servingGrams === "number") return enrichedData.servingGrams;
+    if (tokenHit && 'grams' in tokenHit) return tokenHit.grams;
+    if (tokenHit && 'ml' in tokenHit) return mlToGrams(tokenHit.ml, item.classId).grams;
+    return presets[1]?.grams ?? item.baseServingG ?? 150;
+  }, [enrichedData?.servingGrams, tokenHit, presets, item.classId, item.baseServingG]);
 
-export default function SmartPortionModal({ input, onContinue, onCancel }: SmartPortionModalProps) {
-  const defaultServingG = input.enrichedData.servingGrams || input.item.baseServingG || 100;
-  const [customGrams, setCustomGrams] = useState(defaultServingG);
-  const [selectedPreset, setSelectedPreset] = useState<PortionPreset | null>(null);
-  const [selectedUnit, setSelectedUnit] = useState<QuickUnit | null>(null);
-  const [unitQuantity, setUnitQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState('presets');
-  
-  const { presets, quickUnits } = useMemo(
-    () => getPortionPresetsAndUnits(input.item.classId, input.item.name),
-    [input.item.classId, input.item.name]
-  );
-  
-  const finalGrams = useMemo(() => {
-    if (activeTab === 'presets' && selectedPreset) {
-      return selectedPreset.grams;
-    }
-    if (activeTab === 'units' && selectedUnit) {
-      return Math.round(selectedUnit.gramsPerUnit * unitQuantity);
-    }
-    return customGrams;
-  }, [activeTab, selectedPreset, selectedUnit, unitQuantity, customGrams]);
-  
-  const confidence: 'high' | 'medium' | 'estimated' = useMemo(() => {
-    if (selectedPreset || selectedUnit) return 'high';
-    if (customGrams === defaultServingG) return 'medium';
-    return 'estimated';
-  }, [selectedPreset, selectedUnit, customGrams, defaultServingG]);
-  
+  const [grams, setGrams] = useState<number>(defaultG);
+  const [quantity, setQuantity] = useState<number>(1);
+  const [percent, setPercent] = useState<number>(100);
+
+  const confidence: Confidence = useMemo(() => {
+    if (enrichedData?.servingGrams != null) return "high";
+    if (tokenHit && ('grams' in tokenHit || 'ml' in tokenHit)) return "high";
+    return "estimated";
+  }, [enrichedData?.servingGrams, tokenHit]);
+
+  const totalGrams = useMemo(() => Math.round(grams * quantity * (percent / 100)), [grams, quantity, percent]);
+
+  const handlePreset = useCallback((g: number) => {
+    setGrams(g);
+    logPortionEvent('preset_selected', { grams: g, name: item.name });
+  }, [item.name]);
+
   const handleContinue = useCallback(() => {
-    const output: PortionModalOutput = {
-      servingG: finalGrams,
-      unit: selectedPreset?.unit || selectedUnit?.unit || 'g',
-      quantity: selectedPreset?.quantity || unitQuantity,
-      confidence,
-      userConfirmed: true
-    };
-    
-    // Merge with enriched data
-    const finalData = {
-      ...input.enrichedData,
-      ...output,
-      servingGrams: finalGrams,
-      name: input.item.name
-    };
-    
-    onContinue(finalData);
-  }, [finalGrams, selectedPreset, selectedUnit, unitQuantity, confidence, input, onContinue]);
-  
+    logPortionEvent('portion_continue', { servingG: totalGrams, unit: "g", quantity, confidence });
+    onContinue({ servingG: totalGrams, unit: "g", quantity, confidence, userConfirmed: true });
+  }, [onContinue, totalGrams, quantity, confidence]);
+
+  // Log modal open event
+  React.useEffect(() => {
+    logPortionEvent('portion_modal_opened', { 
+      name: item.name, 
+      classId: item.classId, 
+      defaultGrams: defaultG 
+    });
+  }, [item.name, item.classId, defaultG]);
+
   return (
     <div className="fixed inset-0 bg-black/50 grid place-items-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold">Set Portion Size</h3>
-            <p className="text-sm text-muted-foreground">{input.item.name}</p>
+      <Card className="w-[440px] max-w-[92vw]">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-lg">How much did you have?</CardTitle>
+          <div className="text-sm text-muted-foreground">{item.name}</div>
+          {confidence !== "high" && <Badge variant="secondary">Estimated</Badge>}
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {/* Preset chips */}
+          <div className="flex flex-wrap gap-2">
+            {presets.map((p) => (
+              <Button
+                key={p.label}
+                variant={p.grams === grams ? "default" : "outline"}
+                className="h-9"
+                onClick={() => handlePreset(p.grams)}
+                aria-label={`${p.label}, ${p.grams} grams`}
+              >
+                {p.label} ({p.grams}g)
+              </Button>
+            ))}
           </div>
-          
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="presets">Presets</TabsTrigger>
-              <TabsTrigger value="units">Units</TabsTrigger>
-              <TabsTrigger value="custom">Custom</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="presets" className="space-y-3">
-              <div className="grid gap-2">
-                {presets.map((preset, index) => (
-                  <Card 
-                    key={index}
-                    className={`p-3 cursor-pointer transition-all hover:shadow-md ${
-                      selectedPreset?.label === preset.label 
-                        ? 'ring-2 ring-primary bg-primary/5' 
-                        : 'hover:bg-muted/50'
-                    }`}
-                    onClick={() => setSelectedPreset(preset)}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">{preset.label}</span>
-                      <Badge variant="secondary">{preset.grams}g</Badge>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="units" className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                {quickUnits.map((unit, index) => (
-                  <Button
-                    key={index}
-                    variant={selectedUnit?.unit === unit.unit ? "default" : "outline"}
-                    onClick={() => setSelectedUnit(unit)}
-                    className="h-auto p-3 flex flex-col items-center gap-1"
-                  >
-                    <span className="font-medium">{unit.label}</span>
-                    <span className="text-xs opacity-70">{unit.gramsPerUnit}g each</span>
-                  </Button>
-                ))}
-              </div>
-              
-              {selectedUnit && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Quantity</span>
-                    <span className="font-medium">{unitQuantity} {selectedUnit.label.toLowerCase()}</span>
-                  </div>
-                  <Slider
-                    value={[unitQuantity]}
-                    onValueChange={(values) => setUnitQuantity(values[0])}
-                    min={0.25}
-                    max={5}
-                    step={0.25}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>0.25</span>
-                    <span>5</span>
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="custom" className="space-y-3">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Custom Weight</span>
-                  <span className="font-medium">{customGrams}g</span>
-                </div>
-                <Slider
-                  value={[customGrams]}
-                  onValueChange={(values) => setCustomGrams(values[0])}
-                  min={25}
-                  max={500}
-                  step={5}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>25g</span>
-                  <span>500g</span>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-          
-          <div className="pt-2 border-t">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-sm text-muted-foreground">Final portion:</span>
-              <div className="text-right">
-                <div className="font-semibold">{finalGrams}g</div>
-                <Badge variant={confidence === 'high' ? 'default' : confidence === 'medium' ? 'secondary' : 'outline'} className="text-xs">
-                  {confidence}
-                </Badge>
-              </div>
+
+          {/* Quick units (display only for now) */}
+          <div className="text-xs text-muted-foreground">
+            Quick units: {quickUnits.join(" · ")}
+          </div>
+
+          {/* Quantity */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Quantity</span>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setQuantity(Math.max(0.5, Number((quantity - 0.5).toFixed(1))))}
+              >
+                −
+              </Button>
+              <div className="min-w-[3rem] text-center" aria-live="polite">{quantity}×</div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setQuantity(Math.min(5, Number((quantity + 0.5).toFixed(1))))}
+              >
+                +
+              </Button>
             </div>
           </div>
-          
-          <div className="flex gap-3 pt-2">
-            <Button 
-              onClick={onCancel} 
-              variant="outline" 
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleContinue} 
-              className="flex-1"
-            >
+
+          {/* Amount eaten */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm">How much did you eat?</span>
+              <span className="text-sm">{percent}%</span>
+            </div>
+            <Slider value={[percent]} min={10} max={100} step={5} onValueChange={(v) => setPercent(v[0])} />
+          </div>
+
+          {/* Summary */}
+          <div className="text-sm flex items-center justify-between">
+            <span>Total</span>
+            <span className="font-medium">{totalGrams} g</span>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
+            <Button className="flex-1" onClick={handleContinue} aria-label={`Continue with ${totalGrams} grams`}>
               Continue
             </Button>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

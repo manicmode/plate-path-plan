@@ -622,30 +622,28 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     <>
       {showPortionModal && (
         <SmartPortionModal
-          input={{
-            item: {
-              name: manualFlow.selectedCandidate?.name || '',
-              classId: manualFlow.selectedCandidate?.classId || '',
-              providerRef: manualFlow.selectedCandidate?.isGeneric ? 'generic' : 'brand',
-              baseServingG: manualFlow.portionDraft?.servingGrams,
-              servingSizeText: manualFlow.selectedCandidate?.portionHint
-            },
-            enrichedData: {
-              ingredientsList: manualFlow.portionDraft?.ingredientsList || [],
-              nutrition: manualFlow.portionDraft || {},
-              servingGrams: manualFlow.portionDraft?.servingGrams
-            }
+          item={{
+            name: manualFlow.selectedCandidate?.name || '',
+            classId: manualFlow.selectedCandidate?.classId || 'other',
+            providerRef: manualFlow.selectedCandidate?.isGeneric ? 'generic' : 'brand',
+            baseServingG: manualFlow.portionDraft?.servingGrams,
+            servingSizeText: manualFlow.selectedCandidate?.portionHint
+          }}
+          enrichedData={{
+            ingredientsList: manualFlow.portionDraft?.ingredientsList || [],
+            nutrition: manualFlow.portionDraft || {},
+            servingGrams: manualFlow.portionDraft?.servingGrams
           }}
           onContinue={(portionData) => {
             console.log('[FLOW][CONTINUE]', { 
-              servingG: portionData?.servingG,
-              unit: portionData?.unit,
-              quantity: portionData?.quantity,
-              confidence: portionData?.confidence
+              servingG: portionData.servingG,
+              unit: portionData.unit,
+              quantity: portionData.quantity,
+              confidence: portionData.confidence
             });
             manualFlow.setState(prev => ({ ...prev, uiCommitted: true }));
             console.log('[FLOW][CONFIRM_OPEN]', { 
-              ingredientsCount: portionData?.ingredientsList?.length || 0
+              ingredientsCount: manualFlow.portionDraft?.ingredientsList?.length || 0
             });
             onResults?.([{ ...manualFlow.portionDraft, ...portionData }]);
           }}
