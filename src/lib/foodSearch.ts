@@ -7,6 +7,9 @@ import { isFeatureEnabled } from './featureFlags';
 import { NV_READ_THEN_CHEAP, NV_MIN_PREFIX, NV_MIN_HITS, NV_MAX_RESULTS } from './flags';
 import { nvSearch } from './nutritionVault';
 
+// Import setup verification (runs automatically in dev mode)
+import './nvSetupTest';
+
 export interface CanonicalSearchResult {
   source: 'off' | 'fdc' | 'local';
   id: string;              // provider native id
