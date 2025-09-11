@@ -5,21 +5,25 @@ import { DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import { 
   X, Sparkles, Search, Loader2, Check, AlertCircle, 
-  UtensilsCrossed
+  Zap, UtensilsCrossed, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { toast } from 'sonner';
+import confetti from 'canvas-confetti';
 import { submitTextLookup } from '@/lib/food/textLookup';
 import { CandidateList } from '@/components/food/CandidateList';
+import { PortionUnitField } from '@/components/food/PortionUnitField';
 import { FOOD_TEXT_DEBUG } from '@/lib/flags';
 import { ThreeCirclesLoader } from '@/components/loaders/ThreeCirclesLoader';
 import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
 import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
 import { useManualFlowStatus } from '@/hooks/useManualFlowStatus';
 import { enrichCandidate } from '@/utils/enrichCandidate';
-import SmartPortionModal from './SmartPortionModal';
+import { ManualPortionDialog } from './ManualPortionDialog';
 import { DataSourceChip } from '@/components/ui/data-source-chip';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import { sourceBadge } from '@/utils/helpers/sourceBadge';
@@ -28,13 +32,12 @@ import { labelFromFlags, type Candidate as SearchCandidate } from '@/lib/food/se
 interface ManualFoodEntryProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit?: (item: any) => void;
+  onResults?: (items: any[]) => void;
 }
 
 type ModalState = 'idle' | 'searching' | 'candidates' | 'loading' | 'error';
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | '';
 
-type FlowState = 'idle'|'searching'|'candidates'|'candidate_selected'|'enriching'|'portion_modal'|'confirming'|'done';
 interface LocalCandidate {
   id: string;
   name: string;
@@ -59,6 +62,13 @@ const SUGGESTION_PHRASES = [
   "chicken teriyaki bowl",
   "acai bowl with granola",
   "protein smoothie"
+];
+
+const MEAL_TYPE_CHIPS = [
+  { value: 'breakfast', label: 'Breakfast', emoji: '🌅' },
+  { value: 'lunch', label: 'Lunch', emoji: '☀️' },
+  { value: 'dinner', label: 'Dinner', emoji: '🌙' },
+  { value: 'snack', label: 'Snack', emoji: '🍿' }
 ];
 
 // --- BEGIN local helpers (duplicate of search-side, kept local to avoid imports)
@@ -121,40 +131,37 @@ const sharesCore = (candidateName?: string, primaryName?: string) => {
 export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   isOpen,
   onClose,
-  onSubmit
+  onResults
 }) => {
-// All hooks declared unconditionally at top
-const manualFlow = useManualFlowStatus();
-const [state, setState] = useState<ModalState>('idle');
-const [flowState, setFlowState] = useState<FlowState>('idle');
-const [foodName, setFoodName] = useState('');
-const [candidates, setCandidates] = useState<LocalCandidate[]>([]);
-const [selectedCandidate, setSelectedCandidate] = useState<LocalCandidate | null>(null);
-const [isLoading, setIsLoading] = useState(false);
-const [enriched, setEnriched] = useState<any>(null);
-
-// helper to log state transitions
-const setFlow = useCallback((next: FlowState) => {
-  console.log('[FLOW][STATE]', next);
-  setFlowState(next);
-}, []);
-  // Track loading & suggestion availability for button guarding  
-  const isSearching = state === 'searching';
+  // All hooks declared unconditionally at top
+  const manualFlow = useManualFlowStatus();
+  const [state, setState] = useState<ModalState>('idle');
+  const [foodName, setFoodName] = useState('');
+  const [candidates, setCandidates] = useState<LocalCandidate[]>([]);
+  const [selectedCandidate, setSelectedCandidate] = useState<LocalCandidate | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
+  const [enriched, setEnriched] = useState<any>(null);
   
-  // Remove unused state variables
-  const [amountEaten] = useState([100]);
-  const [mealType] = useState<MealType>('');
-  const [notes] = useState('');
-  const [showAdvanced] = useState(false);
-  const [showMoreCandidates] = useState(false);
+  // Track loading & suggestion availability for button guarding
+  const isSearching = state === 'searching';
+  const hasSuggestions = candidates.length > 0;
+  const canAdd = !isSearching && selectedCandidate != null;
+  const [portionAmount, setPortionAmount] = useState<number>(100);
+  const [portionUnit, setPortionUnit] = useState('g');
+  const [amountEaten, setAmountEaten] = useState([100]);
+  const [mealType, setMealType] = useState<MealType>('');
+  const [notes, setNotes] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showMoreCandidates, setShowMoreCandidates] = useState(false);
   const [recentItems, setRecentItems] = useState<string[]>([]);
 
-// Refs
-const searchTimeoutRef = useRef<NodeJS.Timeout>();
-const inputRef = useRef<HTMLInputElement>(null);
-const searchGenRef = useRef<number>(0);
-const searchAbortRef = useRef<AbortController | null>(null);
-const searchLockedRef = useRef<boolean>(false);
+  // Refs
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const searchGenRef = useRef<number>(0);
+  const searchLockedRef = useRef<boolean>(false);
+
   // Hooks
   const { enrichWithFallback, loading: enriching, error: enrichError } = useManualFoodEnrichment();
   
@@ -174,51 +181,50 @@ const searchLockedRef = useRef<boolean>(false);
     }
   }, [isOpen]);
   
-// Enrichment effect – gate by FlowState
-useEffect(() => {
-  let cancelled = false;
-  const run = async () => {
-    if (flowState !== 'candidate_selected' || !manualFlow.selectedCandidate) return;
-    setFlow('enriching');
-    try {
-      setIsLoading(true);
-      manualFlow.setState(s => ({ ...s, enrichmentReady: false, nutritionReady: false }));
-      const enrichedData = await enrichCandidate(manualFlow.selectedCandidate);
-      if (cancelled) return;
-      console.log('[ENRICH][DONE]', {
-        providerRef: manualFlow.selectedCandidate.providerRef,
-        hasIngredients: Array.isArray(enrichedData?.ingredientsList) && enrichedData.ingredientsList.length > 0,
-        source: enrichedData?.enrichmentSource
+  // Enrichment effect - runs when candidate is selected
+  useEffect(() => {
+    let dead = false;
+    const run = async () => {
+      if (!manualFlow.selectedCandidate || manualFlow.enrichmentReady) return;
+      
+      console.log('[MANUAL][SELECT]', { 
+        isGeneric: manualFlow.selectedCandidate?.isGeneric, 
+        canonicalKey: manualFlow.selectedCandidate?.canonicalKey 
       });
-      setEnriched(enrichedData);
-      manualFlow.setState(s => ({
-        ...s,
-        enrichmentReady: true,
-        nutritionReady: true,
-        portionDraft: enrichedData
-      }));
-      setFlow('portion_modal');
-      console.log('[MODAL][OPEN]', { name: manualFlow.selectedCandidate.name });
-    } catch (e) {
-      console.warn('[NV][FALLBACK]', { err: (e as Error)?.message });
-      // Fallback to provider/minimal data
-      const fallback = {
-        ingredientsList: [],
-        nutrition: manualFlow.selectedCandidate?.data || {},
-        servingGrams: manualFlow.selectedCandidate?.defaultPortion?.amount || 100,
-        enrichmentSource: 'provider'
-      };
-      setEnriched(fallback);
-      manualFlow.setState(s => ({ ...s, enrichmentReady: true, nutritionReady: true, portionDraft: fallback }));
-      setFlow('portion_modal');
-      console.log('[MODAL][OPEN]', { name: manualFlow.selectedCandidate.name, fallback: true });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  run();
-  return () => { cancelled = true; };
-}, [flowState, manualFlow.selectedCandidate, setFlow]);
+      
+      try {
+        setIsLoading(true);
+        manualFlow.setState(s => ({ ...s, enrichmentReady: false, nutritionReady: false }));
+        
+        const enrichedData = await enrichCandidate(manualFlow.selectedCandidate);
+        if (dead) return;
+        
+        console.log('[ENRICH][DONE]', { 
+          hasIngredients: !!enrichedData?.ingredientsList?.length,
+          count: enrichedData?.ingredientsList?.length || 0
+        });
+        
+        setEnriched(enrichedData);
+        manualFlow.setState(s => ({
+          ...s,
+          enrichmentReady: true,
+          nutritionReady: true,
+          portionDraft: enrichedData
+        }));
+        
+        console.log('[DIALOG][OPEN]');
+        setShowDialog(true);
+        
+      } catch (error) {
+        console.error('[ENRICH][ERROR]', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    run();
+    return () => { dead = true; };
+  }, [manualFlow.selectedCandidate, manualFlow.enrichmentReady]);
 
   // Telemetry logging
   const logTelemetry = (event: string, data?: any) => {
@@ -227,165 +233,154 @@ useEffect(() => {
     }
   };
 
-// Debounced search
-const debouncedSearch = useCallback(async (query: string) => {
-  if (!query.trim()) {
-    setCandidates([]);
-    setState('idle');
-    setEnriched(null);
-    return;
-  }
-
-  // Allow search in 'idle', 'searching', and 'candidates'.
-  // Block only during selection/enrichment/modal/confirming.
-  const disallowed = ['candidate_selected','enriching','portion_modal','confirming','done'] as const;
-  if (disallowed.includes(flowState as any)) return;
-
-  // Abort any in-flight search
-  if (searchAbortRef.current) {
-    console.log('[SEARCH][ABORT]', { gen: searchGenRef.current });
-    searchAbortRef.current.abort();
-  }
-  const c = new AbortController();
-  searchAbortRef.current = c;
-
-  const gen = ++searchGenRef.current;
-  console.log('[SEARCH][START]', { gen, query });
-  setState('searching');
-  setFlow('searching');
-
-  const disableEnrichmentOnType = (import.meta.env.VITE_DISABLE_ENRICHMENT_ON_TYPE ?? '1') === '1';
-
-  try {
-    if (disableEnrichmentOnType) {
-      console.log('[SUGGEST][CHEAP_FIRST] Using fast lookup without enrichment');
-      const fallback = await (submitTextLookup as any)(query, { source: 'manual', signal: c.signal });
-
-      if (gen !== searchGenRef.current || c.signal.aborted) {
-        console.log('[SEARCH][STALE]', { gen, latest: searchGenRef.current, aborted: c.signal.aborted });
-        return;
-      }
-
-      if (fallback) {
-        console.log('[TRACE] UI receive', {
-          hasItems: Array.isArray(fallback?.items),
-          hasRankedAll: Array.isArray(fallback?.rankedAll),
-          itemsCount: fallback?.items?.length,
-          rankedAllCount: fallback?.rankedAll?.length
-        });
-
-        const items: any[] =
-          fallback?.rankedAll ||
-          fallback?.results ||
-          fallback?.items ||
-          fallback?.rankedTop3 ||
-          [];
-
-        const count = Math.min(items.length, 8);
-        console.log('[SUGGEST][PIPE]', { vault: 0, cheap: count, final: count });
-        setEnriched(null);
-
-        const list = processCandidates(items, query);
-        setCandidates(list);
-        setState(list.length > 0 ? 'candidates' : 'idle');
-        setFlow(list.length > 0 ? 'candidates' : 'idle');
-        return;
-      }
-    } else {
-      // Legacy enrichment path (when flag is off)
-      const { enriched, fallback } = await enrichWithFallback(
-        query,
-        'auto',
-        () => (submitTextLookup as any)(query, { source: 'manual', signal: c.signal }),
-        selectedCandidate
-      );
-
-      if (gen !== searchGenRef.current || c.signal.aborted) {
-        console.log('[SEARCH][STALE]', { gen, latest: searchGenRef.current, aborted: c.signal.aborted });
-        return;
-      }
-
-      if (enriched) {
-        setEnriched(enriched);
-        const enrichedCandidate: LocalCandidate = {
-          id: 'enriched-primary',
-          name: sanitizeName(enriched.name),
-          isGeneric: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7,
-          portionHint: enriched.perServing ? `${enriched.perServing.serving_grams}g serving` : '100g',
-          defaultPortion: { amount: enriched.perServing?.serving_grams || 100, unit: 'g' },
-          provider: enriched.source === 'GENERIC' ? 'generic' : sourceBadge(enriched.source).label.toLowerCase(),
-          data: enrichedFoodToLogItem(enriched, 100),
-          flags: { generic: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7, brand: false, restaurant: false }
-        };
-        setCandidates([enrichedCandidate]);
-        setState('candidates');
-        setFlow('candidates');
-        return;
-      }
-
-      if (fallback) {
-        console.log('[TRACE] UI receive', {
-          hasItems: Array.isArray(fallback?.items),
-          hasRankedAll: Array.isArray(fallback?.rankedAll),
-          itemsCount: fallback?.items?.length,
-          rankedAllCount: fallback?.rankedAll?.length
-        });
-
-        const items: any[] =
-          fallback?.rankedAll ||
-          fallback?.results ||
-          fallback?.items ||
-          fallback?.rankedTop3 ||
-          [];
-
-        setEnriched(null);
-        const list = processCandidates(items, query);
-        setCandidates(list);
-        setState(list.length > 0 ? 'candidates' : 'idle');
-        setFlow(list.length > 0 ? 'candidates' : 'idle');
-        return;
-      }
-    }
-
-    setCandidates([]);
-    setState('idle');
-    setFlow('idle');
-    setEnriched(null);
-  } catch (error) {
-    if (gen !== searchGenRef.current || c.signal.aborted) {
-      console.log('[SEARCH][STALE]', { gen, latest: searchGenRef.current, aborted: c.signal.aborted });
+  // Debounced search
+  const debouncedSearch = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setCandidates([]);
+      setState('idle');
+      setEnriched(null);
       return;
     }
-    setState('error');
-    console.warn('[SEARCH][ERROR]', { message: (error as Error)?.message });
-    toast.error('Search failed. Please try again.');
-  }
-  }, [enrichWithFallback, flowState, selectedCandidate]);
 
-  const resetEphemeral = useCallback(() => {
-    searchAbortRef.current?.abort();
-    searchGenRef.current++;
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
+    // Check if search is locked
+    if (searchLockedRef.current) {
+      return;
     }
-    setFlowState('idle');
-    setCandidates([]);
-    setFoodName('');
-    manualFlow.reset();
-  }, [manualFlow]);
 
-  // Reset when the dialog opens/closes.
-  useEffect(() => {
-    if (isOpen) {
-      resetEphemeral();
-    } else {
-      // closing: just ensure nothing is in flight
-      searchAbortRef.current?.abort();
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
+    const currentGen = ++searchGenRef.current;
+    setState('searching');
+    
+    // Flag: VITE_DISABLE_ENRICHMENT_ON_TYPE - avoid enrichment while typing
+    const disableEnrichmentOnType = (import.meta.env.VITE_DISABLE_ENRICHMENT_ON_TYPE ?? '1') === '1';
+
+    try {
+      if (disableEnrichmentOnType) {
+        // Use cheap-first suggestions only, no enrichment while typing
+        console.log('[SUGGEST][CHEAP_FIRST] Using fast lookup without enrichment');
+        const fallback = await submitTextLookup(query, { source: 'manual' });
+        
+        // Check if this search result is still valid
+        if (currentGen !== searchGenRef.current || searchLockedRef.current) {
+          return; // Ignore stale results
+        }
+
+        // Process fallback results only
+        if (fallback) {
+          // Log what arrives from textLookup
+          console.log('[TRACE] UI receive', {
+            hasItems: Array.isArray(fallback?.items),
+            hasRankedAll: Array.isArray(fallback?.rankedAll),
+            itemsCount: fallback?.items?.length,
+            rankedAllCount: fallback?.rankedAll?.length
+          });
+
+          // Use full set in this precedence:
+          const items: any[] =
+            fallback?.rankedAll ||
+            fallback?.results ||
+            fallback?.items ||
+            fallback?.rankedTop3 ||
+            [];
+
+          const count = Math.min(items.length, 8); // Limit to 5-8 suggestions
+          console.log(`[SUGGEST][CHEAP_FIRST] count=${count}, sources=[fdc,off]`);
+          logTelemetry('FALLBACK', { itemCount: count });
+          setEnriched(null);
+
+          // Process candidates from fallback (V3 returns full list now)
+          const candidates = processCandidates(items, query);
+          setCandidates(candidates);
+          setState(candidates.length > 0 ? 'candidates' : 'idle');
+          return;
+        }
+      } else {
+        // Legacy enrichment path (when flag is off)
+        const { enriched, fallback } = await enrichWithFallback(
+          query,
+          'auto',
+          () => submitTextLookup(query, { source: 'manual' }),
+          selectedCandidate
+        );
+        
+        // Check if this search result is still valid
+        if (currentGen !== searchGenRef.current || searchLockedRef.current) {
+          return; // Ignore stale results
+        }
+
+        if (enriched) {
+          // Use enriched data
+          logTelemetry('ENRICHED', { source: enriched.source, confidence: enriched.confidence });
+          setEnriched(enriched);
+          
+          // Convert to candidate format
+          const enrichedCandidate: LocalCandidate = {
+            id: 'enriched-primary',
+            name: sanitizeName(enriched.name),
+            isGeneric: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7,
+            portionHint: enriched.perServing ? `${enriched.perServing.serving_grams}g serving` : '100g',
+            defaultPortion: { 
+              amount: enriched.perServing?.serving_grams || 100, 
+              unit: 'g' 
+            },
+            provider: enriched.source === 'GENERIC' ? 'generic' : sourceBadge(enriched.source).label.toLowerCase(),
+            data: enrichedFoodToLogItem(enriched, 100),
+            // NEW: stable identity fields
+            flags: {
+              generic: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7,
+              brand: false,
+              restaurant: false
+            }
+          };
+
+          setCandidates([enrichedCandidate]);
+          setState('candidates');
+          return;
+        }
+
+        // Fall back to existing lookup system
+        if (fallback) {
+          // Log what arrives from textLookup  
+          console.log('[TRACE] UI receive', {
+            hasItems: Array.isArray(fallback?.items),
+            hasRankedAll: Array.isArray(fallback?.rankedAll),
+            itemsCount: fallback?.items?.length,
+            rankedAllCount: fallback?.rankedAll?.length
+          });
+
+          // Use full set in this precedence:
+          const items: any[] =
+            fallback?.rankedAll ||
+            fallback?.results ||
+            fallback?.items ||
+            fallback?.rankedTop3 ||
+            [];
+
+          logTelemetry('FALLBACK', { itemCount: items.length });
+          setEnriched(null);
+          // Process candidates from fallback
+          const candidates = processCandidates(items, query);
+          setCandidates(candidates);
+          setState(candidates.length > 0 ? 'candidates' : 'idle');
+          return;
+        }
       }
+
+      // No results from either path
+      setCandidates([]);
+      setState('idle');
+      setEnriched(null);
+      
+    } catch (error) {
+      // Check if this error is still relevant
+      if (currentGen !== searchGenRef.current || searchLockedRef.current) {
+        return; // Ignore stale errors
+      }
+      
+      setState('error');
+      logTelemetry('ERROR', { message: (error as Error).message });
+      toast.error('Search failed. Please try again.');
     }
-  }, [isOpen, resetEphemeral]);
+  }, [enrichWithFallback]);
 
   // Add deduplication helpers
   const slug = (s: string) =>
@@ -466,68 +461,72 @@ const debouncedSearch = useCallback(async (query: string) => {
       name: sanitizeName(item.name),
       isGeneric: looksGeneric(item),
       portionHint: item?.servingText || `${item?.servingGrams || 100}g default`,
-      defaultPortion: { 
-        amount: item?.servingGrams || 100, 
-        unit: 'g' 
-      },
-      provider: item?.provider || 'fdc',
+      defaultPortion: { amount: item?.servingGrams || 100, unit: 'g' },
+      provider: item?.provider || item?.kind,
       imageUrl: item?.imageUrl,
-      data: {
-        name: sanitizeName(item.name),
-        servingGrams: item?.servingGrams || 100,
-        calories: item?.calories || 0,
-        protein_g: item?.protein || item?.protein_g || 0,
-        carbs_g: item?.carbs || item?.carbs_g || 0,  
-        fat_g: item?.fat || item?.fat_g || 0,
-        fiber_g: item?.fiber || item?.fiber_g || 2,
-        sugar_g: item?.sugar || item?.sugar_g || 3,
-        sodium_mg: item?.sodium || item?.sodium_mg || 0,
-        brand: item?.brand,
-        code: item?.code
-      },
+      data: { ...item, brand: item?.brand },
       // NEW: stable identity fields
-      providerRef: item?.provider,
+      providerRef: item?.id || item?.providerRef,
       canonicalKey: item?.canonicalKey,
       brand: item?.brand || null,
       classId: item?.classId || null,
       flags: {
         generic: looksGeneric(item),
         brand: !!(item?.brand || item?.brands),
-        restaurant: false
+        restaurant: item?.kind === 'restaurant'
       }
     }));
   };
 
-  // Run search when user types, unless we're in a disallowed phase.
+  // Handle input changes with debouncing
   useEffect(() => {
-    const disallowed = ['candidate_selected','enriching','portion_modal','confirming','done'] as const;
-    if (!disallowed.includes(flowState as any) && foodName.trim().length > 2) {
-      debouncedSearch(foodName);
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
     }
-  }, [foodName, flowState, debouncedSearch]);
 
-  // Unmount cleanup
-  useEffect(() => {
+    searchTimeoutRef.current = setTimeout(() => {
+      debouncedSearch(foodName);
+    }, 200);
+
     return () => {
-      searchAbortRef.current?.abort();
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, []);
+  }, [foodName, debouncedSearch]);
 
-// Handle candidate selection - start enrichment and show portion dialog
-const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
-  if (flowState !== 'candidates') return; // guard double click/re-entry
-  console.log('[FLOW][SELECT]', { name: candidate.name, providerRef: candidate.providerRef });
-  searchAbortRef.current?.abort();
-  if (searchTimeoutRef.current) {
-    clearTimeout(searchTimeoutRef.current);
-  }
-  console.log('[SEARCH][ABORT]', { reason: 'selection', gen: searchGenRef.current });
-  setFlow('candidate_selected');
-  manualFlow.setState(prev => ({ ...prev, selectedCandidate: candidate, enrichmentReady: false }));
-}, [manualFlow, flowState]);
+  // Calculate whether to show portion dialog (conditional JSX, not early return)
+  const showPortionDialog = manualFlow.selectedCandidate && manualFlow.enrichmentReady && !manualFlow.uiCommitted;
+
+  // Handle candidate selection - start enrichment and show portion dialog
+  const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
+    setSelectedCandidate(candidate);
+    setFoodName(candidate.name);
+    
+    const labelKind = labelFromFlags(candidate.flags);
+    console.log('[MANUAL][SELECT]', { 
+      isGeneric: candidate.isGeneric,
+      canonicalKey: candidate.canonicalKey,
+      name: candidate.name, 
+      provider: candidate.provider, 
+      key: candidate.providerRef ?? candidate.canonicalKey, 
+      labelKind 
+    });
+    
+    // NEW: Begin enrichment and hold user on portion dialog
+    manualFlow.setState(s => ({ ...s, selectedCandidate: candidate }));
+    try {
+      const enriched = await enrichCandidate(candidate);
+      manualFlow.setState(s => ({
+        ...s,
+        enrichmentReady: true,
+        nutritionReady: true,
+        portionDraft: enriched
+      }));
+    } catch (e) {
+      console.error('[ENRICH][ERROR]', e);
+    }
+  }, [manualFlow]);
 
   // Handle suggestion chip selection
   const handleSuggestionSelect = (suggestion: string) => {
@@ -535,32 +534,136 @@ const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
     inputRef.current?.focus();
   };
 
-  // Manual entry name-only fallback (for error state) - now goes through modal
-  const handleManualEntry = async () => {
-    if (!foodName.trim()) return;
-    
-    console.log('[FLOW][MANUAL_ENTRY_FALLBACK]', { name: foodName.trim() });
-    
-    // Create minimal candidate for modal
-    const fallbackCandidate = {
-      id: 'manual-fallback',
-      name: foodName.trim(),
-      classId: 'generic',
-      providerRef: 'generic' as const,
-      baseServingG: 100
-    };
-    
-    // Trigger modal with minimal data
-    manualFlow.setState(prev => ({
-      ...prev,
-      selectedCandidate: fallbackCandidate,
-      enrichmentReady: true,
-      portionDraft: {
-        ingredientsList: [],
-        nutrition: {},
-        servingGrams: 100
+  // Handle form submission with proper guards
+  const handleSubmit = async () => {
+    if (isSearching || !selectedCandidate) {
+      if (isSearching) {
+        console.info('[MANUAL][GUARD]', { disabled: true, isSearching: true, reason: 'searching' });
+        return;
       }
-    }));
+      if (!selectedCandidate) {
+        console.info('[MANUAL][GUARD]', { disabled: true, isSearching: false, reason: 'no selection' });
+        toast.error('Pick an item first.');
+        return;
+      }
+    }
+
+    console.info('[MANUAL][GUARD]', { disabled: false, isSearching: false, reason: 'ok' });
+
+    // Route directly to confirmation for manual single-select (no review modal)
+    if (selectedCandidate) {
+      console.info('[CONFIRM][OPEN]', { source: 'manual', labelKind: labelFromFlags(selectedCandidate.flags) });
+      
+      // Calculate portion scaling
+      const portionScale = amountEaten[0] / 100;
+
+      // Prepare the data for confirmation
+      const itemData = {
+        ...selectedCandidate.data,
+        __source: 'manual',
+        selectionFlags: selectedCandidate.flags,
+        selectionId: selectedCandidate.id,
+        providerRef: selectedCandidate.providerRef,
+        canonicalKey: selectedCandidate.canonicalKey,
+        servingGrams: Math.round((selectedCandidate.data?.servingGrams || portionAmount) * portionScale),
+        calories: Math.round((selectedCandidate.data?.calories || 0) * portionScale),
+        protein_g: Math.round((selectedCandidate.data?.protein_g || 0) * portionScale * 10) / 10,
+        carbs_g: Math.round((selectedCandidate.data?.carbs_g || 0) * portionScale * 10) / 10,
+        fat_g: Math.round((selectedCandidate.data?.fat_g || 0) * portionScale * 10) / 10,
+        fiber_g: Math.round((selectedCandidate.data?.fiber_g || 2) * portionScale * 10) / 10,
+        sugar_g: Math.round((selectedCandidate.data?.sugar_g || 3) * portionScale * 10) / 10,
+        mealType,
+        notes: notes.trim() || undefined
+      };
+      
+      if (onResults) {
+        onResults([itemData]);
+      }
+      handleClose();
+      return;
+    }
+
+    // Legacy fallback for when no candidate is selected (should not happen)
+    searchLockedRef.current = true;
+    
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchGenRef.current++;
+    setState('loading');
+    
+    try {
+      const portionScale = amountEaten[0] / 100;
+      const portionOverrideGrams = portionAmount;
+
+      logTelemetry('SUBMIT', {
+        portion: portionAmount,
+        unit: portionUnit,
+        slider: amountEaten[0]
+      });
+
+      const { items } = await submitTextLookup(foodName.trim(), {
+        source: 'manual',
+        portionOverrideGrams
+      });
+
+      if (!items || items.length === 0) {
+        setState('error');
+        searchLockedRef.current = false;
+        toast.error('No nutrition data found. Try a different name or spelling.');
+        return;
+      }
+
+      const scaledItems = items.map((item: any) => ({
+        ...item,
+        servingGrams: Math.round((item.servingGrams || portionAmount) * portionScale),
+        calories: Math.round(item.calories * portionScale),
+        protein_g: Math.round(item.protein_g * portionScale * 10) / 10,
+        carbs_g: Math.round(item.carbs_g * portionScale * 10) / 10,
+        fat_g: Math.round(item.fat_g * portionScale * 10) / 10,
+        fiber_g: Math.round((item.fiber_g || 2) * portionScale * 10) / 10,
+        sugar_g: Math.round((item.sugar_g || 3) * portionScale * 10) / 10,
+        source: 'manual',
+        mealType,
+        notes: notes.trim() || undefined
+      }));
+
+      confetti({
+        particleCount: 12,
+        spread: 45,
+        origin: { y: 0.7 },
+        colors: ['#10b981', '#34d399', '#6ee7b7']
+      });
+
+      toast.success(
+        <div className="flex items-center gap-2">
+          <Check className="h-4 w-4 text-emerald-500" />
+          <span>Added <strong>{foodName}</strong> • {scaledItems[0].calories} cal</span>
+        </div>
+      );
+
+      if (onResults) {
+        const enrichedItem = enriched;
+        console.log("[CONFIRM][ENRICHED]", {
+          name: enrichedItem?.name,
+          source: enrichedItem?.source,
+          confidence: enrichedItem?.confidence,
+          ingLen: enrichedItem?.ingredients?.length ?? 0,
+          perServingG: enrichedItem?.perServing?.serving_grams,
+        });
+        
+        onResults(scaledItems);
+      }
+
+      handleClose();
+
+    } catch (error) {
+      setState('error');
+      searchLockedRef.current = false;
+      logTelemetry('ERROR', { message: (error as Error).message });
+      toast.error('Failed to add food. Please try again.');
+    }
   };
 
   // Handle modal close
@@ -582,6 +685,13 @@ const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
       setFoodName('');
       setCandidates([]);
       setSelectedCandidate(null);
+      setPortionAmount(100);
+      setPortionUnit('g');
+      setAmountEaten([100]);
+      setMealType('');
+      setNotes('');
+      setShowAdvanced(false);
+      setShowMoreCandidates(false);
     }, 200);
   };
 
@@ -597,9 +707,8 @@ const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
 
       if (e.key === 'Enter' && e.ctrlKey) {
         e.preventDefault();
-        // Enter to search if no candidate selected
-        if (foodName.trim() && state !== 'loading' && !selectedCandidate) {
-          // Trigger search by updating foodName (already handled by useEffect)
+        if (foodName.trim() && state !== 'loading') {
+          handleSubmit();
         }
       }
     };
@@ -615,13 +724,6 @@ const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
     }
   }, [isOpen]);
 
-  // Calculate whether to show portion dialog (derived flag, no hooks)
-  const showPortionModal = Boolean(
-    manualFlow.selectedCandidate &&
-    manualFlow.enrichmentReady &&
-    !manualFlow.uiCommitted
-  );
-
   // Accessibility live region message
   const ariaLiveMessage = {
     idle: '',
@@ -631,45 +733,22 @@ const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
     error: 'Search failed'
   }[state];
 
-  // ALWAYS return a single fragment — both branches are siblings
   return (
     <>
-      {showPortionModal && (
-        <SmartPortionModal
-          item={{
-            name: manualFlow.selectedCandidate?.name || '',
-            classId: manualFlow.selectedCandidate?.classId || 'other',
-            providerRef: manualFlow.selectedCandidate?.isGeneric ? 'generic' : 'brand',
-            baseServingG: manualFlow.portionDraft?.servingGrams,
-            servingSizeText: manualFlow.selectedCandidate?.portionHint
+      {showPortionDialog && (
+        <ManualPortionDialog
+          candidate={manualFlow.selectedCandidate}
+          enrichedData={manualFlow.portionDraft}
+          onContinue={(finalData) => {
+            console.log('[DIALOG][COMMIT]', { hasIngredients: !!finalData?.ingredientsList?.length });
+            manualFlow.setState(s => ({ ...s, uiCommitted: true }));
+            onResults?.([finalData]); // downstream route handler receives enriched item
           }}
-          enrichedData={{
-            ingredientsList: manualFlow.portionDraft?.ingredientsList || [],
-            nutrition: manualFlow.portionDraft || {},
-            servingGrams: manualFlow.portionDraft?.servingGrams
-          }}
-          onContinue={(portionData) => {
-            console.log('[FLOW][CONTINUE]', { 
-              servingG: portionData.servingG,
-              unit: portionData.unit,
-              quantity: portionData.quantity,
-              confidence: portionData.confidence
-            });
-            manualFlow.setState(prev => ({ ...prev, uiCommitted: true }));
-            console.log('[FLOW][CONFIRM_OPEN]', { 
-              ingredientsCount: manualFlow.portionDraft?.ingredientsList?.length || 0
-            });
-            onSubmit({ ...manualFlow.portionDraft, ...portionData });
-          }}
-          onCancel={() => {
-            resetEphemeral();
-            onClose?.();
-          }}
+          onCancel={() => manualFlow.reset()}
         />
       )}
-
-      {!showPortionModal && (
-        <div data-mfe="main-ui" className="manual-food-entry">
+      {!showPortionDialog && (
+        <>
           {/* Three Circles Loader - Full screen overlay during loading */}
           <AnimatePresence>
             {state === 'loading' && (
@@ -678,249 +757,310 @@ const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
           </AnimatePresence>
 
           <Dialog open={isOpen && state !== 'loading'} onOpenChange={(open) => !open && handleClose()}>
-            <DialogContent 
-              showCloseButton={false}
-              className="max-w-md mx-auto bg-slate-900/70 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl/20 p-0 overflow-hidden max-h-[90vh] overflow-y-auto"
-            >
-              <VisuallyHidden>
-                <DialogTitle>Add Food Manually</DialogTitle>
-              </VisuallyHidden>
-              <VisuallyHidden>
-                <DialogDescription>
-                  Search and add food items with custom portions
-                </DialogDescription>
-              </VisuallyHidden>
+        <DialogContent 
+          showCloseButton={false}
+          className="max-w-md mx-auto bg-slate-900/70 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl/20 p-0 overflow-hidden max-h-[90vh] overflow-y-auto"
+        >
+        <VisuallyHidden>
+          <DialogTitle>Add Food Manually</DialogTitle>
+        </VisuallyHidden>
+        <VisuallyHidden>
+          <DialogDescription>
+            Search and add food items with custom portions
+          </DialogDescription>
+        </VisuallyHidden>
 
-              {/* Accessibility announcements */}
-              <div aria-live="polite" aria-atomic="true" className="sr-only">
-                {ariaLiveMessage}
-              </div>
+        {/* Accessibility announcements */}
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
+          {ariaLiveMessage}
+        </div>
 
-              <motion.div
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.14, ease: "easeInOut" }}
-                className="p-6 md:p-7"
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.14, ease: "easeInOut" }}
+          className="p-6 md:p-7"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            {/* Left: Icon in branded pill */}
+            <div className="flex items-center gap-3">
+              <motion.div 
+                className="px-3 py-2 rounded-full bg-gradient-to-r from-sky-400 to-emerald-400 flex items-center gap-2"
+                animate={{ rotate: [0, 5, -5, 0] }}
+                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
               >
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                  {/* Left: Icon in branded pill */}
-                  <div className="flex items-center gap-3">
-                    <motion.div 
-                      className="px-3 py-2 rounded-full bg-gradient-to-r from-sky-400 to-emerald-400 flex items-center gap-2"
-                      animate={{ rotate: [0, 5, -5, 0] }}
-                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-                    >
-                      <UtensilsCrossed className="h-4 w-4 text-white" />
-                      <Sparkles className="h-3 w-3 text-white" />
-                    </motion.div>
-                    <h3 className="text-lg font-semibold text-white">
-                      Add Food Manually
-                    </h3>
-                  </div>
-                  
-                  {/* Right: Close button */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleClose}
-                    className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full w-8 h-8 p-0 focus:ring-2 focus:ring-sky-400"
-                    aria-label="Close modal"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
+                <UtensilsCrossed className="h-4 w-4 text-white" />
+                <Sparkles className="h-3 w-3 text-white" />
+              </motion.div>
+              <h3 className="text-lg font-semibold text-white">
+                Add Food Manually
+              </h3>
+            </div>
+            
+            {/* Right: Close button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClose}
+              className="text-slate-400 hover:text-white hover:bg-white/10 rounded-full w-8 h-8 p-0 focus:ring-2 focus:ring-sky-400"
+              aria-label="Close modal"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
 
-                {/* Main Input */}
-                <div className="mb-6">
-                  <div className="relative">
-                    <Input
-                      ref={inputRef}
-                      value={foodName}
-                      onChange={(e) => setFoodName(e.target.value)}
-                      placeholder="What did you eat?"
-                      className="text-lg h-14 pl-4 pr-12 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:bg-white/15 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/50 rounded-xl"
-                      disabled={['candidate_selected','enriching','portion_modal','confirming'].includes(flowState as any)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const disallowed = ['candidate_selected','enriching','portion_modal','confirming','done'] as const;
-                          if (!disallowed.includes(flowState as any)) {
-                            debouncedSearch(foodName);
-                          }
-                        }
-                      }}
+          {/* Main Input */}
+          <div className="mb-6">
+            <div className="relative">
+              <Input
+                ref={inputRef}
+                value={foodName}
+                onChange={(e) => setFoodName(e.target.value)}
+                placeholder="What did you eat?"
+                className="text-lg h-14 pl-4 pr-12 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:bg-white/15 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/50 rounded-xl"
+                disabled={state === 'loading'}
+              />
+              
+              {/* Search icon or loading spinner */}
+              <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                {state === 'searching' ? (
+                  <Loader2 className="h-5 w-5 text-slate-400 animate-spin" />
+                ) : (
+                  <Search className="h-5 w-5 text-slate-400" />
+                )}
+              </div>
+            </div>
+
+            {/* Helper text */}
+            <p className="text-xs text-slate-400 mt-2 text-center">
+              Press Enter to search • Esc to close
+            </p>
+          </div>
+
+          {/* Suggestions (Idle state) */}
+          <AnimatePresence>
+            {state === 'idle' && !foodName && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-6"
+              >
+                <p className="text-sm text-slate-400 text-center mb-3">Try searching for:</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {SUGGESTION_PHRASES.slice(0, 3).map((phrase, index) => (
+                    <motion.button
+                      key={phrase}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.04 }}
+                      onClick={() => handleSuggestionSelect(phrase)}
+                      className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-sm text-slate-300 hover:text-white transition-all hover:-translate-y-0.5 focus:ring-2 focus:ring-sky-400"
+                    >
+                      "{phrase}"
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Candidates */}
+          <AnimatePresence>
+            {state === 'candidates' && candidates.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="mb-6"
+              >
+                <CandidateList
+                  candidates={candidates} // Show all candidates (6-8) without slicing
+                  selectedCandidate={selectedCandidate}
+                  onSelect={handleCandidateSelect}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Portion and Advanced Options */}
+          <AnimatePresence>
+            {(selectedCandidate || showAdvanced) && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-4 mb-6"
+              >
+                {/* Portion */}
+                <PortionUnitField
+                  amount={portionAmount}
+                  unit={portionUnit}
+                  onAmountChange={setPortionAmount}
+                  onUnitChange={setPortionUnit}
+                />
+
+                {/* Amount Eaten Slider */}
+                <div className="space-y-2">
+                  <Label className="text-sm text-slate-300">Amount Eaten</Label>
+                  <div className="px-3">
+                    <Slider
+                      value={amountEaten}
+                      onValueChange={setAmountEaten}
+                      max={100}
+                      min={10}
+                      step={5}
+                      disabled={state === 'loading'}
+                      className="w-full"
                     />
-                    
-                    {/* Search icon or loading spinner */}
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                      {state === 'searching' ? (
-                        <Loader2 className="h-5 w-5 text-slate-400 animate-spin" />
-                      ) : (
-                        <Search className="h-5 w-5 text-slate-400" />
-                      )}
+                    <div className="flex justify-between text-xs text-slate-400 mt-1">
+                      <span>10%</span>
+                      <span className="font-medium text-emerald-400">{amountEaten[0]}%</span>
+                      <span>100%</span>
                     </div>
                   </div>
-
-                  {/* Helper text */}
-                  <p className="text-xs text-slate-400 mt-2 text-center">
-                    Press Enter to search • Esc to close
+                  <p className="text-xs text-slate-400">
+                    We'll scale nutrition to your portion
                   </p>
                 </div>
 
-                {/* Suggestions (Idle state) */}
-                <AnimatePresence>
-                  {state === 'idle' && !foodName && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="mb-6"
-                    >
-                      <p className="text-sm text-slate-400 text-center mb-3">Try searching for:</p>
-                      <div className="flex flex-wrap justify-center gap-2">
-                        {SUGGESTION_PHRASES.slice(0, 3).map((phrase, index) => (
-                          <motion.button
-                            key={phrase}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: index * 0.04 }}
-                            onClick={() => handleSuggestionSelect(phrase)}
-                            className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-sm text-slate-300 hover:text-white transition-all hover:-translate-y-0.5 focus:ring-2 focus:ring-sky-400"
-                          >
-                            "{phrase}"
-                          </motion.button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* Advanced Toggle */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="w-full text-slate-400 hover:text-white"
+                >
+                  Advanced Options
+                  {showAdvanced ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
+                </Button>
 
-                {/* Candidates */}
+                {/* Advanced Fields */}
                 <AnimatePresence>
-                  {state === 'candidates' && candidates.length > 0 && (
+                  {showAdvanced && (
                     <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      className="mb-6"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-4 pt-2 border-t border-white/10"
                     >
-                      <CandidateList
-                        candidates={candidates}
-                        selectedCandidate={selectedCandidate}
-                        onSelect={handleCandidateSelect}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Selection Status */}
-                <AnimatePresence>
-                  {selectedCandidate && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="mb-6 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-emerald-400" />
-                        <span className="text-sm text-emerald-400 font-medium">
-                          Selected: {selectedCandidate.name}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1">
-                        {isLoading ? 'Preparing portion options...' : 'Opening portion dialog...'}
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Error State */}
-                <AnimatePresence>
-                  {state === 'error' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl"
-                    >
-                      <div className="flex items-center gap-3">
-                        <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
-                        <div>
-                          <h4 className="text-red-400 font-medium mb-1">Search Failed</h4>
-                          <p className="text-sm text-slate-300">
-                            Try a different spelling or use "Manual Name Only" to proceed anyway
-                          </p>
+                      {/* Meal Type */}
+                      <div>
+                        <Label className="text-sm text-slate-300 mb-2 block">Meal Type</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {MEAL_TYPE_CHIPS.map((meal) => (
+                            <button
+                              key={meal.value}
+                              onClick={() => setMealType(mealType === meal.value ? '' : meal.value as MealType)}
+                              className={`px-3 py-2 rounded-lg text-sm transition-all focus:ring-2 focus:ring-sky-400 ${
+                                mealType === meal.value
+                                  ? 'bg-sky-400 text-white'
+                                  : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
+                              }`}
+                            >
+                              {meal.emoji} {meal.label}
+                            </button>
+                          ))}
                         </div>
                       </div>
+
+                      {/* Notes */}
+                      <div>
+                        <Label htmlFor="notes" className="text-sm text-slate-300 mb-2 block">Notes</Label>
+                        <Textarea
+                          id="notes"
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="Optional notes about this food..."
+                          className="bg-white/5 border-white/20 text-white placeholder:text-slate-400 focus:bg-white/10 focus:border-sky-400 resize-none h-16"
+                          disabled={state === 'loading'}
+                        />
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                {/* Action Buttons */}
-                <div className="flex items-center justify-between gap-3">
-                  <Button
-                    variant="ghost"
-                    onClick={handleClose}
-                    disabled={state === 'loading'}
-                    className="text-slate-400 hover:text-white hover:bg-white/10 focus:ring-2 focus:ring-slate-400"
-                  >
-                    Cancel
-                  </Button>
-                  
-                  <div className="flex items-center gap-2">
-                    {/* Manual Name Only for no results */}
-                    {state === 'error' && foodName.trim() && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleManualEntry}
-                        className="border-slate-600 text-slate-300 hover:text-white text-xs"
-                      >
-                        Use Manual Name Only
-                      </Button>
-                    )}
-                    
-                    {/* Status Button - No longer directly adds items */}
-                    <motion.div
-                      animate={foodName.trim() && state !== 'loading' ? { scale: [1, 1.02, 1] } : {}}
-                      transition={{ duration: 0.3, repeat: foodName.trim() ? Infinity : 0, repeatDelay: 2 }}
-                    >
-                      <Button
-                        onClick={() => {/* Search only - selection triggers modal */}}
-                        disabled={isSearching || !foodName.trim()}
-                        className="bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-500 hover:to-emerald-500 text-white font-medium px-6 focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isSearching ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Searching…
-                          </>
-                        ) : selectedCandidate ? (
-                          <>
-                            <Check className="h-4 w-4 mr-2" />
-                            Selected
-                          </>
-                        ) : (
-                          <>
-                             <Search className="h-4 w-4 mr-2" />
-                             Search
-                           </>
-                         )}
-                       </Button>
-                     </motion.div>
-                   </div>
-                 </div>
+          {/* Error State */}
+          <AnimatePresence>
+            {state === 'error' && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl"
+              >
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
+                  <div>
+                    <h4 className="text-red-400 font-medium mb-1">Search Failed</h4>
+                    <p className="text-sm text-slate-300">
+                      Try a different spelling or use "Manual Name Only" to proceed anyway
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between gap-3">
+            <Button
+              variant="ghost"
+              onClick={handleClose}
+              disabled={state === 'loading'}
+              className="text-slate-400 hover:text-white hover:bg-white/10 focus:ring-2 focus:ring-slate-400"
+            >
+              Cancel
+            </Button>
+            
+            <div className="flex items-center gap-2">
+              {/* Manual Name Only for no results */}
+              {state === 'error' && foodName.trim() && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSubmit}
+                  className="border-slate-600 text-slate-300 hover:text-white text-xs"
+                >
+                  Use Manual Name Only
+                </Button>
+              )}
+              
+              {/* Main Add Button */}
+              <motion.div
+                animate={foodName.trim() && state !== 'loading' ? { scale: [1, 1.02, 1] } : {}}
+                transition={{ duration: 0.3, repeat: foodName.trim() ? Infinity : 0, repeatDelay: 2 }}
+              >
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!canAdd}
+                  className="bg-gradient-to-r from-sky-400 to-emerald-400 hover:from-sky-500 hover:to-emerald-500 text-white font-medium px-6 focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSearching ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Searching…
+                    </>
+                  ) : (
+                    <>
+                       <Zap className="h-4 w-4 mr-2" />
+                       Add Item
+                     </>
+                   )}
+                 </Button>
                </motion.div>
-             </DialogContent>
-           </Dialog>
-         </div>
-       )}
-     </>
-    );
-  };
-
-  export default ManualFoodEntry;
+             </div>
+           </div>
+         </motion.div>
+       </DialogContent>
+          </Dialog>
+        </>
+      )}
+    </>
+  );
+};

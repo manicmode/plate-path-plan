@@ -4002,7 +4002,7 @@ console.log('Global search enabled:', enableGlobalSearch);
           setShowTransition(false);
           setShowSmartLoader(false); // Make sure loader doesn't hide the main UI
         }}
-        onSubmit={(item) => routeRecognizedItems([item], 'manual')}
+        onResults={(items) => routeRecognizedItems(items, 'manual')}
       />
 
       {/* Speak to Log Modal */}
