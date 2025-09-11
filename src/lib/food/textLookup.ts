@@ -2,7 +2,13 @@
 // Do not create new text-lookup functions; extend resolvers here.
 
 import { supabase } from '@/integrations/supabase/client';
-import { ENABLE_FOOD_TEXT_V3, FOOD_TEXT_DEBUG, MAX_PER_FAMILY_MANUAL } from '@/lib/flags';
+import { 
+  ENABLE_FOOD_TEXT_V3, 
+  FOOD_TEXT_DEBUG, 
+  MAX_PER_FAMILY_MANUAL,
+  REQUIRE_CORE_TOKEN_MANUAL,
+  MIN_PREFIX_LEN 
+} from '@/lib/flags';
 import { parseQuery } from '@/lib/food/text/parse';
 import { getFoodCandidates } from '@/lib/food/search/getFoodCandidates';
 import { inferPortion } from '@/lib/food/portion/inferPortion';
@@ -71,23 +77,26 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
 
     // Use relaxed diversity cap for manual typing
     const maxPerFamily = options.source === 'manual' ? MAX_PER_FAMILY_MANUAL : 1;
+    const isManual = options.source === 'manual';
     
     // instrumentation
     console.log('[CANDIDATES][DIVERSITY]', {
       source: options.source,
       maxPerFamily,
+      requireCoreToken: isManual ? REQUIRE_CORE_TOKEN_MANUAL : true,
+      allowPrefix: isManual,
+      minPrefixLen: MIN_PREFIX_LEN
     });
-
-    // Detect manual source and pass relaxed options to getFoodCandidates
-    const isManual = options.source === 'manual';
     
     // Get ranked candidates
     const candidates = await getFoodCandidates(query, facets, {
       preferGeneric: true,
-      requireCoreToken: true,
+      requireCoreToken: isManual ? REQUIRE_CORE_TOKEN_MANUAL : true,
       maxPerFamily,
       disableBrandInterleave: isManual, // keep all brands for manual typing
-      allowMoreBrands: isManual
+      allowMoreBrands: isManual,
+      allowPrefix: isManual,
+      minPrefixLen: MIN_PREFIX_LEN
     }, source);
 
     if (FOOD_TEXT_DEBUG) {

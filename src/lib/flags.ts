@@ -32,3 +32,16 @@ export const PARTNER_ACME = false;
 
 export const MAX_PER_FAMILY_MANUAL =
   Number(import.meta.env.VITE_MAX_PER_FAMILY_MANUAL ?? '6');
+
+// New flags for manual entry improvements
+export const REQUIRE_CORE_TOKEN_MANUAL =
+  import.meta.env.VITE_REQUIRE_CORE_TOKEN_MANUAL !== '1' ? false : true; // default false
+
+export const MIN_PREFIX_LEN =
+  Number(import.meta.env.VITE_MIN_PREFIX_LEN ?? '3'); // default 3
+
+export const MANUAL_GENERIC_FALLBACK =
+  import.meta.env.VITE_MANUAL_GENERIC_FALLBACK !== '0'; // default true
+
+export const BRAND_VARIETY_BIAS =
+  Number(import.meta.env.VITE_BRAND_VARIETY_BIAS ?? '0.3'); // 0..1 variety weight

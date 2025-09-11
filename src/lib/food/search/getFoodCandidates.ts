@@ -83,6 +83,8 @@ export interface CandidateOpts {
   maxPerFamily?: number;        // default 1
   disableBrandInterleave?: boolean;  // default false
   allowMoreBrands?: boolean;    // default false
+  allowPrefix?: boolean;        // NEW: enable prefix matching
+  minPrefixLen?: number;        // NEW: minimum length for prefix matching
   source?: string;             // for logging
 }
 
@@ -111,6 +113,99 @@ function hasCoreTokNounMatch(query: string, candidateName: string): boolean {
     // Legacy substring matching
     return candidateWords.some(word => word.includes(coreToken));
   }
+}
+
+// Enhanced matching with prefix and fuzzy support
+function hasTokenMatch(query: string, candidateName: string, options: CandidateOpts): { matched: boolean; matchType: 'exact' | 'prefix' | 'fuzzy' } {
+  const queryTokens = query.toLowerCase().split(/\s+/).filter(t => t.length > 1);
+  if (queryTokens.length === 0) return { matched: true, matchType: 'exact' };
+  
+  const candidateWords = candidateName.toLowerCase().split(/\s+/);
+  
+  // Check exact matches first
+  const hasExact = queryTokens.some(qToken => 
+    candidateWords.some(cWord => qToken === cWord || 
+                                 (qToken.endsWith('s') && qToken.slice(0, -1) === cWord) ||
+                                 (cWord.endsWith('s') && cWord.slice(0, -1) === qToken))
+  );
+  if (hasExact) return { matched: true, matchType: 'exact' };
+  
+  // Check prefix matches if enabled
+  if (options.allowPrefix && options.minPrefixLen) {
+    const lastToken = queryTokens[queryTokens.length - 1];
+    if (lastToken.length >= options.minPrefixLen) {
+      const hasPrefix = candidateWords.some(cWord => cWord.startsWith(lastToken));
+      if (hasPrefix) return { matched: true, matchType: 'prefix' };
+    }
+  }
+  
+  // Check fuzzy matches (simple Jaro-Winkler approximation)
+  if (options.allowPrefix) {
+    for (const qToken of queryTokens) {
+      for (const cWord of candidateWords) {
+        if (qToken.length >= 4 && cWord.length >= 4) {
+          const similarity = jaroWinklerSimilarity(qToken, cWord);
+          if (similarity > 0.82) {
+            return { matched: true, matchType: 'fuzzy' };
+          }
+        }
+      }
+    }
+  }
+  
+  return { matched: false, matchType: 'exact' };
+}
+
+// Simple Jaro-Winkler similarity implementation
+function jaroWinklerSimilarity(s1: string, s2: string): number {
+  if (s1 === s2) return 1.0;
+  
+  const len1 = s1.length;
+  const len2 = s2.length;
+  const maxDist = Math.floor(Math.max(len1, len2) / 2) - 1;
+  
+  if (maxDist < 0) return 0.0;
+  
+  const matches1 = new Array(len1).fill(false);
+  const matches2 = new Array(len2).fill(false);
+  
+  let matches = 0;
+  let transpositions = 0;
+  
+  // Find matches
+  for (let i = 0; i < len1; i++) {
+    const start = Math.max(0, i - maxDist);
+    const end = Math.min(i + maxDist + 1, len2);
+    
+    for (let j = start; j < end; j++) {
+      if (matches2[j] || s1[i] !== s2[j]) continue;
+      matches1[i] = matches2[j] = true;
+      matches++;
+      break;
+    }
+  }
+  
+  if (matches === 0) return 0.0;
+  
+  // Count transpositions
+  let k = 0;
+  for (let i = 0; i < len1; i++) {
+    if (!matches1[i]) continue;
+    while (!matches2[k]) k++;
+    if (s1[i] !== s2[k]) transpositions++;
+    k++;
+  }
+  
+  const jaro = (matches / len1 + matches / len2 + (matches - transpositions / 2) / matches) / 3.0;
+  
+  // Add Winkler prefix bonus
+  let prefix = 0;
+  for (let i = 0; i < Math.min(len1, len2, 4); i++) {
+    if (s1[i] === s2[i]) prefix++;
+    else break;
+  }
+  
+  return jaro + (0.1 * prefix * (1.0 - jaro));
 }
 
 function normalizeBrandFromFDC(r: any): string | undefined {
@@ -566,7 +661,28 @@ export async function getFoodCandidates(
       disabled: options.disableBrandInterleave
     });
     sortedCandidates = reordered;
+    
+    // Apply variety bias for manual typing
+    if (source === 'manual' && import.meta.env.VITE_BRAND_VARIETY_BIAS) {
+      const varietyBias = Number(import.meta.env.VITE_BRAND_VARIETY_BIAS) || 0.3;
+      const seenBrands = new Set<string>();
+      
+      sortedCandidates = sortedCandidates.map(candidate => {
+        const brandKey = _norm(candidate.brand || 'unknown');
+        if (seenBrands.has(brandKey) && candidate.kind === 'brand') {
+          candidate.score -= varietyBias;
+        }
+        seenBrands.add(brandKey);
+        return candidate;
+      }).sort((a, b) => b.score - a.score);
+      
+      console.log('[CANDIDATES][VARIETY]', { applied: true, bias: varietyBias });
+    }
   }
+  
+  // Enhanced deduplication logging
+  const beforeDedup = sortedCandidates.length;
+  console.log('[CANDIDATES][DEDUP]', { before: beforeDedup, after: sortedCandidates.length });
   
   // Apply diversity filter (max per family)
   console.log('[CANDIDATES][DIVERSITY_FILTER][BEFORE]', {
@@ -627,13 +743,48 @@ export async function getFoodCandidates(
     });
     console.log('[CANDIDATES][GENERIC_FALLBACK]', { query: normalizedQuery });
   }
+  
+  // Always offer a Generic when brands dominate
+  const isManual = source === 'manual';
+  const hasGeneric = finalCandidates.some(c => c.kind === 'generic');
+  const brandCount = finalCandidates.filter(c => c.kind === 'brand').length;
+  const shouldInjectGeneric = import.meta.env.VITE_MANUAL_GENERIC_FALLBACK !== '0';
+  
+  if (isManual && !hasGeneric && brandCount >= 3 && shouldInjectGeneric && finalCandidates.length >= 3) {
+    // Try to use a canonical key for better nutrition later
+    const canonicalKey = `generic_${normalizedQuery.replace(/\s+/g, '_')}`;
+    const titleCase = (str: string) => str.replace(/\w\S*/g, (txt) => 
+      txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+    
+    const genericCandidate: Candidate = {
+      id: `generic-${canonicalKey}`,
+      name: `${titleCase(normalizedQuery)} (generic)`,
+      kind: 'generic',
+      classId: 'generic_food',
+      score: 35,
+      confidence: 0.35,
+      explanation: 'Generic option for brand-heavy results',
+      source: 'lexical',
+      servingGrams: 100,
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      sodium: 0,
+    };
+    
+    // Insert at position 1 (after top result)
+    finalCandidates.splice(1, 0, genericCandidate);
+    console.log('[CANDIDATES][GENERIC_INJECT]', { reason: 'brands_dominate' });
+  }
 
   // Legacy generic injection policy: only inject when real results < 3, and put it last
-  const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC_LEGACY ?? '0') === '1';
-  const isManual = source === 'manual';
+  const shouldInjectGenericLegacy = (import.meta.env.VITE_MANUAL_INJECT_GENERIC_LEGACY ?? '0') === '1';
   const realResultCount = finalCandidates.filter(c => c.kind !== 'generic').length;
 
-  if (shouldInjectGeneric && isManual && realResultCount < 3) {
+  if (shouldInjectGenericLegacy && isManual && realResultCount < 3) {
     // Try to infer class/canonical using existing logic
     const inferredClassId = finalCandidates[0]?.classId || null;
     const inferredCanonical = null; // No canonical key logic in current implementation
@@ -697,9 +848,7 @@ export async function getFoodCandidates(
   }
   
   // Add merge pipeline telemetry
-  const cheapFirstCount = sortedCandidates.filter(c => c.source === 'lexical').length;
-  const v3Count = 0; // V3 candidates handled elsewhere  
-  const mergeUsed = cheapFirstCount >= 2 ? 'cheap-first' : finalCandidates.length === 0 ? 'none' : 'mixed';
+  console.log('[CANDIDATES][FINAL]', { count: finalCandidates.length });
   
   console.log('[CANDIDATES][MERGE]', {
     cheapFirst: sortedCandidates.filter(c => c.source === 'lexical').length,
