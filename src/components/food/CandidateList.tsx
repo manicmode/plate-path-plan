@@ -90,11 +90,9 @@ export const CandidateList: React.FC<CandidateListProps> = ({
                 </p>
               )}
               
-              {candidate.provider && !candidate.isGeneric && (
-                <p className="text-xs text-slate-500 capitalize">
-                  via {candidate.provider}
-                </p>
-              )}
+              <p className="text-xs text-slate-500 capitalize">
+                {candidate.data?.brand ? `Via ${candidate.data.brand}` : (candidate.isGeneric ? 'Via Generic' : 'Via Brand')}
+              </p>
             </div>
 
             {/* Hover glow effect */}

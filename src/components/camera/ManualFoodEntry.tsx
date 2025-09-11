@@ -296,41 +296,89 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
   }, [enrichWithFallback]);
 
+  // Add deduplication helpers
+  const slug = (s: string) =>
+    (s || '')
+      .normalize('NFKD')
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim()
+      .replace(/\s+/g, ' ');
+
+  const gramsBucket = (n?: number) => {
+    const g = Number.isFinite(n as number) ? Number(n) : 0;
+    // bucket to nearest 10g to collapse trivial serving deltas
+    return Math.round(g / 10) * 10;
+  };
+
   // Extract candidate processing logic for reuse
   const processCandidates = (items: any[], query: string): Candidate[] => {
-    const src = Array.isArray(items) ? items : [];
+    const src: any[] = Array.isArray(items) ? items : [];
+
     console.log('[CANDIDATES][PROCESS_START]', { sourceCount: src.length });
 
-    const norm = (s: string) => (s || '').toLowerCase().trim();
-    const seen = new Set<string>();
-    const list: any[] = [];
+    // group by composite key to drop near-identical rows
+    const buckets = new Map<string, any[]>();
 
-    src.slice(0, 8).forEach((item: any, index: number) => {
-      const key = `${item.source || 'unknown'}|${item.id || ''}|${norm(item.name)}|${item.brand || ''}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      list.push({
-        id: `candidate-${index}`,
-        name: item.name,
-        isGeneric: !!item.isGeneric,
-        data: item,
-      });
-    });
+    for (const it of src.slice(0, 32)) { // safety cap before dedup
+      const key = `${slug(it.name)}|${slug(it.brand || 'unknown')}|${gramsBucket(it.grams ?? it.portionGrams ?? it.servingGrams)}`;
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key)!.push(it);
+    }
 
-    const finalList = list.slice(0, 8);
-    console.log('[CANDIDATES][DEDUP_COMPLETE]', { beforeDedup: src.length, afterDedup: finalList.length });
-    console.log('[MANUAL][RENDER_LIST]', { ui_render_count: finalList.length });
-    
+    // choose "best" per bucket: prefer generic; else with real brand; else first
+    const pickOne = (arr: any[]) => {
+      const withGeneric = arr.find(a => a.kind === 'generic');
+      if (withGeneric) return withGeneric;
+      const withBrand = arr.find(a => !!a.brand);
+      return withBrand || arr[0];
+    };
+
+    // flatten picks
+    let picks = Array.from(buckets.values()).map(pickOne);
+
+    // ensure at most one "generic" per normalized name, keep it first
+    const byName = new Map<string, any[]>();
+    for (const c of picks) {
+      const nameKey = slug(c.name);
+      if (!byName.has(nameKey)) byName.set(nameKey, []);
+      byName.get(nameKey)!.push(c);
+    }
+
+    const ordered: any[] = [];
+    for (const [nameKey, arr] of byName.entries()) {
+      const generic = arr.find(a => a.kind === 'generic');
+      if (generic) ordered.push(generic);             // keep one generic up top for that food
+      // then distinct brands for that name, one per brand
+      const seenBrands = new Set<string>();
+      for (const a of arr) {
+        if (a.kind === 'generic') continue;
+        const bKey = slug(a.brand || 'unknown');
+        if (seenBrands.has(bKey)) continue;
+        seenBrands.add(bKey);
+        ordered.push(a);
+      }
+    }
+
+    // sort: keep current ordering stable but ensure generics appear first overall
+    ordered.sort((a, b) => (a.kind === 'generic' ? -1 : 0) - (b.kind === 'generic' ? -1 : 0));
+
+    // final UI cap
+    const finalList = ordered.slice(0, 8);
+
+    console.log('[DEDUP][COMPLETE]', { beforeDedup: src.length, afterDedup: finalList.length });
+    console.log('[MANUAL][RENDER_LIST]', { ui_render_count: finalList.length, query });
+
     // Map to Candidate format
     return finalList.map((item, index) => ({
       id: `candidate-${index}`,
       name: sanitizeName(item.name),
-      isGeneric: looksGeneric(item.data),
-      portionHint: item.data?.servingText || `${item.data?.servingGrams || 100}g default`,
-      defaultPortion: { amount: item.data?.servingGrams || 100, unit: 'g' },
-      provider: item.data?.provider || item.data?.kind,
-      imageUrl: item.data?.imageUrl,
-      data: item.data
+      isGeneric: looksGeneric(item),
+      portionHint: item?.servingText || `${item?.servingGrams || 100}g default`,
+      defaultPortion: { amount: item?.servingGrams || 100, unit: 'g' },
+      provider: item?.provider || item?.kind,
+      imageUrl: item?.imageUrl,
+      data: { ...item, brand: item?.brand } // Ensure brand is passed through
     }));
   };
 

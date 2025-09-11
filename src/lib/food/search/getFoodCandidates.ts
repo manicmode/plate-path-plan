@@ -56,6 +56,7 @@ export interface Candidate {
   id: string;
   name: string;
   kind: 'generic' | 'brand' | 'unknown';
+  brand?: string;          // real brand name from provider
   classId?: string;        // used for portion defaults
   facets?: Record<string, string[]>;
   score: number;
@@ -65,6 +66,7 @@ export interface Candidate {
   imageUrl?: string;
   servingGrams?: number;
   servingText?: string;
+  grams?: number;          // serving size for deduplication
   // Nutrition data
   calories: number;
   protein: number;
@@ -109,6 +111,20 @@ function hasCoreTokNounMatch(query: string, candidateName: string): boolean {
     // Legacy substring matching
     return candidateWords.some(word => word.includes(coreToken));
   }
+}
+
+function normalizeBrandFromFDC(r: any): string | undefined {
+  return (r.brandOwner || r.brandName || r.brandedFoodCategory || '')
+    .toString()
+    .trim() || undefined;
+}
+
+function normalizeBrandFromOFF(r: any): string | undefined {
+  // OFF may return comma-separated brands; take the first non-empty
+  const raw = (r.brands || r.brand || '').toString().trim();
+  if (!raw) return undefined;
+  const first = raw.split(',')[0]?.trim();
+  return first || undefined;
 }
 
 function classifyItemKind(item: any): 'generic' | 'brand' | 'unknown' {
@@ -388,13 +404,17 @@ export async function getFoodCandidates(
       
       const kind = classifyItemKind(result);
       
+      // Map real brand name from provider
+      const brand = normalizeBrandFromFDC(result) || normalizeBrandFromOFF(result);
+      console.log(brand ? '[BRAND][MAPPED]' : '[BRAND][MISSING]', { provider: 'lexical', brand });
+      
       // Instrumentation: VITE_MANUAL_ENTRY_DIAG=1 diagnostic logging
       if (import.meta.env.VITE_MANUAL_ENTRY_DIAG === '1') {
         console.log('[MANUAL_DIAG][CANDIDATE]', {
           q: normalizedQuery,
           name: result.name,
           kind,
-          brand: (result as any).brand,
+          brand: brand || (result as any).brand,
           brands: (result as any).brands,
           code: (result as any).code,
           canonicalKey: (result as any).canonicalKey,
@@ -414,7 +434,8 @@ export async function getFoodCandidates(
         candidates.set(result.id, {
           id: result.id,
           name: result.name,
-          kind,
+          kind: brand ? 'brand' : (kind || 'generic'),
+          brand,
           classId: inferClassId(result.name, facets),
           score,
           confidence,
@@ -422,6 +443,7 @@ export async function getFoodCandidates(
           source: 'lexical',
           imageUrl: result.imageUrl,
           servingGrams: (result as any).servingGrams || 100,
+          grams: (result as any).servingGrams || (result as any).grams || 0,
           calories: result.caloriesPer100g || 0,
           protein: 0, // Will be populated from nutrition data
           carbs: 0,
@@ -448,6 +470,11 @@ export async function getFoodCandidates(
       
       const existing = candidates.get(result.id);
       const kind = classifyItemKind(result);
+      
+      // Map real brand name from provider
+      const brand = normalizeBrandFromFDC(result) || normalizeBrandFromOFF(result);
+      console.log(brand ? '[BRAND][MAPPED]' : '[BRAND][MISSING]', { provider: 'alias', brand });
+      
       const { score, confidence, explanation } = scoreFoodCandidate(
         normalizedQuery, 
         result, 
@@ -462,7 +489,8 @@ export async function getFoodCandidates(
         candidates.set(result.id, {
           id: result.id,
           name: result.name,
-          kind,
+          kind: brand ? 'brand' : (kind || 'generic'),
+          brand,
           classId: inferClassId(result.name, facets),
           score,
           confidence,
@@ -470,6 +498,7 @@ export async function getFoodCandidates(
           source: 'alias',
           imageUrl: result.imageUrl,
           servingGrams: (result as any).servingGrams || 100,
+          grams: (result as any).servingGrams || (result as any).grams || 0,
           calories: result.caloriesPer100g || 0,
           protein: 0,
           carbs: 0,
