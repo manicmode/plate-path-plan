@@ -1,4 +1,5 @@
 import type { EnrichedFood } from "@/hooks/useManualFoodEnrichment";
+import { normalizeIngredients } from '@/utils/normalizeIngredients';
 
 export function enrichedFoodToLogItem(x: EnrichedFood, portionGrams: number = 100) {
   const per100 = x.per100g;
@@ -22,7 +23,7 @@ export function enrichedFoodToLogItem(x: EnrichedFood, portionGrams: number = 10
     ingredientsText: (x.ingredients ?? []).map(i => i.name).join(', '),
     
     // Unified ingredient field for UI
-    ingredientsList: Array.isArray(x.ingredients) ? x.ingredients.map(i => i.name) : [],
+    ingredientsList: normalizeIngredients(x),
     
     // Scaled macros for the specified portion size
     calories: Math.round((per100.calories ?? 0) * scale),

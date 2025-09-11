@@ -461,14 +461,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     portionSource: (currentFoodItem as any)?.portionSource || 'inferred',
     providerRef: (currentFoodItem as any)?.providerRef || 'generic',
     classId: (currentFoodItem as any)?.classId || 'generic_food',
-    hasIngredients: Boolean(
-      (currentFoodItem as any)?.ingredientsList?.length ||
-      (currentFoodItem as any)?.ingredients?.length ||
-      (currentFoodItem as any)?.ingredientsText
-    ),
   }), [currentFoodItem]);
 
-  // Normalized ingredient list for UI
+  // Normalized ingredient list for UI - resolve once; do not read legacy 'ingredients'
   const ingredientsList = useMemo(() => {
     const i = (currentFoodItem as any);
     if (Array.isArray(i?.ingredientsList)) return i.ingredientsList;
@@ -477,16 +472,32 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       return i.ingredientsText.split(',').map((s: string) => s.trim()).filter(Boolean);
     }
     return [];
-  }, [currentFoodItem]);
+  }, [currentFoodItem?.id, currentFoodItem?.name, currentFoodItem?.calories, (currentFoodItem as any)?.ingredientsList]);
 
+  const hasIngredients = ingredientsList.length > 0;
+
+  // Log for verification
+  console.log('[CONFIRM][VERIFICATION]', {
+    source: currentFoodItem?.source,
+    enrichmentSource: (currentFoodItem as any)?.enrichmentSource,
+    adapterIngredientsLength: ingredientsList.length,
+    adapterFirst3: ingredientsList.slice(0, 3),
+    cardIngredientsLength: ingredientsList.length,
+    cardLayoutClass: 'food-confirm-card with-stable-panels',
+    hasIngredients,
+    providerRef: normalizedItem.providerRef,
+    portionSource: normalizedItem.portionSource,
+    classId: normalizedItem.classId
+  });
+  
   // Log for diagnostics
   console.log('[CONFIRM][LAYOUT]', {
     providerRef: normalizedItem.providerRef,
     portionSource: normalizedItem.portionSource,
     classId: normalizedItem.classId,
-    hasIngredients: normalizedItem.hasIngredients,
+    hasIngredients: hasIngredients,
     ingredientsLength: ingredientsList.length,
-    cardLayoutClass: `food-confirm-card ${normalizedItem.hasIngredients ? 'with-ingredients' : 'no-ingredients'}`
+    cardLayoutClass: 'food-confirm-card with-stable-panels'
   });
   
   // Normalize name at render level with extractName utility
@@ -1069,7 +1080,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   };
 
   const isFromBarcode = currentFoodItem?.barcode ? true : false;
-  const hasIngredients = normalizedItem.hasIngredients;
   const needsManualIngredients = isFromBarcode && !hasIngredients;
 
   const healthScore = getHealthScore(currentFoodItem);
@@ -1136,7 +1146,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         }}
       >
         <AccessibleDialogContent 
-          className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+          className="food-confirm-card with-stable-panels max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
           title="Confirm Food Log"
           description="We'll save these items to your log."
           showCloseButton={!reminderOpen}
@@ -1269,13 +1279,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                         <div className="font-medium text-sm text-gray-900 dark:text-white truncate">
                           {candidate.name}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 card-chips" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap', overflow: 'hidden' }}>
                           <span>{candidate.calories} cal</span>
                            <span className={`text-xs ${
                              labelFromFlags(candidate.flags || {}) === 'Generic' 
                                ? 'text-green-600 dark:text-green-400' 
                                : 'text-orange-600 dark:text-orange-400'
-                           }`}>
+                           }`} style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: '33%' }}>
                              {labelFromFlags(candidate.flags || {})}
                            </span>
                         </div>
@@ -1428,7 +1438,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-700 rounded-xl">
                 <TabsTrigger value="nutrition" className="rounded-lg">Nutrition</TabsTrigger>
                 <TabsTrigger value="health" className="rounded-lg">Health Check</TabsTrigger>
-                <TabsTrigger value="ingredients" className="rounded-lg">Ingredients</TabsTrigger>
+                <TabsTrigger value="ingredients" className="rounded-lg">
+                  Ingredients {hasIngredients && `(${ingredientsList.length})`}
+                </TabsTrigger>
               </TabsList>
               
               <TabsContent value="nutrition" className="space-y-3 mt-4">
