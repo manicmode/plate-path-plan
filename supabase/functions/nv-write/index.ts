@@ -27,8 +27,10 @@ serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   
-  // Use service role client for vault writes
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
+  // Use service role client for vault writes with disabled auth persistence
+  const supa = createClient(supabaseUrl, serviceRoleKey, { 
+    auth: { persistSession: false } 
+  });
 
   try {
     const payload = await req.json();
@@ -48,13 +50,25 @@ serve(async (req) => {
       aliases = []
     } = payload;
 
-    // Validate required fields
-    if (!provider || !['edamam', 'nutritionix'].includes(provider)) {
-      throw new Error(`Invalid provider: ${provider}`);
+    // Validate input minimally
+    if (!provider || !['edamam', 'nutritionix', 'generic'].includes(provider)) {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: `Invalid provider: ${provider}. Must be 'edamam', 'nutritionix', or 'generic'`
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
     
     if (!provider_ref || !name || !per100g) {
-      throw new Error('Missing required fields: provider_ref, name, or per100g');
+      return new Response(JSON.stringify({
+        ok: false,
+        error: 'Missing required fields: provider_ref, name, or per100g'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Cap aliases to prevent abuse
@@ -92,8 +106,8 @@ serve(async (req) => {
 
     console.log(`[NV][WRITE] provider=${provider} name="${name}" upserting...`);
 
-    // Upsert item
-    const { data: item, error: itemError } = await supabase
+    // Upsert item with proper error handling
+    const { data: item, error: itemError } = await supa
       .from('nutrition_vault.items')
       .upsert(itemData, {
         onConflict: 'provider,provider_ref',
@@ -104,7 +118,13 @@ serve(async (req) => {
 
     if (itemError) {
       console.error('[NV][WRITE] Item upsert error:', itemError);
-      throw itemError;
+      return new Response(JSON.stringify({
+        ok: false,
+        error: `Database upsert failed: ${itemError.message}`
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const finalItemId = item?.id || itemData.id;
@@ -116,9 +136,9 @@ serve(async (req) => {
         item_id: finalItemId,
         alias: String(alias).trim(),
         source: 'provider'
-      }));
+        }));
 
-      const { error: aliasError } = await supabase
+      const { error: aliasError } = await supa
         .from('nutrition_vault.aliases')
         .upsert(aliasRows, {
           onConflict: 'item_id,alias',
@@ -127,7 +147,7 @@ serve(async (req) => {
 
       if (aliasError) {
         console.error('[NV][WRITE] Alias insert error:', aliasError);
-        // Don't fail the whole operation for alias errors
+        // Don't fail the whole operation for alias errors - log and continue
       }
     }
 
@@ -141,8 +161,15 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('[NV][WRITE] Error:', error);
+    console.error('[NV][WRITE] Error:', {
+      message: error.message,
+      stack: error.stack,
+      provider: error.provider,
+      name: error.name
+    });
+    
     return new Response(JSON.stringify({ 
+      ok: false,
       error: error.message || 'Write failed' 
     }), {
       status: 500,

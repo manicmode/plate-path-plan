@@ -69,18 +69,46 @@ export async function nvSearch(q: string, maxResults = NV_MAX_RESULTS): Promise<
  */
 export async function nvWrite(payload: NvWritePayload): Promise<{ ok: boolean; id?: string }> {
   try {
-    const { data, error } = await supabase.functions.invoke('nv-write', {
+    const response = await supabase.functions.invoke('nv-write', {
       body: payload
     });
 
-    if (error) {
-      console.error('[NV][WRITE][CLIENT] Error:', error);
+    // Check for non-2xx status codes and log failure details
+    if (response.error) {
+      console.error('[NV][WRITE][FAIL]', response.error.message || 'Unknown error', {
+        provider: payload.provider,
+        providerRef: payload.provider_ref,
+        name: payload.name
+      });
       return { ok: false };
     }
 
-    return data || { ok: false };
+    const { data } = response;
+    
+    if (data?.ok) {
+      console.info('[NV][WRITE] ok', {
+        provider: payload.provider,
+        providerRef: payload.provider_ref,
+        name: payload.name,
+        id: data.id
+      });
+      return { ok: true, id: data.id };
+    } else {
+      console.error('[NV][WRITE][FAIL]', data?.error || 'Unknown failure', {
+        provider: payload.provider,
+        providerRef: payload.provider_ref,
+        name: payload.name
+      });
+      return { ok: false };
+    }
+
   } catch (error) {
-    console.error('[NV][WRITE][CLIENT] Exception:', error);
+    console.error('[NV][WRITE][FAIL]', 'Exception', {
+      provider: payload.provider,
+      providerRef: payload.provider_ref,
+      name: payload.name,
+      error: error.message
+    });
     return { ok: false };
   }
 }
