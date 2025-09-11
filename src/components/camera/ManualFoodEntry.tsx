@@ -495,21 +495,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     };
   }, [foodName, debouncedSearch]);
 
-  // Gate: show portion dialog once enriched, until user commits
-  if (manualFlow.selectedCandidate && manualFlow.enrichmentReady && !manualFlow.uiCommitted) {
-    return (
-      <ManualPortionDialog
-        candidate={manualFlow.selectedCandidate}
-        enrichedData={manualFlow.portionDraft}
-        onContinue={(finalData) => {
-          console.log('[DIALOG][COMMIT]', { hasIngredients: !!finalData?.ingredientsList?.length });
-          manualFlow.setState(s => ({ ...s, uiCommitted: true }));
-          onResults?.([finalData]); // downstream route handler receives enriched item
-        }}
-        onCancel={() => manualFlow.reset()}
-      />
-    );
-  }
+  // Calculate whether to show portion dialog (conditional JSX, not early return)
+  const showPortionDialog = manualFlow.selectedCandidate && manualFlow.enrichmentReady && !manualFlow.uiCommitted;
 
   // Handle candidate selection - start enrichment and show portion dialog
   const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
@@ -748,14 +735,28 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
   return (
     <>
-      {/* Three Circles Loader - Full screen overlay during loading */}
-      <AnimatePresence>
-        {state === 'loading' && (
-          <ThreeCirclesLoader />
-        )}
-      </AnimatePresence>
+      {showPortionDialog && (
+        <ManualPortionDialog
+          candidate={manualFlow.selectedCandidate}
+          enrichedData={manualFlow.portionDraft}
+          onContinue={(finalData) => {
+            console.log('[DIALOG][COMMIT]', { hasIngredients: !!finalData?.ingredientsList?.length });
+            manualFlow.setState(s => ({ ...s, uiCommitted: true }));
+            onResults?.([finalData]); // downstream route handler receives enriched item
+          }}
+          onCancel={() => manualFlow.reset()}
+        />
+      )}
+      {!showPortionDialog && (
+        <>
+          {/* Three Circles Loader - Full screen overlay during loading */}
+          <AnimatePresence>
+            {state === 'loading' && (
+              <ThreeCirclesLoader />
+            )}
+          </AnimatePresence>
 
-      <Dialog open={isOpen && state !== 'loading'} onOpenChange={(open) => !open && handleClose()}>
+          <Dialog open={isOpen && state !== 'loading'} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent 
           showCloseButton={false}
           className="max-w-md mx-auto bg-slate-900/70 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl/20 p-0 overflow-hidden max-h-[90vh] overflow-y-auto"
@@ -1057,7 +1058,9 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
            </div>
          </motion.div>
        </DialogContent>
-     </Dialog>
+          </Dialog>
+        </>
+      )}
     </>
   );
 };
