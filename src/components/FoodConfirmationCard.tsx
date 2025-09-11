@@ -197,6 +197,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Derive a stable ID from props (not from transient state)
   const foodId = foodItem?.id ?? null;
 
+  // Confetti timing: fire on next animation frame after mount
+  useEffect(() => {
+    if (isOpen) {
+      const id = requestAnimationFrame(() => {
+        // Only fire confetti if this is a successful confirmation, not on initial open
+        // We'll move the actual confetti trigger to the confirm handler
+      });
+      return () => cancelAnimationFrame(id);
+    }
+  }, [isOpen]);
+
   // A) Log what FoodConfirmationCard receives as props
   useEffect(() => {
     console.log("[CONFIRM][PROPS]", {
@@ -904,8 +915,15 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       // Race the confirm call with timeout
       await Promise.race([confirmPromise, timeoutPromise]);
       
+      // Fire confetti immediately on success
+      requestAnimationFrame(() => {
+        const t0 = performance.now();
+        confetti();
+        console.info('[CONFETTI]', { dt: performance.now() - t0 });
+      });
+      
       // Success animation delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       // Play food log confirmation sound
       SoundGate.markConfirm();

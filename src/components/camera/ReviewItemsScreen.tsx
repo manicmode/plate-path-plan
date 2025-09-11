@@ -71,6 +71,12 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   afterLogSuccess,
   context = 'logging' // Default to logging context
 }) => {
+  // Guard against manual source
+  if ((context as any) === 'manual') {
+    console.warn('[BUGTRAP] review-from-manual blocked');
+    onClose();
+    return null;
+  }
   // State
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [openWheelForId, setOpenWheelForId] = useState<string | null>(null);
