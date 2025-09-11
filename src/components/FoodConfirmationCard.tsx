@@ -60,6 +60,7 @@ interface FoodItem {
   ingredientsText?: string;
   ingredientsAvailable?: boolean;
   ingredients?: Array<{ name: string; grams?: number; amount?: string }>; // Add ingredients property
+  ingredientsList?: string[]; // Add ingredientsList for normalized ingredients
   source?: string; // Nutrition data source (branded-database, usda, openfoodfacts, ai-estimate, etc.)
   confidence?: number; // Confidence score for the nutrition estimation
   enrichmentSource?: string; // Add enrichment metadata
@@ -260,15 +261,47 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const isNutritionReady = perGramReady
     || ((useHydration && !isBarcodeSource) ? (perGramSum > 0) : true);
   
+  // Check enrichment readiness early
+  if (!foodItem?.enrichmentSource || !Array.isArray(foodItem?.ingredientsList)) {
+    console.log('[CONFIRM][NOT_READY]', { 
+      enrichment: !!foodItem?.enrichmentSource, 
+      hasList: Array.isArray(foodItem?.ingredientsList) 
+    });
+    return null;
+  }
+
+  // Build and route sentinels on mount
+  useEffect(() => {
+    if (isOpen) {
+      console.info('[BUILD]', {
+        sha: 'confirm-card-fix-v1', 
+        time: new Date().toISOString(), 
+        mode: import.meta?.env?.MODE || 'development'
+      });
+      console.info('[CONFIRM_PATH]', {
+        cardFile: 'src/components/FoodConfirmationCard.tsx',
+        enrichmentFile: 'src/hooks/useManualFoodEnrichment.tsx',
+        sentinel: 'hooks/enrich/v3/8f4a2b'
+      });
+    }
+  }, [isOpen]);
+
   // Log mount and hydration states
   useEffect(() => {
     if (isOpen && currentFoodItem) {
       const source = (currentFoodItem as any)?.__source || (currentFoodItem as any)?.source || 'unknown';
-      console.log('[CONFIRM][MOUNT]', {
+      const ingredientsList = Array.isArray((currentFoodItem as any)?.ingredientsList)
+        ? (currentFoodItem as any).ingredientsList
+        : [];
+      const cardLayoutClass = 'food-confirm-card fixed-layout';
+      
+      console.log('[CONFIRM][ENTER]', {
         source,
         useHydration,
         isNutritionReady,
-        isManualVoice: isManualVoiceSource
+        isManualVoice: isManualVoiceSource,
+        ingredientsListLength: ingredientsList.length,
+        cardLayoutClass
       });
       
       if (!isNutritionReady && useHydration) {

@@ -21,6 +21,9 @@ import { FOOD_TEXT_DEBUG } from '@/lib/flags';
 import { ThreeCirclesLoader } from '@/components/loaders/ThreeCirclesLoader';
 import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
 import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
+import { useManualFlowStatus } from '@/hooks/useManualFlowStatus';
+import { enrichCandidate } from '@/utils/enrichCandidate';
+import { ManualPortionDialog } from './ManualPortionDialog';
 import { DataSourceChip } from '@/components/ui/data-source-chip';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import { sourceBadge } from '@/utils/helpers/sourceBadge';
@@ -130,6 +133,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   onClose,
   onResults
 }) => {
+  const manualFlow = useManualFlowStatus();
   // State
   const [state, setState] = useState<ModalState>('idle');
   const [foodName, setFoodName] = useState('');
@@ -158,6 +162,38 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
   // Hooks
   const { enrichWithFallback, loading: enriching, error: enrichError } = useManualFoodEnrichment();
+  
+  // Build sentinels and logging
+  useEffect(() => {
+    if (isOpen) {
+      console.info('[BUILD]', {
+        sha: 'manual-flow-fix-v1', 
+        time: new Date().toISOString(), 
+        mode: import.meta?.env?.MODE || 'development'
+      });
+      console.info('[CONFIRM_PATH]', {
+        cardFile: 'src/components/FoodConfirmationCard.tsx',
+        enrichmentFile: 'src/hooks/useManualFoodEnrichment.tsx',
+        sentinel: 'hooks/enrich/v3/8f4a2b'
+      });
+    }
+  }, [isOpen]);
+  
+  // Gate: show portion dialog once enriched, until user commits
+  if (manualFlow.selectedCandidate && manualFlow.enrichmentReady && !manualFlow.uiCommitted) {
+    return (
+      <ManualPortionDialog
+        candidate={manualFlow.selectedCandidate}
+        enrichedData={manualFlow.portionDraft}
+        onContinue={(finalData) => {
+          console.log('[DIALOG][COMMIT]', { hasIngredients: !!finalData?.ingredientsList?.length });
+          manualFlow.setState(s => ({ ...s, uiCommitted: true }));
+          onResults?.([finalData]); // downstream route handler receives enriched item
+        }}
+        onCancel={() => manualFlow.reset()}
+      />
+    );
+  }
 
   // Telemetry logging
   const logTelemetry = (event: string, data?: any) => {
@@ -428,30 +464,51 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     };
   }, [foodName, debouncedSearch]);
 
-  // Handle candidate selection - route directly to confirmation
-  const handleCandidateSelect = useCallback((candidate: LocalCandidate) => {
+  // Gate: show portion dialog once enriched, until user commits
+  if (manualFlow.selectedCandidate && manualFlow.enrichmentReady && !manualFlow.uiCommitted) {
+    return (
+      <ManualPortionDialog
+        candidate={manualFlow.selectedCandidate}
+        enrichedData={manualFlow.portionDraft}
+        onContinue={(finalData) => {
+          console.log('[DIALOG][COMMIT]', { hasIngredients: !!finalData?.ingredientsList?.length });
+          manualFlow.setState(s => ({ ...s, uiCommitted: true }));
+          onResults?.([finalData]); // downstream route handler receives enriched item
+        }}
+        onCancel={() => manualFlow.reset()}
+      />
+    );
+  }
+
+  // Handle candidate selection - start enrichment and show portion dialog
+  const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
     setSelectedCandidate(candidate);
     setFoodName(candidate.name);
     
-    // Prefill portion with defaults
-    if (candidate.defaultPortion) {
-      setPortionAmount(candidate.defaultPortion.amount);
-      setPortionUnit(candidate.defaultPortion.unit);
-    }
-
     const labelKind = labelFromFlags(candidate.flags);
-    console.info('[MANUAL][SELECT]', { 
+    console.log('[MANUAL][SELECT]', { 
+      isGeneric: candidate.isGeneric,
+      canonicalKey: candidate.canonicalKey,
       name: candidate.name, 
       provider: candidate.provider, 
       key: candidate.providerRef ?? candidate.canonicalKey, 
       labelKind 
     });
     
-    // Go straight to confirmation (no review modal)
-    if (onResults) {
-      onResults([candidate.data]);
+    // NEW: Begin enrichment and hold user on portion dialog
+    manualFlow.setState(s => ({ ...s, selectedCandidate: candidate }));
+    try {
+      const enriched = await enrichCandidate(candidate);
+      manualFlow.setState(s => ({
+        ...s,
+        enrichmentReady: true,
+        nutritionReady: true,
+        portionDraft: enriched
+      }));
+    } catch (e) {
+      console.error('[ENRICH][ERROR]', e);
     }
-  }, [onResults]);
+  }, [manualFlow]);
 
   // Handle suggestion chip selection
   const handleSuggestionSelect = (suggestion: string) => {

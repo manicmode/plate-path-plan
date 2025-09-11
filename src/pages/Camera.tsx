@@ -342,6 +342,13 @@ const CameraPage = () => {
 
     console.log(`[ROUTE_ITEMS] Processing ${items.length} items from ${sourceHint || 'unknown'} source`);
 
+    // Check if items are fully enriched (route guard)
+    const allEnriched = items.every(i => i?.enrichmentSource && Array.isArray(i?.ingredientsList));
+    if (!allEnriched && (sourceHint === 'manual' || sourceHint === 'speech')) {
+      console.warn('[ROUTE][BLOCKED]', 'Items not fully enriched');
+      return; // keep user on dialog
+    }
+
     // Determine the source type
     const isBarcode = sourceHint === 'barcode';
     const isManualLike = sourceHint === 'manual' || sourceHint === 'speech';
