@@ -121,7 +121,7 @@ const sharesCore = (candidateName?: string, primaryName?: string) => {
 export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   isOpen,
   onClose,
-  onResults
+  onSubmit
 }) => {
 // All hooks declared unconditionally at top
 const manualFlow = useManualFlowStatus();
@@ -651,7 +651,7 @@ const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
             console.log('[FLOW][CONFIRM_OPEN]', { 
               ingredientsCount: manualFlow.portionDraft?.ingredientsList?.length || 0
             });
-            onResults?.([{ ...manualFlow.portionDraft, ...portionData }]);
+            onSubmit({ ...manualFlow.portionDraft, ...portionData });
           }}
           onCancel={() => {
             manualFlow.reset();
