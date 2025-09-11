@@ -105,85 +105,56 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
       console.log('[TEXT][V3] low-confidence return count=1');
     }
 
-    // Get the primary (best) candidate
-    const primary = candidates[0];
+    // Helper function to map candidate to food item
+    const mapCandidateToFoodItem = (candidate: any, portion: any, index: number) => {
+      return {
+        id: candidate.id || `v3-${Date.now()}-${index}`,
+        name: candidate.name,
+        // Scale nutrition to portion grams (use existing rounding utilities if present)
+        calories: Math.round((candidate.calories || 0) * portion.grams / 100),
+        protein: Math.round(((candidate.protein || 0) * portion.grams / 100) * 10) / 10,
+        carbs: Math.round(((candidate.carbs || 0) * portion.grams / 100) * 10) / 10,
+        fat: Math.round(((candidate.fat || 0) * portion.grams / 100) * 10) / 10,
+        fiber: Math.round(((candidate.fiber || 0) * portion.grams / 100) * 10) / 10,
+        sugar: Math.round(((candidate.sugar || 0) * portion.grams / 100) * 10) / 10,
+        sodium: Math.round((candidate.sodium || 0) * portion.grams / 100),
+        imageUrl: candidate.imageUrl,
+        servingGrams: portion.grams,
+        portionGrams: portion.grams,
+        servingText: portion.displayText,
+        source: source === 'speech' ? 'voice' : 'manual',
+        confidence: candidate.confidence,
+        isGeneric: !!candidate.canonicalKey?.startsWith('generic_'),
+        // Pass through classification data
+        kind: candidate.kind,
+        classId: candidate.classId,
+        provider: candidate.kind || candidate.provider
+      };
+    };
 
-    // Create food item with v3 structure and realistic portions
-    const portionEstimate = inferPortion(primary.name, query, facets, primary.classId);
-    
-    // Attach canonical nutrition key for generics
+    // Get primary candidate
+    const primary = candidates[0];
+    const primaryPortion = inferPortion(primary.name, query, facets, primary.classId);
     const canonicalKey = canonicalFor(facets.core[0] || 'food', facets);
     
-    const foodItem = {
-      id: primary.id || `v3-${Date.now()}`,
-      name: primary.name,
-      // Scale nutrition to realistic portion immediately  
-      calories: Math.round((primary.calories || 0) * portionEstimate.grams / 100),
-      protein: Math.round((primary.protein || 0) * portionEstimate.grams / 100 * 10) / 10,
-      carbs: Math.round((primary.carbs || 0) * portionEstimate.grams / 100 * 10) / 10,
-      fat: Math.round((primary.fat || 0) * portionEstimate.grams / 100 * 10) / 10,  
-      fiber: Math.round((primary.fiber || 0) * portionEstimate.grams / 100 * 10) / 10,
-      sugar: Math.round((primary.sugar || 0) * portionEstimate.grams / 100 * 10) / 10,
-      sodium: Math.round((primary.sodium || 0) * portionEstimate.grams / 100),
-      imageUrl: primary.imageUrl,
-      servingGrams: portionEstimate.grams,
-      servingText: portionEstimate.displayText,
-      portionGrams: portionEstimate.grams,
-      source: source === 'speech' ? 'voice' : 'manual',
-      confidence: primary.confidence,
-      // Attach nutrition key and generic marker
-      nutritionKey: canonicalKey,
-      isGeneric: !!canonicalKey,
-      // v3 specific fields for better hydration hints
-      canonicalKey: canonicalKey,
-      classId: primary.classId,
-      facets: facets,
-      preferGeneric: true,
-      // v3 specific fields
-      __altCandidates: candidates.slice(1, 6).map(c => {
-        const altPortion = inferPortion(c.name, query, facets, c.classId);
-        
-        // Flag: VITE_V3_ALT_BRAND_FIELDS (default ON) - Include brand fields for UI badge logic
-        const includeBrandFields = (import.meta.env.VITE_V3_ALT_BRAND_FIELDS ?? '1') === '1';
-        
-        const baseAlt = {
-          id: c.id || `alt-${Date.now()}-${Math.random()}`,
-          name: c.name,
-          servingG: altPortion.grams, // Pre-calculated portion
-          calories: Math.round((c.calories || 0) * altPortion.grams / 100),
-          protein: Math.round((c.protein || 0) * altPortion.grams / 100 * 10) / 10,
-          carbs: Math.round((c.carbs || 0) * altPortion.grams / 100 * 10) / 10,
-          fat: Math.round((c.fat || 0) * altPortion.grams / 100 * 10) / 10,
-          fiber: Math.round((c.fiber || 0) * altPortion.grams / 100 * 10) / 10,
-          sugar: Math.round((c.sugar || 0) * altPortion.grams / 100 * 10) / 10,
-          sodium: Math.round((c.sodium || 0) * altPortion.grams / 100),
-          imageUrl: c.imageUrl,
-          kind: c.kind,
-          classId: c.classId
-        };
-        
-        // Include brand fields when flag is ON for proper UI badge logic
-        if (includeBrandFields) {
-          return {
-            ...baseAlt,
-            brand: (c as any).brand,
-            brands: (c as any).brands,
-            code: (c as any).code,
-            canonicalKey: (c as any).canonicalKey,
-            provider: (c as any).provider,
-            isGeneric: (c as any).isGeneric
-          };
-        }
-        
-        return baseAlt;
-      }),
-      __source: source === 'speech' ? 'voice' : 'manual',
-      __originalText: query
-    };
+    // Map all candidates (up to 8) to UI-ready items
+    const allItems = candidates.slice(0, 8).map((cand, idx) => {
+      const portion = inferPortion(cand.name, query, facets, cand.classId);
+      return mapCandidateToFoodItem(cand, portion, idx);
+    });
+
+    // LOG candidate telemetry
+    console.log('[CANDIDATES][FINAL]', {
+      incoming: candidates.length,
+      after_alias: candidates.length,
+      deduped: candidates.length,
+      rankedAll: allItems.length,
+    });
 
     return {
       success: true,
-      items: [foodItem],
+      items: allItems,          // Full set instead of just primary
+      rankedAll: allItems,      // Explicit for consumers
       cached: false,
       version: 'v3'
     };

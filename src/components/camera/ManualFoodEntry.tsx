@@ -193,7 +193,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           logTelemetry('FALLBACK', { itemCount: count });
           setEnrichedData(null);
 
-          // Process candidates from fallback
+          // Process candidates from fallback (V3 returns full list now)
           const candidates = processCandidates(items, query);
           console.log(`[MANUAL][RENDER_LIST] ui_render_count=${candidates.length}`);
           setCandidates(candidates);
@@ -242,7 +242,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           const items: any[] = Array.isArray(fallback?.items) ? fallback.items : [];
           logTelemetry('FALLBACK', { itemCount: items.length });
           setEnrichedData(null);
-          
           // Process candidates from fallback
           const candidates = processCandidates(items, query);
           console.log(`[MANUAL][RENDER_LIST] ui_render_count=${candidates.length}`);
@@ -271,48 +270,33 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
   // Extract candidate processing logic for reuse
   const processCandidates = (items: any[], query: string): Candidate[] => {
+    // Consume rankedAll first if available, then fall back to items
+    const src = Array.isArray(items[0]?.rankedAll) ? items[0].rankedAll : items;
     const list: Candidate[] = [];
 
-    if (items.length > 0) {
-      // Process ALL items as separate candidates (don't collapse to primary + alts)
-      items.forEach((item: any, index: number) => {
-        list.push({
-          id: `candidate-${index}`,
-          name: sanitizeName(item.name),
-          isGeneric: looksGeneric(item),
-          portionHint: item.servingText || `${item.servingGrams || 100}g default`,
-          defaultPortion: { amount: item.servingGrams || 100, unit: 'g' },
-          provider: item.provider,
-          imageUrl: item.imageUrl,
-          data: item
-        });
-      });
-
-      // Also process alt candidates if they exist on the primary item
-      const primary = items[0];
-      const v3Alts = Array.isArray(primary.__altCandidates) ? primary.__altCandidates : [];
-      
-      v3Alts.slice(0, 3).forEach((c: any, i: number) => {
-        // Only add if not already in main list
+    if (src.length > 0) {
+      // Process ALL items from the source (no collapse to primary + alts)
+      src.slice(0, 8).forEach((item: any, index: number) => {
+        // Avoid duplicates by name
         const alreadyExists = list.some(existing => 
-          _norm(existing.name) === _norm(c.name)
+          _norm(existing.name) === _norm(item.name)
         );
         
         if (!alreadyExists) {
           list.push({
-            id: `candidate-alt-${i}`,
-            name: sanitizeName(c.name),
-            isGeneric: looksGeneric(c),
-            portionHint: `${c.servingG || 100}g default`,
-            defaultPortion: { amount: c.servingG || 100, unit: 'g' },
-            provider: c.kind || c.provider,
-            imageUrl: c.imageUrl,
-            data: c  
+            id: `candidate-${index}`,
+            name: sanitizeName(item.name),
+            isGeneric: looksGeneric(item),
+            portionHint: item.servingText || `${item.servingGrams || 100}g default`,
+            defaultPortion: { amount: item.servingGrams || 100, unit: 'g' },
+            provider: item.provider || item.kind,
+            imageUrl: item.imageUrl,
+            data: item
           });
         }
       });
 
-      // Flag: VITE_MANUAL_INJECT_GENERIC (default OFF) - Synthetic generic injection
+      // Flag: VITE_MANUAL_INJECT_GENERIC (default OFF) - Only inject when real results < 3
       const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '0') === '1';
       const realResultCount = list.filter(c => !c.isGeneric).length;
       
@@ -321,8 +305,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         
         if (!hasGeneric) {
           const titleCase = (s: string) => s.replace(/\b\w/g, m => m.toUpperCase());
-          const primary = items[0];
-          const core = coreNoun(query || primary?.name);
+          const core = coreNoun(query || src[0]?.name);
           
           if (core) {
             const defaultMapping: Record<string, { grams: number; canonicalKey: string }> = {
@@ -343,7 +326,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             const mapping = defaultMapping[core.toLowerCase()] || { grams: 100, canonicalKey: `generic_${core.toLowerCase()}` };
             const defaultG = mapping.grams;
 
-            // Put generic at the end, only when real results < 3
+            // Append generic to the end (never first)
             list.push({
               id: 'candidate-generic-synthetic',
               name: `Generic ${titleCase(core)}`,
@@ -358,7 +341,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                 isGeneric: true,
                 kind: 'generic',
                 canonicalKey: mapping.canonicalKey,
-                servingG: defaultG
+                servingGrams: defaultG
               }
             });
             
@@ -367,19 +350,14 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         }
       }
 
-      // FINAL relevance sieve: drop off-topic items (e.g., "Quaker Rolled Oats" for "california roll")
+      // FINAL relevance sieve: drop off-topic items if strict filtering enabled
       const strictCoreNounFilter = (import.meta.env.VITE_CORE_NOUN_STRICT ?? '0') === '1';
       const relevant = strictCoreNounFilter ? list.filter(c => matchesQueryCore(query, c.data)) : list;
 
-      // Cap to 8 candidates max, keep relevance order from search results
-      let finalList = relevant.slice(0, 8);
+      // Cap to 8 candidates max
+      const finalList = relevant.slice(0, 8);
       
-      // Ensure we have some results - if strict filtering removed everything, keep original list
-      if (finalList.length === 0 && list.length > 0) {
-        finalList = list.slice(0, 8);
-      }
-      
-      return finalList;
+      return finalList.length > 0 ? finalList : list.slice(0, 8);
     }
 
     return [];
