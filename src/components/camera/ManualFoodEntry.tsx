@@ -274,72 +274,54 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     const list: Candidate[] = [];
 
     if (items.length > 0) {
-      const primary = items[0];
-
-      // Primary
-      list.push({
-        id: 'candidate-0',
-        name: sanitizeName(primary.name),
-        isGeneric: looksGeneric(primary),
-        portionHint: primary.servingText || `${primary.servingGrams || 100}g default`,
-        defaultPortion: { amount: primary.servingGrams || 100, unit: 'g' },
-        provider: primary.provider,
-        imageUrl: primary.imageUrl,
-        data: primary
-      });
-
-      // v3 alt candidates (preferred)
-      const v3Alts = Array.isArray(primary.__altCandidates) ? primary.__altCandidates : [];
-
-      // legacy "multiple items" fallback as alts
-      const legacyAlts = items.length > 1 ? items.slice(1) : [];
-
-      const rawAlts = [...v3Alts, ...legacyAlts];
-      const filteredAlts = rawAlts.filter((c: any) => sharesCore(c?.name, primary?.name));
-
-      // Take up to 8 alts initially
-      filteredAlts.slice(0, 8).forEach((c: any, i: number) => {
+      // Process ALL items as separate candidates (don't collapse to primary + alts)
+      items.forEach((item: any, index: number) => {
         list.push({
-          id: `candidate-alt-${i}`,
-          name: sanitizeName(c.name),
-          isGeneric: looksGeneric(c),
-          portionHint: `${c.servingG || 100}g default`,
-          defaultPortion: { amount: c.servingG || 100, unit: 'g' },
-          provider: c.kind || c.provider,
-          imageUrl: c.imageUrl,
-          data: c  
+          id: `candidate-${index}`,
+          name: sanitizeName(item.name),
+          isGeneric: looksGeneric(item),
+          portionHint: item.servingText || `${item.servingGrams || 100}g default`,
+          defaultPortion: { amount: item.servingGrams || 100, unit: 'g' },
+          provider: item.provider,
+          imageUrl: item.imageUrl,
+          data: item
         });
       });
 
-      // fallback: if filtering removed everything and we had raw alts,
-      // allow the single best generic that shares the query token exactly
-      if (list.length === 1 && rawAlts.length > 0) {
-        const qCore = coreNoun(query);
-        const rescue = rawAlts.find((c: any) => _norm(c?.name).includes(qCore) && (
-          Boolean(c?.isGeneric) || c?.kind === 'generic' || c?.provider === 'generic'
-        ));
-        if (rescue) {
+      // Also process alt candidates if they exist on the primary item
+      const primary = items[0];
+      const v3Alts = Array.isArray(primary.__altCandidates) ? primary.__altCandidates : [];
+      
+      v3Alts.slice(0, 3).forEach((c: any, i: number) => {
+        // Only add if not already in main list
+        const alreadyExists = list.some(existing => 
+          _norm(existing.name) === _norm(c.name)
+        );
+        
+        if (!alreadyExists) {
           list.push({
-            id: `candidate-alt-rescue`,
-            name: sanitizeName(rescue?.name ?? 'Option'),
-            isGeneric: true,
-            portionHint: `${rescue?.servingG || primary?.servingGrams || 100}g default`,
-            defaultPortion: { amount: rescue?.servingG || primary?.servingGrams || 100, unit: 'g' },
-            provider: rescue?.provider ?? rescue?.kind,
-            imageUrl: rescue?.imageUrl,
-            data: rescue,
+            id: `candidate-alt-${i}`,
+            name: sanitizeName(c.name),
+            isGeneric: looksGeneric(c),
+            portionHint: `${c.servingG || 100}g default`,
+            defaultPortion: { amount: c.servingG || 100, unit: 'g' },
+            provider: c.kind || c.provider,
+            imageUrl: c.imageUrl,
+            data: c  
           });
         }
-      }
+      });
 
       // Flag: VITE_MANUAL_INJECT_GENERIC (default OFF) - Synthetic generic injection
       const shouldInjectGeneric = (import.meta.env.VITE_MANUAL_INJECT_GENERIC ?? '0') === '1';
+      const realResultCount = list.filter(c => !c.isGeneric).length;
       
-      if (shouldInjectGeneric) {
+      if (shouldInjectGeneric && realResultCount < 3) {
         const hasGeneric = list.some(c => c.isGeneric);
         
         if (!hasGeneric) {
           const titleCase = (s: string) => s.replace(/\b\w/g, m => m.toUpperCase());
+          const primary = items[0];
           const core = coreNoun(query || primary?.name);
           
           if (core) {
@@ -361,7 +343,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             const mapping = defaultMapping[core.toLowerCase()] || { grams: 100, canonicalKey: `generic_${core.toLowerCase()}` };
             const defaultG = mapping.grams;
 
-            // Put generic at the end instead of first
+            // Put generic at the end, only when real results < 3
             list.push({
               id: 'candidate-generic-synthetic',
               name: `Generic ${titleCase(core)}`,
@@ -379,6 +361,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                 servingG: defaultG
               }
             });
+            
+            console.log(`[CANDIDATES][GENERIC_INJECT] reason=low-real count=${realResultCount}`);
           }
         }
       }
@@ -387,11 +371,14 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       const strictCoreNounFilter = (import.meta.env.VITE_CORE_NOUN_STRICT ?? '0') === '1';
       const relevant = strictCoreNounFilter ? list.filter(c => matchesQueryCore(query, c.data)) : list;
 
-      // Ensure minimum choices fallback (reduced for cheap-first)
-      const MIN_CHOICES = 3;
-      let finalList = relevant.length >= MIN_CHOICES ? relevant.slice(0, 8) : list.slice(0, Math.min(8, list.length));
+      // Cap to 8 candidates max, keep relevance order from search results
+      let finalList = relevant.slice(0, 8);
       
-      // Don't sort generics first for cheap-first mode - keep relevance order
+      // Ensure we have some results - if strict filtering removed everything, keep original list
+      if (finalList.length === 0 && list.length > 0) {
+        finalList = list.slice(0, 8);
+      }
+      
       return finalList;
     }
 

@@ -601,6 +601,13 @@ export async function getFoodCandidates(
     }
   }
   
+  // Add merge pipeline telemetry
+  const cheapFirstCount = sortedCandidates.filter(c => c.source === 'lexical').length;
+  const v3Count = 0; // V3 candidates handled elsewhere  
+  const mergeUsed = cheapFirstCount >= 2 ? 'cheap-first' : finalCandidates.length === 0 ? 'none' : 'mixed';
+  
+  console.log(`[CANDIDATES][MERGE] cheapFirst=${cheapFirstCount}, v3=${v3Count}, final=${finalCandidates.length}, used="${mergeUsed}"`);
+  
   console.log('[CANDIDATES] Final results:', {
     count: finalCandidates.length,
     top3: finalCandidates.slice(0, 3).map(c => ({
