@@ -524,29 +524,32 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     inputRef.current?.focus();
   };
 
-  // Manual entry name-only fallback (for error state)
+  // Manual entry name-only fallback (for error state) - now goes through modal
   const handleManualEntry = async () => {
     if (!foodName.trim()) return;
     
-    console.log('[FLOW][MANUAL_ENTRY]', { name: foodName.trim() });
+    console.log('[FLOW][MANUAL_ENTRY_FALLBACK]', { name: foodName.trim() });
     
-    // Create basic manual entry
-    const manualData = {
+    // Create minimal candidate for modal
+    const fallbackCandidate = {
+      id: 'manual-fallback',
       name: foodName.trim(),
-      calories: 0,
-      protein_g: 0,
-      carbs_g: 0,
-      fat_g: 0,
-      servingGrams: 100,
-      source: 'manual',
-      mealType: 'lunch',
-      userConfirmed: true
+      classId: 'generic',
+      providerRef: 'generic' as const,
+      baseServingG: 100
     };
     
-    if (onResults) {
-      onResults([manualData]);
-    }
-    handleClose();
+    // Trigger modal with minimal data
+    manualFlow.setState(prev => ({
+      ...prev,
+      selectedCandidate: fallbackCandidate,
+      enrichmentReady: true,
+      portionDraft: {
+        ingredientsList: [],
+        nutrition: {},
+        servingGrams: 100
+      }
+    }));
   };
 
   // Handle modal close
