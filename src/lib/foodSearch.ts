@@ -119,8 +119,8 @@ export async function searchFoodByName(
       try {
         vaultHits = await nvSearch(trimmedQuery, NV_MAX_RESULTS);
         
-        // If we have enough vault hits, return them immediately
-        if (vaultHits.length >= NV_MIN_HITS) {
+        // If we have any vault hits, use them (lowered gate for testing)
+        if (vaultHits.length > 0) {
           console.log(`[SUGGEST][PIPE] vault=${vaultHits.length} cheap=0 final=${vaultHits.length}`);
           return vaultHits.map(transformVaultToCanonical).slice(0, maxResults);
         }

@@ -131,7 +131,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[NV][WRITE] provider=${provider} id=${finalItemId} upserted=true`);
+    console.log(`[NV][WRITE] ok provider=${provider} name="${name}" id=${provider_ref} upserted=true`);
 
     return new Response(JSON.stringify({ 
       ok: true, 

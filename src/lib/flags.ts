@@ -60,4 +60,4 @@ export const NV_MIN_PREFIX =
   Number(import.meta.env.VITE_NV_MIN_PREFIX ?? '3');
 
 export const NV_MIN_HITS = 
-  Number(import.meta.env.VITE_NV_MIN_HITS ?? '4');
+  Number(import.meta.env.VITE_NV_MIN_HITS ?? '1');

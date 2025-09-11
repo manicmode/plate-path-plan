@@ -26,3 +26,6 @@ verify_jwt = true
 
 [functions.nv-write]
 verify_jwt = true
+
+[functions.nv-stats]
+verify_jwt = false
