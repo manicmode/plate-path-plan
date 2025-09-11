@@ -463,20 +463,35 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     classId: (currentFoodItem as any)?.classId || 'generic_food',
   }), [currentFoodItem]);
 
-  // Normalized ingredient list for UI - resolve once; do not read legacy 'ingredients'
+  // Read only ingredientsList field for ingredients
   const ingredientsList = useMemo(() => {
-    const i = (currentFoodItem as any);
-    if (Array.isArray(i?.ingredientsList)) return i.ingredientsList;
-    if (Array.isArray(i?.ingredients)) return i.ingredients.map((ing: any) => ing.name || ing);
-    if (typeof i?.ingredientsText === 'string') {
-      return i.ingredientsText.split(',').map((s: string) => s.trim()).filter(Boolean);
-    }
-    return [];
-  }, [currentFoodItem?.id, currentFoodItem?.name, currentFoodItem?.calories, (currentFoodItem as any)?.ingredientsList]);
+    const list = (currentFoodItem as any)?.ingredientsList;
+    return Array.isArray(list) ? list : [];
+  }, [currentFoodItem?.id, (currentFoodItem as any)?.ingredientsList]);
 
   const hasIngredients = ingredientsList.length > 0;
 
-  // Log for verification
+  // Fixed container class, not coupled to hasIngredients
+  const cardLayoutClass = 'food-confirm-card fixed-layout';
+
+  // Header chips: no wrap/overflow
+  const headerChipsClass = 'flex items-center gap-2 flex-nowrap overflow-hidden';
+  const chipClass = 'flex-shrink-0 truncate max-w-32';
+
+  // Expose debug function
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__dumpConfirmState = () => ({
+        sha: '2025-09-11-fix',
+        route: 'FoodConfirmationCard',
+        itemKeys: Object.keys(currentFoodItem || {}),
+        ingredientsList: ingredientsList.slice(0, 5),
+        hasIngredients,
+        classes: { cardLayoutClass, headerChipsClass },
+        normalizedItem
+      });
+    }
+  }, [currentFoodItem, ingredientsList, hasIngredients, cardLayoutClass, headerChipsClass, normalizedItem]);
   console.log('[CONFIRM][VERIFICATION]', {
     source: currentFoodItem?.source,
     enrichmentSource: (currentFoodItem as any)?.enrichmentSource,
@@ -1279,16 +1294,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                         <div className="font-medium text-sm text-gray-900 dark:text-white truncate">
                           {candidate.name}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 card-chips" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap', overflow: 'hidden' }}>
-                          <span>{candidate.calories} cal</span>
-                           <span className={`text-xs ${
-                             labelFromFlags(candidate.flags || {}) === 'Generic' 
-                               ? 'text-green-600 dark:text-green-400' 
-                               : 'text-orange-600 dark:text-orange-400'
-                           }`} style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: '33%' }}>
-                             {labelFromFlags(candidate.flags || {})}
-                           </span>
-                        </div>
+                         <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 flex-nowrap overflow-hidden">
+                           <span className="flex-shrink-0 truncate max-w-32">{candidate.calories} cal</span>
+                            <span className={`flex-shrink-0 truncate max-w-32 text-xs ${
+                              labelFromFlags(candidate.flags || {}) === 'Generic' 
+                                ? 'text-green-600 dark:text-green-400' 
+                                : 'text-orange-600 dark:text-orange-400'
+                            }`}>
+                              {labelFromFlags(candidate.flags || {})}
+                            </span>
+                         </div>
                       </button>
                     ));
                   })()}
@@ -1774,8 +1789,34 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         onIngredientsSubmit={handleManualIngredientSubmit}
         productName={currentFoodItem?.name || ''}
       />
+
+      {/* Debug Overlay */}
+      {(new URLSearchParams(window.location.search).get('debug') === 'confirm' || 
+        localStorage.getItem('debugConfirm') === 'true') && (
+        <div className="fixed top-4 right-4 bg-black/90 text-white text-xs p-3 rounded-lg max-w-sm z-50 font-mono">
+          <div className="mb-2 font-bold text-yellow-400">🔍 Debug Overlay</div>
+          <div><strong>Route:</strong> FoodConfirmationCard</div>
+          <div><strong>Git SHA:</strong> 2025-09-11-fix</div>
+          <div><strong>Source:</strong> {currentFoodItem?.source}</div>
+          <div><strong>Enrichment:</strong> {(currentFoodItem as any)?.enrichmentSource}</div>
+          <div><strong>Ingredients:</strong> {ingredientsList.length} items</div>
+          <div><strong>First 3:</strong> {ingredientsList.slice(0, 3).join(', ') || 'none'}</div>
+          <div><strong>hasIngredients:</strong> {hasIngredients.toString()}</div>
+          <div><strong>Layout Class:</strong> {cardLayoutClass}</div>
+          <div><strong>Provider:</strong> {normalizedItem.providerRef}</div>
+          <div><strong>Portion Source:</strong> {normalizedItem.portionSource}</div>
+          <div className="mt-2 text-xs text-gray-400">
+            window.__dumpConfirmState() for full data
+          </div>
+        </div>
+      )}
     </>
   );
 };
+
+// Global debug function
+if (typeof window !== 'undefined') {
+  // Need access to component state - will be set from inside component
+}
 
 export default FoodConfirmationCard;

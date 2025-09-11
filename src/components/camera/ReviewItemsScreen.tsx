@@ -166,12 +166,12 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           const enrichedInput = { ...m, nutrients: r.nutrients, serving: r.serving };
           const merged = toLegacyFoodItem(enrichedInput, i, true);
           
-          // Write to store using canonical ID
+          // Write to store using canonical ID - preserve ingredients from merged data
           storeUpdates[canonicalId] = {
             perGram: merged.nutrition?.perGram || {},
             healthScore: 0,
             flags: [],
-            ingredients: [],
+            ingredients: merged.analysis?.ingredients || [], // Use ingredients from analysis field
             __hydrated: true,
             updatedAt: Date.now(),
           };

@@ -3,6 +3,8 @@ import { supabase } from '@/lib/supabase';
 import { NV_WRITE_THROUGH } from '@/lib/flags';
 import { nvWrite } from '@/lib/nutritionVault';
 import { enrichFromGeneric } from '@/lib/food/generic';
+import { normalizeIngredients } from '@/utils/normalizeIngredients';
+import { fetchCanonicalNutrition } from '@/lib/food/fetchCanonicalNutrition';
 
 interface Nutrients {
   calories: number;
@@ -27,6 +29,7 @@ interface EnrichedFood {
   aliases: string[];
   locale: string;
   ingredients: { name: string; grams?: number; amount?: string }[];
+  ingredientsList?: string[]; // Add ingredientsList field
   per100g: Nutrients;
   perServing?: Nutrients & { serving_grams?: number };
   source: "FDC" | "EDAMAM" | "NUTRITIONIX" | "CURATED" | "ESTIMATED" | "GENERIC";
@@ -64,22 +67,24 @@ export function useManualFoodEnrichment() {
         selectedCandidate.canonicalKey || selectedCandidate.name
       );
       
-      // For diagnostic: log present keys
-      console.log('[ENRICH][GENERIC][KEYS]', { 
-        genericHasIngredients: false,
-        canonicalKey: selectedCandidate.canonicalKey,
-        computed: ['name', 'per100g', 'portions']
-      });
+      // Fetch canonical ingredients for all generic items
+      let ingredientsList: string[] = [];
+      if (selectedCandidate.canonicalKey) {
+        try {
+          const canonicalData = await fetchCanonicalNutrition(selectedCandidate.canonicalKey);
+          ingredientsList = normalizeIngredients(canonicalData);
+          console.log('[ENRICH][GENERIC][CANONICAL]', { 
+            canonicalKey: selectedCandidate.canonicalKey,
+            ingredientsFound: ingredientsList.length,
+            first3: ingredientsList.slice(0, 3)
+          });
+        } catch (error) {
+          console.warn('[ENRICH][GENERIC][CANONICAL-FAILED]', error);
+        }
+      }
       
-      const baseIngredients = selectedCandidate.canonicalKey && selectedCandidate.classId === 'club_sandwich' 
-        ? [
-            { name: 'Bread', grams: 60 },
-            { name: 'Turkey', grams: 45 },
-            { name: 'Bacon', grams: 15 },
-            { name: 'Lettuce', grams: 15 },
-            { name: 'Tomato', grams: 15 }
-          ]
-        : [];
+      // Convert to ingredient objects format
+      const baseIngredients = ingredientsList.map(name => ({ name }));
       
       return {
         name: selectedCandidate.name, // Keep exact name from selection
@@ -89,7 +94,8 @@ export function useManualFoodEnrichment() {
         canonicalKey: selectedCandidate.canonicalKey,
         aliases: [],
         locale: locale || 'en',
-        ingredients: baseIngredients, // Don't blank ingredients
+        ingredients: baseIngredients, // Preserve canonical ingredients
+        ingredientsList, // Add normalized list for adapter
         per100g: {
           calories: genericData.per100g.kcal,
           protein: genericData.per100g.protein_g,

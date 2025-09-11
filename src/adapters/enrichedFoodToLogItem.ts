@@ -22,8 +22,10 @@ export function enrichedFoodToLogItem(x: EnrichedFood, portionGrams: number = 10
     ingredientsAvailable: (x.ingredients ?? []).length > 0,
     ingredientsText: (x.ingredients ?? []).map(i => i.name).join(', '),
     
-    // Unified ingredient field for UI
-    ingredientsList: normalizeIngredients(x),
+    // Unified ingredient field for UI - preserve if already normalized
+    ingredientsList: Array.isArray(x?.ingredientsList) 
+      ? x.ingredientsList 
+      : normalizeIngredients(x),
     
     // Scaled macros for the specified portion size
     calories: Math.round((per100.calories ?? 0) * scale),
