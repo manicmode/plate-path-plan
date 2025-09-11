@@ -11,7 +11,22 @@ interface Props {
 }
 
 export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCancel }: Props) {
-  const [portionSize, setPortionSize] = useState(enrichedData?.servingGrams ?? 100);
+  // All hooks declared unconditionally at top
+  const [portionSize, setPortionSize] = useState(() => enrichedData?.servingGrams || 100);
+
+  // Guard render logic (not hooks)
+  if (!candidate || !enrichedData) {
+    return (
+      <div className="fixed inset-0 grid place-items-center bg-black/40 z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+          <div className="animate-pulse space-y-4">
+            <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleContinue = () => {
     console.log('[DIALOG][COMMIT]', { 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 export interface ManualFlowState {
   selectedCandidate: any | null;
@@ -20,17 +20,19 @@ export function useManualFlowStatus() {
   const preConfirmReady =
     state.enrichmentReady && state.nutritionReady && state.uiCommitted;
 
+  const reset = useCallback(() => 
+    setState({
+      selectedCandidate: null,
+      enrichmentReady: false,
+      nutritionReady: false,
+      uiCommitted: false,
+      portionDraft: null
+    }), []);
+
   return {
     ...state,
     preConfirmReady,
     setState,
-    reset: () =>
-      setState({
-        selectedCandidate: null,
-        enrichmentReady: false,
-        nutritionReady: false,
-        uiCommitted: false,
-        portionDraft: null
-      })
+    reset
   };
 }

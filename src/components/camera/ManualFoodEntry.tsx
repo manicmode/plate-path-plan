@@ -133,12 +133,15 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   onClose,
   onResults
 }) => {
+  // All hooks declared unconditionally at top
   const manualFlow = useManualFlowStatus();
-  // State
   const [state, setState] = useState<ModalState>('idle');
   const [foodName, setFoodName] = useState('');
   const [candidates, setCandidates] = useState<LocalCandidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<LocalCandidate | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
+  const [enriched, setEnriched] = useState<any>(null);
   
   // Track loading & suggestion availability for button guarding
   const isSearching = state === 'searching';
@@ -152,7 +155,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showMoreCandidates, setShowMoreCandidates] = useState(false);
   const [recentItems, setRecentItems] = useState<string[]>([]);
-  const [enrichedData, setEnrichedData] = useState<any>(null);
 
   // Refs
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
@@ -179,21 +181,50 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
   }, [isOpen]);
   
-  // Gate: show portion dialog once enriched, until user commits
-  if (manualFlow.selectedCandidate && manualFlow.enrichmentReady && !manualFlow.uiCommitted) {
-    return (
-      <ManualPortionDialog
-        candidate={manualFlow.selectedCandidate}
-        enrichedData={manualFlow.portionDraft}
-        onContinue={(finalData) => {
-          console.log('[DIALOG][COMMIT]', { hasIngredients: !!finalData?.ingredientsList?.length });
-          manualFlow.setState(s => ({ ...s, uiCommitted: true }));
-          onResults?.([finalData]); // downstream route handler receives enriched item
-        }}
-        onCancel={() => manualFlow.reset()}
-      />
-    );
-  }
+  // Enrichment effect - runs when candidate is selected
+  useEffect(() => {
+    let dead = false;
+    const run = async () => {
+      if (!manualFlow.selectedCandidate || manualFlow.enrichmentReady) return;
+      
+      console.log('[MANUAL][SELECT]', { 
+        isGeneric: manualFlow.selectedCandidate?.isGeneric, 
+        canonicalKey: manualFlow.selectedCandidate?.canonicalKey 
+      });
+      
+      try {
+        setIsLoading(true);
+        manualFlow.setState(s => ({ ...s, enrichmentReady: false, nutritionReady: false }));
+        
+        const enrichedData = await enrichCandidate(manualFlow.selectedCandidate);
+        if (dead) return;
+        
+        console.log('[ENRICH][DONE]', { 
+          hasIngredients: !!enrichedData?.ingredientsList?.length,
+          count: enrichedData?.ingredientsList?.length || 0
+        });
+        
+        setEnriched(enrichedData);
+        manualFlow.setState(s => ({
+          ...s,
+          enrichmentReady: true,
+          nutritionReady: true,
+          portionDraft: enrichedData
+        }));
+        
+        console.log('[DIALOG][OPEN]');
+        setShowDialog(true);
+        
+      } catch (error) {
+        console.error('[ENRICH][ERROR]', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    run();
+    return () => { dead = true; };
+  }, [manualFlow.selectedCandidate, manualFlow.enrichmentReady]);
 
   // Telemetry logging
   const logTelemetry = (event: string, data?: any) => {
@@ -207,7 +238,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     if (!query.trim()) {
       setCandidates([]);
       setState('idle');
-      setEnrichedData(null);
+      setEnriched(null);
       return;
     }
 
@@ -254,7 +285,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           const count = Math.min(items.length, 8); // Limit to 5-8 suggestions
           console.log(`[SUGGEST][CHEAP_FIRST] count=${count}, sources=[fdc,off]`);
           logTelemetry('FALLBACK', { itemCount: count });
-          setEnrichedData(null);
+          setEnriched(null);
 
           // Process candidates from fallback (V3 returns full list now)
           const candidates = processCandidates(items, query);
@@ -279,7 +310,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         if (enriched) {
           // Use enriched data
           logTelemetry('ENRICHED', { source: enriched.source, confidence: enriched.confidence });
-          setEnrichedData(enriched);
+          setEnriched(enriched);
           
           // Convert to candidate format
           const enrichedCandidate: LocalCandidate = {
@@ -325,7 +356,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             [];
 
           logTelemetry('FALLBACK', { itemCount: items.length });
-          setEnrichedData(null);
+          setEnriched(null);
           // Process candidates from fallback
           const candidates = processCandidates(items, query);
           setCandidates(candidates);
@@ -337,7 +368,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       // No results from either path
       setCandidates([]);
       setState('idle');
-      setEnrichedData(null);
+      setEnriched(null);
       
     } catch (error) {
       // Check if this error is still relevant
@@ -626,13 +657,13 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       );
 
       if (onResults) {
-        const enriched = enrichedData;
+        const enrichedItem = enriched;
         console.log("[CONFIRM][ENRICHED]", {
-          name: enriched?.name,
-          source: enriched?.source,
-          confidence: enriched?.confidence,
-          ingLen: enriched?.ingredients?.length ?? 0,
-          perServingG: enriched?.perServing?.serving_grams,
+          name: enrichedItem?.name,
+          source: enrichedItem?.source,
+          confidence: enrichedItem?.confidence,
+          ingLen: enrichedItem?.ingredients?.length ?? 0,
+          perServingG: enrichedItem?.perServing?.serving_grams,
         });
         
         onResults(scaledItems);
@@ -1016,17 +1047,17 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                     </>
                   ) : (
                     <>
-                      <Zap className="h-4 w-4 mr-2" />
-                      Add Item
-                    </>
-                  )}
-                </Button>
-              </motion.div>
-            </div>
-          </div>
-        </motion.div>
-      </DialogContent>
-    </Dialog>
+                       <Zap className="h-4 w-4 mr-2" />
+                       Add Item
+                     </>
+                   )}
+                 </Button>
+               </motion.div>
+             </div>
+           </div>
+         </motion.div>
+       </DialogContent>
+     </Dialog>
     </>
   );
 };

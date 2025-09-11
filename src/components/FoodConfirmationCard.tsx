@@ -261,13 +261,26 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const isNutritionReady = perGramReady
     || ((useHydration && !isBarcodeSource) ? (perGramSum > 0) : true);
   
-  // Check enrichment readiness early
+  // Check enrichment readiness early - render skeleton instead of early return
   if (!foodItem?.enrichmentSource || !Array.isArray(foodItem?.ingredientsList)) {
     console.log('[CONFIRM][NOT_READY]', { 
       enrichment: !!foodItem?.enrichmentSource, 
       hasList: Array.isArray(foodItem?.ingredientsList) 
     });
-    return null;
+    return (
+      <div className="fixed inset-0 grid place-items-center bg-black/40 z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+          <div className="animate-pulse space-y-4">
+            <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-200 rounded"></div>
+              <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Build and route sentinels on mount
