@@ -9,6 +9,13 @@ import { parseQuery, ParsedFacets } from '../text/parse';
 import { searchFoodByName, CanonicalSearchResult } from '@/lib/foodSearch';
 import { significantTokens } from './lexical';
 
+// Helper for badge labeling
+export function labelFromFlags(f?: {generic?:boolean; brand?:boolean; restaurant?:boolean}) {
+  if (f?.brand || f?.restaurant) return 'Brand';
+  if (f?.generic) return 'Generic';
+  return 'Generic'; // default safe
+}
+
 // --- BEGIN local helpers (generic detection + relevance) ---
 const _norm = (s?: string) =>
   (s || '').toLowerCase().normalize('NFKD').replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -54,16 +61,22 @@ const matchesQueryCore = (q: string, candidate: any): boolean => {
 // --- END local helpers ---
 
 export interface Candidate {
-  id: string;
+  id?: string;                       // internal key if we have one
+  provider?: 'edamam'|'nutritionix'|'cache'|'generic';
+  providerRef?: string;              // foodId / nix_item_id
+  canonicalKey?: string;             // our vault canonical key if present
   name: string;
-  kind: 'generic' | 'brand' | 'unknown';
-  brand?: string;          // real brand name from provider
-  classId?: string;        // used for portion defaults
+  brand?: string|null;
+  classId?: string|null;
+  flags?: { generic?: boolean; brand?: boolean; restaurant?: boolean };
+  portionDefs?: any[]|null;
+  per100g?: any|null;
+  source: 'lexical' | 'alias' | 'embedding' | 'reranked' | 'manual_suggest';
+  kind?: 'generic' | 'brand' | 'unknown';        // legacy field
   facets?: Record<string, string[]>;
   score: number;
   confidence: number;
   explanation: string;
-  source: 'lexical' | 'alias' | 'embedding' | 'reranked';
   imageUrl?: string;
   servingGrams?: number;
   servingText?: string;

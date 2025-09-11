@@ -24,6 +24,7 @@ import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
 import { DataSourceChip } from '@/components/ui/data-source-chip';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import { sourceBadge } from '@/utils/helpers/sourceBadge';
+import { labelFromFlags, type Candidate as SearchCandidate } from '@/lib/food/search/getFoodCandidates';
 
 interface ManualFoodEntryProps {
   isOpen: boolean;
@@ -34,7 +35,7 @@ interface ManualFoodEntryProps {
 type ModalState = 'idle' | 'searching' | 'candidates' | 'loading' | 'error';
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | '';
 
-interface Candidate {
+interface LocalCandidate {
   id: string;
   name: string;
   isGeneric: boolean;
@@ -43,6 +44,12 @@ interface Candidate {
   provider?: string;
   imageUrl?: string;
   data?: any; // Store original data for later use
+  // NEW: stable identity fields
+  providerRef?: string;
+  canonicalKey?: string;
+  brand?: string|null;
+  classId?: string|null;
+  flags?: { generic?: boolean; brand?: boolean; restaurant?: boolean };
 }
 
 const SUGGESTION_PHRASES = [
@@ -126,8 +133,13 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   // State
   const [state, setState] = useState<ModalState>('idle');
   const [foodName, setFoodName] = useState('');
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [candidates, setCandidates] = useState<LocalCandidate[]>([]);
+  const [selectedCandidate, setSelectedCandidate] = useState<LocalCandidate | null>(null);
+  
+  // Track loading & suggestion availability for button guarding
+  const isSearching = state === 'searching';
+  const hasSuggestions = candidates.length > 0;
+  const canAdd = !isSearching && selectedCandidate != null;
   const [portionAmount, setPortionAmount] = useState<number>(100);
   const [portionUnit, setPortionUnit] = useState('g');
   const [amountEaten, setAmountEaten] = useState([100]);
@@ -233,7 +245,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           setEnrichedData(enriched);
           
           // Convert to candidate format
-          const enrichedCandidate: Candidate = {
+          const enrichedCandidate: LocalCandidate = {
             id: 'enriched-primary',
             name: sanitizeName(enriched.name),
             isGeneric: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7,
@@ -243,7 +255,13 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
               unit: 'g' 
             },
             provider: sourceBadge(enriched.source).label.toLowerCase(),
-            data: enrichedFoodToLogItem(enriched, 100)
+            data: enrichedFoodToLogItem(enriched, 100),
+            // NEW: stable identity fields
+            flags: {
+              generic: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7,
+              brand: false,
+              restaurant: false
+            }
           };
 
           setCandidates([enrichedCandidate]);
@@ -312,7 +330,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   };
 
   // Extract candidate processing logic for reuse
-  const processCandidates = (items: any[], query: string): Candidate[] => {
+  const processCandidates = (items: any[], query: string): LocalCandidate[] => {
     const src: any[] = Array.isArray(items) ? items : [];
 
     console.log('[CANDIDATES][PROCESS_START]', { sourceCount: src.length });
@@ -369,7 +387,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     console.log('[DEDUP][COMPLETE]', { beforeDedup: src.length, afterDedup: finalList.length });
     console.log('[MANUAL][RENDER_LIST]', { ui_render_count: finalList.length, query });
 
-    // Map to Candidate format
+    // Map to LocalCandidate format with stable identity
     return finalList.map((item, index) => ({
       id: `candidate-${index}`,
       name: sanitizeName(item.name),
@@ -378,7 +396,17 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       defaultPortion: { amount: item?.servingGrams || 100, unit: 'g' },
       provider: item?.provider || item?.kind,
       imageUrl: item?.imageUrl,
-      data: { ...item, brand: item?.brand } // Ensure brand is passed through
+      data: { ...item, brand: item?.brand },
+      // NEW: stable identity fields
+      providerRef: item?.id || item?.providerRef,
+      canonicalKey: item?.canonicalKey,
+      brand: item?.brand || null,
+      classId: item?.classId || null,
+      flags: {
+        generic: looksGeneric(item),
+        brand: !!(item?.brand || item?.brands),
+        restaurant: item?.kind === 'restaurant'
+      }
     }));
   };
 
@@ -399,8 +427,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     };
   }, [foodName, debouncedSearch]);
 
-  // Handle candidate selection
-  const handleCandidateSelect = (candidate: Candidate) => {
+  // Handle candidate selection - use exact candidate without re-lookup
+  const handleCandidateSelect = (candidate: LocalCandidate) => {
     setSelectedCandidate(candidate);
     setFoodName(candidate.name);
     
@@ -410,9 +438,12 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       setPortionUnit(candidate.defaultPortion.unit);
     }
 
-    logTelemetry('SELECT', { 
+    const labelKind = labelFromFlags(candidate.flags);
+    console.info('[MANUAL][SELECT]', { 
       name: candidate.name, 
-      generic: candidate.isGeneric 
+      provider: candidate.provider, 
+      key: candidate.providerRef ?? candidate.canonicalKey, 
+      labelKind 
     });
   };
 
@@ -422,11 +453,25 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     inputRef.current?.focus();
   };
 
-  // Handle form submission
+  // Handle form submission with proper guards
   const handleSubmit = async () => {
-    if (!foodName.trim()) {
-      toast.error('Please enter a food name');
-      return;
+    if (!canAdd) {
+      if (isSearching) {
+        console.info('[MANUAL][GUARD]', { disabled: true, isSearching: true, reason: 'searching' });
+        return;
+      }
+      if (!selectedCandidate) {
+        console.info('[MANUAL][GUARD]', { disabled: true, isSearching: false, reason: 'no selection' });
+        toast.error('Pick an item first.');
+        return;
+      }
+    }
+
+    console.info('[MANUAL][GUARD]', { disabled: false, isSearching: false, reason: 'ok' });
+
+    // Guard against Review modal from manual flow
+    if (selectedCandidate) {
+      console.info('[CONFIRM][OPEN]', { source: 'manual', labelKind: labelFromFlags(selectedCandidate.flags) });
     }
 
     // Check if user selected a candidate - route directly to Confirm

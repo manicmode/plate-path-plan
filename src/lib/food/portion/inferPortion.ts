@@ -72,17 +72,15 @@ export function inferPortion(
     };
   }
   
-  // Strategy 3: Special cases (club sandwich gets better default)
-  if (classId === 'club_sandwich' || /(^| )club sandwich( |$)/i.test(foodName)) {
-    if (facets?.core.includes('generic') || !facets?.core.includes('brand')) {
-      return {
-        grams: 150,
-        unit: '1 sandwich',
-        source: 'class_default',
-        displayText: '150 g (1 sandwich)',
-        confidence: 'high'
-      };
-    }
+  // Strategy 3: Special cases - club sandwich gets better default portions
+  if (classId === 'club_sandwich' || /\bclub\s+sand(wich)?\b/i.test(foodName)) {
+    return {
+      grams: 150,
+      unit: '1 sandwich',
+      source: 'class_default', 
+      displayText: '150 g (1 sandwich)',
+      confidence: 'high'
+    };
   }
   
   // Strategy 4: Map food name to portion class

@@ -21,6 +21,7 @@ export const PORTION_DEFAULTS = {
   bread_slice:    { unit: 'slice', grams: 25 },
   taco_shell:     { unit: 'taco',  grams: 75 },
   burrito_whole:  { unit: 'burrito', grams: 200 },
+  club_sandwich:  { unit: 'sandwich', grams: 150 }, // Add club sandwich
 } as const;
 
 export type PortionClass = keyof typeof PORTION_DEFAULTS;
@@ -90,7 +91,7 @@ export const FOOD_CLASS_MAP: Record<string, PortionClass> = {
   
   // Sandwiches
   'sandwich': 'sandwich_whole',
-  'club sandwich': 'sandwich_whole',
+  'club sandwich': 'club_sandwich', // Use specific club_sandwich
   'deli sandwich': 'sandwich_whole',
   
   // Salads
@@ -150,5 +151,33 @@ export const CLASS_TO_GENERIC_SLUG: Record<string, string> = {
   california_roll: 'generic.california_roll', 
   rice_cooked: 'generic.white_rice_cooked',
   egg_large: 'generic.egg_large',
-  oatmeal_cooked: 'generic.oatmeal_dry'
+  oatmeal_cooked: 'generic.oatmeal_dry',
+  club_sandwich: 'generic.club_sandwich' // Add club sandwich mapping
 };
+
+/**
+ * Default portion definitions for specific foods
+ */
+export interface PortionDef {
+  label: string;
+  grams: number;
+  source: 'inferred' | 'provider' | 'vault';
+}
+
+export const CLUB_SANDWICH_PORTIONS: PortionDef[] = [
+  { label: '1 sandwich', grams: 150, source: 'inferred' },
+  { label: '1/2 sandwich', grams: 75, source: 'inferred' },
+  { label: '2 sandwiches', grams: 300, source: 'inferred' }
+];
+
+export function getDefaultPortions(item: any): PortionDef[] {
+  // Only apply to club sandwich with this exact logic
+  if (item.classId === 'club_sandwich' || /\bclub\s+sand(wich)?\b/i.test(item.name)) {
+    // Only use defaults if no provider/vault portion exists
+    if (!item.portionDefs || item.portionDefs.length === 0) {
+      return CLUB_SANDWICH_PORTIONS;
+    }
+  }
+  
+  return [];
+}

@@ -361,6 +361,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   };
 
   const handleConfirmModalComplete = async (foodItem: any) => {
+    // Guard against Review modal from manual flow
+    if (foodItem?.source === 'manual') {
+      console.error('[BUGTRAP] reviewModalOpenFromManual blocked');
+      return;
+    }
     try {
       playFoodLogConfirm();
       lightTap();

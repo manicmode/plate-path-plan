@@ -33,6 +33,8 @@ import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
 import { DialogTitle } from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
+import confetti from 'canvas-confetti';
+import { labelFromFlags } from '@/lib/food/search/getFoodCandidates';
 
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -1205,12 +1207,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
                           <span>{candidate.calories} cal</span>
-                          {candidate.kind === 'generic' && (
-                            <span className="text-green-600 dark:text-green-400 text-xs">Generic</span>
-                          )}
-                          {candidate.kind === 'brand' && (
-                            <span className="text-orange-600 dark:text-orange-400 text-xs">Brand</span>
-                          )}
+                           <span className={`text-xs ${
+                             labelFromFlags(candidate.flags || {}) === 'Generic' 
+                               ? 'text-green-600 dark:text-green-400' 
+                               : 'text-orange-600 dark:text-orange-400'
+                           }`}>
+                             {labelFromFlags(candidate.flags || {})}
+                           </span>
                         </div>
                       </button>
                     ));
