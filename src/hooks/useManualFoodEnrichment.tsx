@@ -20,6 +20,10 @@ interface Nutrients {
 
 interface EnrichedFood {
   name: string;
+  displayName?: string; // Add displayName property
+  selectionFlags?: { generic?: boolean; brand?: boolean; restaurant?: boolean }; // Add selectionFlags
+  selectionId?: string; // Add selectionId
+  canonicalKey?: string; // Add canonicalKey
   aliases: string[];
   locale: string;
   ingredients: { name: string; grams?: number; amount?: string }[];
@@ -48,7 +52,7 @@ export function useManualFoodEnrichment() {
       return null;
     }
 
-    // Handle generic candidates locally
+    // PATCH: Handle generic candidates locally - preserve selection identity
     if (selectedCandidate?.flags?.generic === true) {
       console.info('[ENRICH][GENERIC]', { 
         name: selectedCandidate.name, 
@@ -62,6 +66,10 @@ export function useManualFoodEnrichment() {
       
       return {
         name: selectedCandidate.name, // Keep exact name from selection
+        displayName: selectedCandidate.displayName ?? selectedCandidate.name,
+        selectionFlags: selectedCandidate.flags,
+        selectionId: selectedCandidate.id,
+        canonicalKey: selectedCandidate.canonicalKey,
         aliases: [],
         locale: locale || 'en',
         ingredients: [],

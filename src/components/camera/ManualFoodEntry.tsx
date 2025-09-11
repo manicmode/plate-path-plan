@@ -428,8 +428,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     };
   }, [foodName, debouncedSearch]);
 
-  // Handle candidate selection - use exact candidate without re-lookup
-  const handleCandidateSelect = (candidate: LocalCandidate) => {
+  // Handle candidate selection - route directly to confirmation
+  const handleCandidateSelect = useCallback((candidate: LocalCandidate) => {
     setSelectedCandidate(candidate);
     setFoodName(candidate.name);
     
@@ -446,7 +446,12 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       key: candidate.providerRef ?? candidate.canonicalKey, 
       labelKind 
     });
-  };
+    
+    // Go straight to confirmation (no review modal)
+    if (onResults) {
+      onResults([candidate.data]);
+    }
+  }, [onResults]);
 
   // Handle suggestion chip selection
   const handleSuggestionSelect = (suggestion: string) => {
@@ -456,7 +461,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
   // Handle form submission with proper guards
   const handleSubmit = async () => {
-    if (!canAdd) {
+    if (isSearching || !selectedCandidate) {
       if (isSearching) {
         console.info('[MANUAL][GUARD]', { disabled: true, isSearching: true, reason: 'searching' });
         return;
@@ -470,96 +475,50 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
     console.info('[MANUAL][GUARD]', { disabled: false, isSearching: false, reason: 'ok' });
 
-    // Guard against Review modal from manual flow
+    // Route directly to confirmation for manual single-select (no review modal)
     if (selectedCandidate) {
       console.info('[CONFIRM][OPEN]', { source: 'manual', labelKind: labelFromFlags(selectedCandidate.flags) });
-    }
-
-    // Check if user selected a candidate - route directly to Confirm
-    if (selectedCandidate) {
-      console.log('[MANUAL][SELECT]', { 
-        name: selectedCandidate.name, 
-        source: selectedCandidate.provider || 'unknown' 
-      });
-
+      
       // Calculate portion scaling
       const portionScale = amountEaten[0] / 100;
-      const portionOverrideGrams = portionAmount;
 
-      // If macros are sufficient, go directly to Confirm
-      const hasSufficientMacros = selectedCandidate.data && (
-        selectedCandidate.data.calories > 0 || 
-        selectedCandidate.data.protein_g > 0 || 
-        selectedCandidate.data.carbs_g > 0
-      );
-
-      if (hasSufficientMacros) {
-        // Build single result from selected candidate and route to Confirm
-        const scaledItem = {
-          ...selectedCandidate.data,
-          servingGrams: Math.round((selectedCandidate.data.servingGrams || portionAmount) * portionScale),
-          calories: Math.round((selectedCandidate.data.calories || 0) * portionScale),
-          protein_g: Math.round((selectedCandidate.data.protein_g || 0) * portionScale * 10) / 10,
-          carbs_g: Math.round((selectedCandidate.data.carbs_g || 0) * portionScale * 10) / 10,
-          fat_g: Math.round((selectedCandidate.data.fat_g || 0) * portionScale * 10) / 10,
-          fiber_g: Math.round((selectedCandidate.data.fiber_g || 2) * portionScale * 10) / 10,
-          sugar_g: Math.round((selectedCandidate.data.sugar_g || 3) * portionScale * 10) / 10,
-          source: 'manual',
-          mealType,
-          notes: notes.trim() || undefined
-        };
-
-        if (onResults) {
-          onResults([scaledItem]);
-        }
-
-        handleClose();
-        return;
-      } else {
-        // Run enrichment post-selection for insufficient macros
-        setState('loading');
-        try {
-          const startTime = performance.now();
-          const enriched = await enrichWithFallback(selectedCandidate.name, 'auto');
-          const enrichTime = Math.round(performance.now() - startTime);
-          
-          console.log(`[ENRICH][POST_SELECT] provider=${enriched.enriched?.source || 'fallback'} took=${enrichTime}ms`);
-
-          if (enriched.enriched) {
-            const enrichedItem = enrichedFoodToLogItem(enriched.enriched, portionAmount * portionScale);
-            // Add meal metadata
-            (enrichedItem as any).mealType = mealType;
-            (enrichedItem as any).notes = notes.trim() || undefined;
-            (enrichedItem as any).source = 'manual';
-
-            if (onResults) {
-              onResults([enrichedItem]);
-            }
-            handleClose();
-            return;
-          }
-        } catch (error) {
-          console.error('[ENRICH][POST_SELECT] Failed:', error);
-          // Continue to fallback lookup below
-        }
+      // Prepare the data for confirmation
+      const itemData = {
+        ...selectedCandidate.data,
+        __source: 'manual',
+        selectionFlags: selectedCandidate.flags,
+        selectionId: selectedCandidate.id,
+        providerRef: selectedCandidate.providerRef,
+        canonicalKey: selectedCandidate.canonicalKey,
+        servingGrams: Math.round((selectedCandidate.data?.servingGrams || portionAmount) * portionScale),
+        calories: Math.round((selectedCandidate.data?.calories || 0) * portionScale),
+        protein_g: Math.round((selectedCandidate.data?.protein_g || 0) * portionScale * 10) / 10,
+        carbs_g: Math.round((selectedCandidate.data?.carbs_g || 0) * portionScale * 10) / 10,
+        fat_g: Math.round((selectedCandidate.data?.fat_g || 0) * portionScale * 10) / 10,
+        fiber_g: Math.round((selectedCandidate.data?.fiber_g || 2) * portionScale * 10) / 10,
+        sugar_g: Math.round((selectedCandidate.data?.sugar_g || 3) * portionScale * 10) / 10,
+        mealType,
+        notes: notes.trim() || undefined
+      };
+      
+      if (onResults) {
+        onResults([itemData]);
       }
+      handleClose();
+      return;
     }
 
-    // Lock search to prevent race conditions
+    // Legacy fallback for when no candidate is selected (should not happen)
     searchLockedRef.current = true;
     
-    // Cancel any pending search timeouts
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    // Invalidate any pending search results
     searchGenRef.current++;
-
     setState('loading');
     
     try {
-      // Calculate portion scaling
       const portionScale = amountEaten[0] / 100;
       const portionOverrideGrams = portionAmount;
 
@@ -569,7 +528,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         slider: amountEaten[0]
       });
 
-      // Use existing text lookup with portion override
       const { items } = await submitTextLookup(foodName.trim(), {
         source: 'manual',
         portionOverrideGrams
@@ -577,12 +535,11 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
       if (!items || items.length === 0) {
         setState('error');
-        searchLockedRef.current = false; // Unlock search on error
+        searchLockedRef.current = false;
         toast.error('No nutrition data found. Try a different name or spelling.');
         return;
       }
 
-      // Apply portion scaling
       const scaledItems = items.map((item: any) => ({
         ...item,
         servingGrams: Math.round((item.servingGrams || portionAmount) * portionScale),
@@ -597,7 +554,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         notes: notes.trim() || undefined
       }));
 
-      // Success animation
       confetti({
         particleCount: 12,
         spread: 45,
@@ -605,7 +561,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         colors: ['#10b981', '#34d399', '#6ee7b7']
       });
 
-      // Show success toast
       toast.success(
         <div className="flex items-center gap-2">
           <Check className="h-4 w-4 text-emerald-500" />
@@ -613,9 +568,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         </div>
       );
 
-      // Pass results to parent
       if (onResults) {
-        // A) Log enriched data right before opening Confirm card (ManualEntry)
         const enriched = enrichedData;
         console.log("[CONFIRM][ENRICHED]", {
           name: enriched?.name,
@@ -628,12 +581,11 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         onResults(scaledItems);
       }
 
-      // Close and reset
       handleClose();
 
     } catch (error) {
       setState('error');
-      searchLockedRef.current = false; // Unlock search on error
+      searchLockedRef.current = false;
       logTelemetry('ERROR', { message: (error as Error).message });
       toast.error('Failed to add food. Please try again.');
     }

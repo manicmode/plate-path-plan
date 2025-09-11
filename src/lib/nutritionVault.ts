@@ -75,11 +75,15 @@ export async function nvWrite(payload: NvWritePayload): Promise<{ ok: boolean; i
 
     // Check for non-2xx status codes and log failure details
     if (response.error) {
-      console.error('[NV][WRITE][FAIL]', response.error.message || 'Unknown error', {
+      console.error('[NV][WRITE][FAIL]', 'error', response.error.message || 'Unknown error', {
         provider: payload.provider,
         providerRef: payload.provider_ref,
         name: payload.name
       });
+      // Log response text for debugging
+      if (response.error.message) {
+        console.error('[NV][WRITE][BODY]', response.error.message);
+      }
       return { ok: false };
     }
 
@@ -94,7 +98,7 @@ export async function nvWrite(payload: NvWritePayload): Promise<{ ok: boolean; i
       });
       return { ok: true, id: data.id };
     } else {
-      console.error('[NV][WRITE][FAIL]', data?.error || 'Unknown failure', {
+      console.error('[NV][WRITE][FAIL]', 'no-ok', data?.error || 'Unknown failure', {
         provider: payload.provider,
         providerRef: payload.provider_ref,
         name: payload.name

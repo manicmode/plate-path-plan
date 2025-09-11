@@ -71,10 +71,9 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
   afterLogSuccess,
   context = 'logging' // Default to logging context
 }) => {
-  // Guard against manual source
+  // Hard block ReviewItemsScreen from manual flow
   if ((context as any) === 'manual') {
-    console.warn('[BUGTRAP] review-from-manual blocked');
-    onClose();
+    console.info('[GUARD][REVIEW_MODAL] blocked from manual flow');
     return null;
   }
   // State

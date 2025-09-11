@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
 import { withSafeCancel } from '@/lib/ui/withSafeCancel';
 import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
@@ -94,6 +94,9 @@ interface FoodItem {
   dataSource?: string;
   nutritionKey?: string;
   isGeneric?: boolean;
+  // Selection identity fields
+  flags?: { generic?: boolean; brand?: boolean; restaurant?: boolean };
+  selectionFlags?: { generic?: boolean; brand?: boolean; restaurant?: boolean };
 }
 
 interface FoodConfirmationCardProps {
@@ -200,9 +203,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Confetti timing: fire on next animation frame after mount
   useEffect(() => {
     if (isOpen) {
+      // Schedule on next frame to avoid layout thrash / reflow
       const id = requestAnimationFrame(() => {
-        // Only fire confetti if this is a successful confirmation, not on initial open
-        // We'll move the actual confetti trigger to the confirm handler
+        confetti({
+          particleCount: 50,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
       });
       return () => cancelAnimationFrame(id);
     }
@@ -441,6 +448,19 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
   const isTextItem = (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech';
+  
+  // Use selection flags for badge (not post-enrichment flags)
+  const badge = useMemo(() => {
+    const sourceFlags = (currentFoodItem as any)?.selectionFlags || currentFoodItem?.flags;
+    return labelFromFlags(sourceFlags);
+  }, [currentFoodItem]);
+
+  // Normalize props to avoid layout branch flips
+  const normalizedItem = useMemo(() => ({
+    ...currentFoodItem,
+    portionSource: (currentFoodItem as any)?.portionSource || 'inferred',
+    providerRef: (currentFoodItem as any)?.providerRef || 'generic',
+  }), [currentFoodItem]);
   
   // Normalize name at render level with extractName utility
   const rawName = currentFoodItem?.name ?? 'Unknown Product';
