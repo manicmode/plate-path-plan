@@ -2455,16 +2455,19 @@ export type Database = {
           enabled: boolean
           key: string
           updated_at: string
+          value: Json
         }
         Insert: {
           enabled?: boolean
           key: string
           updated_at?: string
+          value?: Json
         }
         Update: {
           enabled?: boolean
           key?: string
           updated_at?: string
+          value?: Json
         }
         Relationships: []
       }
@@ -2519,6 +2522,7 @@ export type Database = {
           created_at: string
           expires_at: string | null
           id: string
+          low_value: boolean
           query: string
           query_hash: string
           response_data: Json
@@ -2530,6 +2534,7 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
+          low_value?: boolean
           query: string
           query_hash: string
           response_data: Json
@@ -2541,6 +2546,7 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
+          low_value?: boolean
           query?: string
           query_hash?: string
           response_data?: Json
@@ -6317,6 +6323,7 @@ export type Database = {
           id: string
           updated_at: string
           user_id: string
+          value: Json
         }
         Insert: {
           created_at?: string
@@ -6325,6 +6332,7 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id: string
+          value?: Json
         }
         Update: {
           created_at?: string
@@ -6333,6 +6341,7 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+          value?: Json
         }
         Relationships: [
           {
@@ -9439,6 +9448,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: undefined
       }
+      cleanup_food_enrichment_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       cleanup_rank20_dupes: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -9752,6 +9765,10 @@ export type Database = {
         Args: { feature_key: string }
         Returns: boolean
       }
+      is_feature_enabled_jsonb: {
+        Args: { feature_key: string }
+        Returns: Json
+      }
       is_member_of_rank20_group: {
         Args: { group_id_param: string; uid?: string }
         Returns: boolean
@@ -9855,8 +9872,10 @@ export type Database = {
               _limit?: number
             }
         Returns: {
+          avatar_url: string
           body: string
           created_at: string
+          display_name: string
           id: string
           user_id: string
         }[]
@@ -9906,6 +9925,7 @@ export type Database = {
           avatar_url: string
           display_name: string
           points: number
+          rank: number
           streak: number
           user_id: string
         }[]
@@ -10366,6 +10386,10 @@ export type Database = {
       }
       set_user_feature_flag: {
         Args: { enabled_param: boolean; flag_key_param: string }
+        Returns: boolean
+      }
+      set_user_feature_flag_jsonb: {
+        Args: { flag_key_param: string; value_param: Json }
         Returns: boolean
       }
       test_recommendation_performance: {
