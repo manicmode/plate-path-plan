@@ -236,11 +236,10 @@ const debouncedSearch = useCallback(async (query: string) => {
     return;
   }
 
-  // Prevent search when not in search-friendly states
-  if (!(flowState === 'idle' || flowState === 'searching')) {
-    console.log('[SEARCH][GUARD]', { flowState });
-    return;
-  }
+  // Allow search in 'idle', 'searching', and 'candidates'.
+  // Block only during selection/enrichment/modal/confirming.
+  const disallowed = ['candidate_selected','enriching','portion_modal','confirming','done'] as const;
+  if (disallowed.includes(flowState as any)) return;
 
   // Abort any in-flight search
   if (searchAbortRef.current) {
@@ -361,7 +360,32 @@ const debouncedSearch = useCallback(async (query: string) => {
     console.warn('[SEARCH][ERROR]', { message: (error as Error)?.message });
     toast.error('Search failed. Please try again.');
   }
-}, [enrichWithFallback, flowState, selectedCandidate]);
+  }, [enrichWithFallback, flowState, selectedCandidate]);
+
+  const resetEphemeral = useCallback(() => {
+    searchAbortRef.current?.abort();
+    searchGenRef.current++;
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    setFlowState('idle');
+    setCandidates([]);
+    setFoodName('');
+    manualFlow.reset();
+  }, [manualFlow]);
+
+  // Reset when the dialog opens/closes.
+  useEffect(() => {
+    if (isOpen) {
+      resetEphemeral();
+    } else {
+      // closing: just ensure nothing is in flight
+      searchAbortRef.current?.abort();
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    }
+  }, [isOpen, resetEphemeral]);
 
   // Add deduplication helpers
   const slug = (s: string) =>
@@ -474,52 +498,36 @@ const debouncedSearch = useCallback(async (query: string) => {
     }));
   };
 
-  // Search debouncing effect  
+  // Run search when user types, unless we're in a disallowed phase.
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
+    const disallowed = ['candidate_selected','enriching','portion_modal','confirming','done'] as const;
+    if (!disallowed.includes(flowState as any) && foodName.trim().length > 2) {
+      debouncedSearch(foodName);
     }
+  }, [foodName, flowState, debouncedSearch]);
 
-    if (foodName.trim()) {
-      searchTimeoutRef.current = setTimeout(() => {
-        debouncedSearch(foodName);
-      }, 300); // 300ms debounce
-    } else {
-      setCandidates([]);
-      setState('idle');
-      setEnriched(null);
-      setSelectedCandidate(null);
+  // Unmount cleanup
+  useEffect(() => {
+    return () => {
+      searchAbortRef.current?.abort();
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
-    }
-  }, [foodName, debouncedSearch]);
+    };
+  }, []);
 
 // Handle candidate selection - start enrichment and show portion dialog
 const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
-  // Abort any in-flight search and lock new ones
-  if (searchAbortRef.current) {
-    console.log('[SEARCH][ABORT]', { gen: searchGenRef.current });
-    searchAbortRef.current.abort();
+  if (flowState !== 'candidates') return; // guard double click/re-entry
+  console.log('[FLOW][SELECT]', { name: candidate.name, providerRef: candidate.providerRef });
+  searchAbortRef.current?.abort();
+  if (searchTimeoutRef.current) {
+    clearTimeout(searchTimeoutRef.current);
   }
-  searchLockedRef.current = true;
-  setSelectedCandidate(candidate);
-
-  const labelKind = labelFromFlags(candidate.flags);
-  console.log('[FLOW][SELECT]', { 
-    source: candidate.isGeneric ? 'generic' : 'brand',
-    providerRef: candidate.providerRef,
-    classId: candidate.classId,
-    canonicalKey: candidate.canonicalKey,
-    isGeneric: candidate.isGeneric,
-    name: candidate.name, 
-    provider: candidate.provider, 
-    labelKind 
-  });
-
+  console.log('[SEARCH][ABORT]', { reason: 'selection', gen: searchGenRef.current });
   setFlow('candidate_selected');
-  manualFlow.setState(s => ({ ...s, selectedCandidate: candidate, enrichmentReady: false, nutritionReady: false, uiCommitted: false }));
-}, [manualFlow]);
+  manualFlow.setState(prev => ({ ...prev, selectedCandidate: candidate, enrichmentReady: false }));
+}, [manualFlow, flowState]);
 
   // Handle suggestion chip selection
   const handleSuggestionSelect = (suggestion: string) => {
@@ -654,8 +662,8 @@ const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
             onSubmit({ ...manualFlow.portionDraft, ...portionData });
           }}
           onCancel={() => {
-            manualFlow.reset();
-            setSelectedCandidate(null);
+            resetEphemeral();
+            onClose?.();
           }}
         />
       )}
@@ -733,7 +741,17 @@ const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
                       onChange={(e) => setFoodName(e.target.value)}
                       placeholder="What did you eat?"
                       className="text-lg h-14 pl-4 pr-12 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:bg-white/15 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/50 rounded-xl"
-                      disabled={state === 'loading'}
+                      disabled={['candidate_selected','enriching','portion_modal','confirming'].includes(flowState as any)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const disallowed = ['candidate_selected','enriching','portion_modal','confirming','done'] as const;
+                          if (!disallowed.includes(flowState as any)) {
+                            debouncedSearch(foodName);
+                          }
+                        }
+                      }}
                     />
                     
                     {/* Search icon or loading spinner */}
@@ -902,5 +920,7 @@ const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
          </div>
        )}
      </>
-   );
- };
+    );
+  };
+
+  export default ManualFoodEntry;
