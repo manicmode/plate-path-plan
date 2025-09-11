@@ -120,7 +120,8 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
       };
     }
 
-    // Log candidate pipeline telemetry
+    // Log candidate pipeline telemetry (v3 specific)
+    // Note: Final consolidated log moved to getFoodCandidates.ts
     console.log(`[CANDIDATES][PIPE] incoming=${candidates.length}, after_alias=${candidates.length}, deduped=${candidates.length}, capped=${Math.min(candidates.length, 8)}`);
     
     // Return low-confidence for very few candidates but don't throw

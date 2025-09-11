@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { expandAliases, normalizeQuery } from '../text/food_aliases';
 import { parseQuery, ParsedFacets } from '../text/parse';
 import { searchFoodByName, CanonicalSearchResult } from '@/lib/foodSearch';
+import { significantTokens } from './lexical';
 
 // --- BEGIN local helpers (generic detection + relevance) ---
 const _norm = (s?: string) =>
@@ -612,6 +613,27 @@ export async function getFoodCandidates(
   let sortedCandidates = Array.from(candidates.values())
     .sort((a, b) => b.score - a.score);
   
+  // Apply AND semantics for manual typing (require all significant tokens ≥3 chars)
+  const sig = significantTokens(normalizedQuery, 3);
+  const isManualTyping = options?.source === 'manual';
+
+  function hasAllTokens(text: string, toks: string[]) {
+    const t = text.toLowerCase();
+    return toks.every(tok => t.includes(tok));
+  }
+
+  if (isManualTyping && sig.length >= 2) {
+    sortedCandidates = sortedCandidates.filter(c => {
+      const hay = `${c.name} ${c.brand ?? ''} ${((c as any).aliases ?? []).join(' ')}`.toLowerCase();
+      return hasAllTokens(hay, sig);
+    });
+    console.log('[CANDIDATES][AND_FILTER]', { 
+      tokens: sig, 
+      before: Array.from(candidates.values()).length, 
+      after: sortedCandidates.length 
+    });
+  }
+  
   // Apply generic preference and interleaving
   if (options.preferGeneric) {
     const generics = sortedCandidates.filter(c => c.kind === 'generic');
@@ -890,6 +912,18 @@ export async function getFoodCandidates(
     });
   }
   
+  // Log final pipeline results (after alias, filters, dedup, generic-inject, and cap)
+  console.log('[SUGGEST][PIPE]', {
+    source: options?.source,
+    q: normalizedQuery,
+    vault: 0, // vault hits will be logged separately when vault is integrated
+    cheap: Array.from(candidates.values()).length, // raw cheap results count
+    incoming: Array.from(candidates.values()).length,
+    after_alias: Array.from(candidates.values()).length, // alias expansion done in search
+    deduped: sortedCandidates.length,
+    final: finalCandidates.length // should match UI tiles
+  });
+
   return finalCandidates;
 }
 

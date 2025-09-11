@@ -72,7 +72,20 @@ export function inferPortion(
     };
   }
   
-  // Strategy 3: Map food name to portion class
+  // Strategy 3: Special cases (club sandwich gets better default)
+  if (classId === 'club_sandwich' || /(^| )club sandwich( |$)/i.test(foodName)) {
+    if (facets?.core.includes('generic') || !facets?.core.includes('brand')) {
+      return {
+        grams: 150,
+        unit: '1 sandwich',
+        source: 'class_default',
+        displayText: '150 g (1 sandwich)',
+        confidence: 'high'
+      };
+    }
+  }
+  
+  // Strategy 4: Map food name to portion class
   const normalizedName = foodName.toLowerCase();
   
   for (const [pattern, portionClass] of Object.entries(FOOD_CLASS_MAP)) {
@@ -100,8 +113,8 @@ export function inferPortion(
     }
   }
   
-  // Strategy 4: Fallback to 100g
-  console.log('[PORTION][INFER] from: fallback');
+    // Strategy 4: Fallback to 100g
+    console.log('[PORTION][INFER] from: fallback');
   return {
     grams: 100,
     unit: 'custom amount',
