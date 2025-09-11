@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.gpt-vision-selftest]
 verify_jwt = false
+
+[functions.nv-search]
+verify_jwt = true
+
+[functions.nv-write]
+verify_jwt = true

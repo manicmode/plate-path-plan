@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { NV_WRITE_THROUGH } from '@/lib/flags';
+import { nvWrite } from '@/lib/nutritionVault';
 
 interface Nutrients {
   calories: number;
@@ -71,6 +73,44 @@ export function useManualFoodEnrichment() {
 
       if (data) {
         console.log(`[ENRICH][SUCCESS] Source: ${data.source}, Confidence: ${data.confidence}`);
+        
+        // NEW: Write-through to vault if enabled and from paid provider
+        if (NV_WRITE_THROUGH && (data.source === 'EDAMAM' || data.source === 'NUTRITIONIX')) {
+          try {
+            const payload = {
+              provider: data.source.toLowerCase() as 'edamam' | 'nutritionix',
+              provider_ref: data.source_id || `${data.source.toLowerCase()}-${Date.now()}`,
+              name: data.name,
+              brand: undefined, // EnrichedFood doesn't have brand field
+              class_id: undefined,
+              region: 'US',
+              per100g: {
+                kcal: data.per100g.calories,
+                protein_g: data.per100g.protein,
+                carbs_g: data.per100g.carbs,
+                fat_g: data.per100g.fat,
+                fiber_g: data.per100g.fiber,
+                sugar_g: data.per100g.sugar,
+                sodium_mg: data.per100g.sodium
+              },
+              portion_defs: data.perServing ? {
+                serving_grams: data.perServing.serving_grams,
+                nutrition: data.perServing
+              } : undefined,
+              attribution: `Source: ${data.source}`,
+              aliases: data.aliases.length > 0 ? data.aliases : undefined
+            };
+
+            const result = await nvWrite(payload);
+            if (result.ok) {
+              console.log(`[NV][WRITE] provider=${data.source} id=${result.id}`);
+            }
+          } catch (error) {
+            console.error('[NV][WRITE] Write-through failed:', error);
+            // Don't fail the enrichment for vault write errors
+          }
+        }
+        
         return data;
       }
 

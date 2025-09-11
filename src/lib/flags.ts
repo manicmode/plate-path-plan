@@ -45,3 +45,10 @@ export const MANUAL_GENERIC_FALLBACK =
 
 export const BRAND_VARIETY_BIAS =
   Number(import.meta.env.VITE_BRAND_VARIETY_BIAS ?? '0.3'); // 0..1 variety weight
+
+// Nutrition Vault flags
+export const NV_READ_THEN_CHEAP = import.meta.env.VITE_NV_READ_THEN_CHEAP === '1';
+export const NV_WRITE_THROUGH = import.meta.env.VITE_NV_WRITE_THROUGH !== '0'; // default ON
+export const NV_MAX_RESULTS = Number(import.meta.env.VITE_NV_MAX_RESULTS ?? '8');
+export const NV_MIN_PREFIX = Number(import.meta.env.VITE_NV_MIN_PREFIX ?? '3');
+export const NV_MIN_HITS = Number(import.meta.env.VITE_NV_MIN_HITS ?? '4');

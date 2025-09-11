@@ -4,6 +4,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { isFeatureEnabled } from './featureFlags';
+import { NV_READ_THEN_CHEAP, NV_MIN_PREFIX, NV_MIN_HITS, NV_MAX_RESULTS } from './flags';
+import { nvSearch } from './nutritionVault';
 
 export interface CanonicalSearchResult {
   source: 'off' | 'fdc' | 'local';
@@ -65,6 +67,23 @@ export async function searchFoodByName(
   }
   
   try {
+    // NEW: Vault read-through if enabled
+    let vaultHits: any[] = [];
+    
+    if (NV_READ_THEN_CHEAP && trimmedQuery.length >= NV_MIN_PREFIX) {
+      try {
+        vaultHits = await nvSearch(trimmedQuery, NV_MAX_RESULTS);
+        
+        // If we have enough vault hits, return them immediately
+        if (vaultHits.length >= NV_MIN_HITS) {
+          console.log(`[SUGGEST][PIPE] vault=${vaultHits.length} cheap=0 final=${vaultHits.length}`);
+          return vaultHits.map(transformVaultToCanonical).slice(0, maxResults);
+        }
+      } catch (error) {
+        console.error('[NV][SEARCH] Vault search failed, falling back:', error);
+      }
+    }
+
     console.log('📡 [FoodSearch] Calling food-search edge function...');
     const t0 = performance.now();
     
@@ -116,8 +135,18 @@ export async function searchFoodByName(
     const results = data.results as CanonicalSearchResult[];
     console.log(`✅ [FoodSearch] Found ${results.length} results`);
     
+    // Merge vault hits with cheap results if we have vault hits
+    let mergedResults = results;
+    if (vaultHits.length > 0) {
+      const vaultAsCanonical = vaultHits.map(transformVaultToCanonical);
+      mergedResults = deduplicateResults([...vaultAsCanonical, ...results]);
+    }
+    
     // Apply enhanced ranking with word matching and category boosts
-    const ranked = reorderForQuery(results, trimmedQuery);
+    const ranked = reorderForQuery(mergedResults, trimmedQuery);
+    
+    // Log pipeline summary
+    console.log(`[SUGGEST][PIPE] vault=${vaultHits.length} cheap=${results.length} final=${ranked.length}`);
     
     // Temporary proof logs (remove after verification)
     console.warn('[FOOD-SEARCH][rankedTop3]', ranked.slice(0,3).map(x => ({name:x.name, barcode:x.barcode, cats:x.categories_tags})));
@@ -184,6 +213,36 @@ function rankScore(item: any, raw: string) {
 export function reorderForQuery(items: any[], q: string) {
   if (!Array.isArray(items) || !q) return items;
   return [...items].sort((a, b) => rankScore(b, q) - rankScore(a, q));
+}
+
+/**
+ * Transform vault result to CanonicalSearchResult format
+ */
+function transformVaultToCanonical(vaultResult: any): CanonicalSearchResult {
+  return {
+    source: 'local' as const, // Use 'local' to indicate cached/vault source
+    id: vaultResult.id,
+    name: vaultResult.name,
+    brand: vaultResult.brand,
+    imageUrl: undefined,
+    servingHint: '100g',
+    caloriesPer100g: vaultResult.per100g?.kcal || vaultResult.per100g?.calories,
+    confidence: vaultResult.confidence || 0.8,
+    barcode: vaultResult.provider_ref
+  };
+}
+
+/**
+ * Deduplicate results by name+brand+classId key
+ */
+function deduplicateResults(results: CanonicalSearchResult[]): CanonicalSearchResult[] {
+  const seen = new Set<string>();
+  return results.filter(result => {
+    const key = `${result.name}|${result.brand || ''}|${result.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /**
