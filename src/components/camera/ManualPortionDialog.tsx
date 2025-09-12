@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
-import { Plus, Minus } from 'lucide-react';
 
 interface Props {
   candidate: any;
@@ -24,18 +23,7 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
   const [mealType, setMealType] = useState('lunch');
 
   // Log when dialog actually mounts
-  console.log('[PORTION][OPEN]', { 
-    name: candidate?.name,
-    defaultG: enrichedData?.servingGrams || 100
-  });
-
-  // Quick preset multipliers for common portions
-  const baseServingG = enrichedData?.servingGrams || 100;
-  const presets = [
-    { label: '½×', multiplier: 0.5, grams: Math.round(baseServingG * 0.5) },
-    { label: '1×', multiplier: 1.0, grams: baseServingG },
-    { label: '2×', multiplier: 2.0, grams: Math.round(baseServingG * 2) }
-  ];
+  console.log('[PORTION][OPEN]', { name: candidate?.name });
 
   const handleContinue = () => {
     console.log('[DIALOG][COMMIT]', { 
@@ -43,30 +31,11 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
       portionSize
     });
     
-    // Ensure ingredients and portion metadata pass through properly
-    const payload = {
+    onContinue({
       ...enrichedData,
       servingGrams: portionSize,
-      ingredientsList: enrichedData?.ingredientsList || [],
-      ingredientsText: enrichedData?.ingredientsText || (enrichedData?.ingredientsList?.join(', ') || ''),
-      portionMeta: {
-        unit: enrichedData?.unit || 'g',
-        defaultG: enrichedData?.servingGrams || 100,
-        source: enrichedData?.portionSource || 'inferred'
-      },
       userConfirmed: true
-    };
-    
-    onContinue(payload);
-  };
-
-  const handlePresetSelect = (grams: number) => {
-    setPortionSize(grams);
-  };
-
-  const handleStepperChange = (delta: number) => {
-    const newSize = Math.max(25, Math.min(500, portionSize + delta));
-    setPortionSize(newSize);
+    });
   };
 
   return (
@@ -78,30 +47,11 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
             <p className="text-sm text-muted-foreground">{candidate?.name}</p>
           </div>
           
-          <div className="space-y-3">
-            <div className="flex justify-between items-center text-sm">
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
               <span>Portion Size</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleStepperChange(-5)}
-                  disabled={portionSize <= 25}
-                >
-                  <Minus className="h-3 w-3" />
-                </Button>
-                <span className="font-medium min-w-[60px] text-center">{portionSize}g</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleStepperChange(5)}
-                  disabled={portionSize >= 500}
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
+              <span className="font-medium">{portionSize}g</span>
             </div>
-            
             <Slider
               value={[portionSize]}
               onValueChange={(values) => setPortionSize(values[0])}
@@ -110,25 +60,9 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
               step={5}
               className="w-full"
             />
-            
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>25g</span>
               <span>500g</span>
-            </div>
-
-            {/* Quick preset buttons */}
-            <div className="flex gap-2 justify-center">
-              {presets.map((preset) => (
-                <Button
-                  key={preset.label}
-                  size="sm"
-                  variant={portionSize === preset.grams ? "default" : "outline"}
-                  onClick={() => handlePresetSelect(preset.grams)}
-                  className="min-w-[50px]"
-                >
-                  {preset.label}
-                </Button>
-              ))}
             </div>
           </div>
 

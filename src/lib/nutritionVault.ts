@@ -54,13 +54,6 @@ export async function nvSearch(q: string, maxResults = NV_MAX_RESULTS): Promise<
 
     if (error) {
       console.error('[NV][SEARCH][CLIENT] Error:', error);
-      
-      // Handle 500 errors gracefully - don't freeze UI
-      if (error.message && error.message.includes('500')) {
-        console.warn('[NV-SEARCH][500] fallback to empty results');
-        return [];
-      }
-      
       return [];
     }
 
