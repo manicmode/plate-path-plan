@@ -194,11 +194,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [currentFoodItem, setCurrentFoodItem] = useState<FoodItem | null>(foodItem);
   
   // Add header calories trace
-  const headerCalories = currentFoodItem?.calories ?? caloriesFromMacros({
-    protein: currentFoodItem?.protein,
-    carbs: currentFoodItem?.carbs,
-    fat: currentFoodItem?.fat
-  });
+  const headerCalories = (currentFoodItem?.calories && currentFoodItem.calories > 0)
+    ? currentFoodItem.calories
+    : caloriesFromMacros({
+        protein: currentFoodItem?.protein,
+        carbs: currentFoodItem?.carbs,
+        fat: currentFoodItem?.fat
+      }) ?? 0;
   if (currentFoodItem) {
     trace('CONFIRM:HEADER:CALS', {
       raw: currentFoodItem?.calories,
@@ -1745,7 +1747,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   )}
                 </div>
                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {Number.isFinite(headerKcal) ? headerKcal : 0} calories
+                    {Number.isFinite(headerCalories) ? headerCalories : 0} calories
                   </p>
                  {((currentFoodItem as any)?.enrichmentSource === "ESTIMATED" || 
                    ((currentFoodItem as any)?.enrichmentConfidence && (currentFoodItem as any).enrichmentConfidence < 0.7)) && (

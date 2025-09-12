@@ -259,6 +259,49 @@ export async function enrichCandidate(candidate: any) {
     });
   }
   
+  // FIX 4: Photo enrichment - preserve identity, clamp ingredients, scale units
+  const original = (candidate?.name || '').toLowerCase().trim();
+  const isWholeFood = [
+    'salmon','atlantic salmon','asparagus','broccoli','spinach','avocado',
+    'egg','banana','apple','rice','chicken breast','steak','tuna','oats'
+  ].some(k => original === k || original.startsWith(k));
+
+  if (isWholeFood) {
+    // keep the detected identity
+    enriched.name = candidate.name ?? enriched.name;
+    // collapse ingredients to the single whole-food line
+    enriched.ingredients = [enriched.name.toLowerCase()];
+    // never swap to a branded bowl just because OFF returns it first
+    enriched.brandName = enriched.brandName; // keep metadata, but name stays simple
+  }
+
+  // per-100g → per-serving scaling if macros look tiny
+  const g = enriched.gramsPerServing ?? 100;
+  const tiny = (enriched.macros?.protein ?? 0) <= 1 &&
+    (enriched.macros?.carbs ?? 0) <= 1 &&
+    (enriched.macros?.fat ?? 0) <= 1 &&
+    g > 100;
+
+  if (tiny && enriched.macros) {
+    const s = g / 100;
+    enriched.macros = {
+      protein: Number(enriched.macros.protein || 0) * s,
+      carbs:   Number(enriched.macros.carbs   || 0) * s,
+      fat:     Number(enriched.macros.fat     || 0) * s,
+      fiber:   Number(enriched.macros.fiber   || 0) * s,
+      sugar:   Number(enriched.macros.sugar   || 0) * s,
+    };
+  }
+
+  // final calorie safety
+  if ((!enriched.calories || enriched.calories === 0) && enriched.macros) {
+    enriched.calories = Math.round(
+      (enriched.macros.protein || 0) * 4 +
+      (enriched.macros.carbs   || 0) * 4 +
+      (enriched.macros.fat     || 0) * 9
+    );
+  }
+  
   // Add post-enrichment trace
   trace('PHOTO:ENRICH:POST', enriched);
   
