@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
+import React, { useState, useEffect, useMemo, useId } from 'react';
+import { Dialog, DialogHeader, DialogClose, DialogContent } from '@/components/ui/dialog';
 import { withSafeCancel } from '@/lib/ui/withSafeCancel';
 import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ import { isEan, offImageForBarcode, offImageCandidates } from '@/lib/imageHelper
 import { offImageCandidates as offImageCandidatesNew } from '@/lib/offImages';
 import type { NutritionThresholds } from '@/lib/health/flagRules';
 import { useNutritionStore } from '@/stores/nutritionStore';
+import { IMAGE_PROXY_OFF } from '@/lib/flags';
 // Add the FoodCandidate type import
 import type { Candidate } from '@/lib/food/search/getFoodCandidates';
 import { inferPortion } from '@/lib/food/portion/inferPortion';
@@ -193,6 +194,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const allowEnrich = inputSource === 'manual' || ENABLE_PHOTO_BARCODE_ENRICH;
 
   // All hooks called unconditionally first
+  const descId = useId();
   const [portionPercentage, setPortionPercentage] = useState([100]);
   const [isConfirming, setIsConfirming] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -268,42 +270,21 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const PLACEHOLDER = '/images/food-placeholder.png';
   const isManualImage = inputSource === 'manual';
   
-  const imageUrls: string[] = useMemo(() => {
-    // Prefer only safe, local/manual URLs for manual flow
-    let candidates: string[] = [];
+  const imageUrls = useMemo(() => {
+    let urls: string[] = [];
 
-    if (isManualImage) {
-      // Start with any precomputed/safe images we already had
-      candidates = [
-        (currentFoodItem as any)?.imageUrl,
-        (currentFoodItem as any)?.thumbnailUrl,
-        (currentFoodItem as any)?.photoUrl,
-      ].filter(Boolean) as string[];
-      
-      // If the selected item came from OFF, build robust URLs
-      const provider = (currentFoodItem as any)?._provider;
-      const providerRef = (currentFoodItem as any)?.providerRef;
-      if (provider === 'off' && providerRef) {
-        candidates.push(...offImageCandidatesNew(providerRef, 'en')); // or current locale if you have it
-      }
-    } else if (ENABLE_PHOTO_BARCODE_ENRICH) {
-      // keep existing enrichment / barcode candidates
-      const fromEnrichment = (currentFoodItem as any)?.image?.urls ?? [];
-      const providerRef = (currentFoodItem as any)?.providerRef;
-      const ean = typeof providerRef === 'string' && /^\d{8,}$/.test(providerRef) ? providerRef : null;
-      const fromBarcodeGuess = ean ? offImageCandidatesNew(ean, 'en') : [];
-      
-      candidates = [
-        ...fromEnrichment,
-        ...fromBarcodeGuess,
-      ].filter(Boolean) as string[];
+    const provider = (currentFoodItem as any)?._provider;
+    const providerRef = (currentFoodItem as any)?.providerRef;
+
+    if ((currentFoodItem as any)?.imageUrl) urls.push((currentFoodItem as any).imageUrl);
+    if ((currentFoodItem as any)?.thumbnailUrl) urls.push((currentFoodItem as any).thumbnailUrl);
+    if (provider === 'off' && providerRef && IMAGE_PROXY_OFF) {
+      // prefer proxy for OFF
+      urls.push(`/api/image-proxy?url=${encodeURIComponent(`https://images.openfoodfacts.org/images/products/${String(providerRef).replace(/(\d{3})(\d{3})(\d{3})(\d+)/, '$1/$2/$3/$4')}/front_en.400.jpg`)}`);
     }
-
-    // Guaranteed fallback so the <img> never goes blank
-    if (candidates.length === 0) candidates = [PLACEHOLDER];
-    
-    return Array.from(new Set(candidates));
-  }, [(currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef, (currentFoodItem as any)?.imageUrl, (currentFoodItem as any)?.thumbnailUrl, (currentFoodItem as any)?.photoUrl, isManualImage]);
+    if (urls.length === 0) urls = ['/images/food-placeholder.png'];
+    return Array.from(new Set(urls));
+  }, [(currentFoodItem as any)?.imageUrl, (currentFoodItem as any)?.thumbnailUrl, (currentFoodItem as any)?._provider, (currentFoodItem as any)?.providerRef]);
 
   useEffect(() => setImgIdx(0), [imageUrls.join('|')]);
 
@@ -1581,13 +1562,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         <AccessibleDialogContent 
           className="food-confirm-card with-stable-panels max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden max-h-[90vh] flex flex-col"
           title="Confirm Food Log"
-          description="We'll save these items to your log."
+          description="Review nutrition information and adjust serving size as needed."
           showCloseButton={!reminderOpen}
           data-dialog-root="confirm-food-log"
           onEscapeKeyDown={(e) => forceConfirm && e.preventDefault()}
           onInteractOutside={(e) => forceConfirm && e.preventDefault()}
+          aria-describedby={descId}
         >
           <VisuallyHidden><DialogTitle>Confirm Food Log</DialogTitle></VisuallyHidden>
+          <div id={descId} className="sr-only">
+            Review nutrition information and adjust serving size as needed.
+          </div>
           <div className="p-6 overflow-y-auto flex-1 min-h-0">
             {/* Manual Entry Enrichment Loading */}
             {(isManual && !readyForManual) ? (

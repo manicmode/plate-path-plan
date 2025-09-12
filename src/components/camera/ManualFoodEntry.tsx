@@ -166,6 +166,10 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const searchGenRef = useRef<number>(0);
   const searchLockedRef = useRef<boolean>(false);
   const wasOpenRef = useRef(false);
+  const searchRequestId = useRef(0);
+  const candidatesRef = useRef<LocalCandidate[]>([]);
+  
+  useEffect(() => { candidatesRef.current = candidates; }, [candidates]);
 
   // Hooks
   const { enrichWithFallback, loading: enriching, error: enrichError } = useManualFoodEnrichment();
@@ -251,158 +255,56 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   // Debounced search with abort controller
   const abortRef = useRef<AbortController | null>(null);
   const debouncedSearch = useCallback(async (query: string) => {
-    // Abort previous search
-    if (abortRef.current) {
-      abortRef.current.abort();
-    }
-    
-    if (!query.trim()) {
-      setCandidates([]);
-      setState('idle');
-      setEnriched(null);
-      return;
-    }
-
-    // Check if search is locked
-    if (searchLockedRef.current) {
-      return;
-    }
+    // cancel previous
+    if (abortRef.current) abortRef.current.abort();
+    if (!query.trim()) { setCandidates([]); setState('idle'); setEnriched(null); return; }
+    if (searchLockedRef.current) return;
 
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     const currentGen = ++searchGenRef.current;
+    const requestId = ++searchRequestId.current;
     setState('searching');
+    console.log('[SEARCH][START]', { requestId, query, source: 'manual' });
     
     // Flag: VITE_DISABLE_ENRICHMENT_ON_TYPE - avoid enrichment while typing
     const disableEnrichmentOnType = (import.meta.env.VITE_DISABLE_ENRICHMENT_ON_TYPE ?? '1') === '1';
 
     try {
-      if (disableEnrichmentOnType) {
-        // Use cheap-first suggestions only, no enrichment while typing
-        console.log('[SUGGEST][CHEAP_FIRST] Using fast lookup without enrichment');
-        const fallback = await submitTextLookup(query, { source: 'manual' });
-        
-        // Check if this search result is still valid
-        if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
-          return; // Ignore stale results
-        }
+      // cheap-first path (no enrichment while typing)
+      const t0 = performance.now();
+      const fallback = await submitTextLookup(query, { source: 'manual' });
+      const cheapMs = Math.round(performance.now() - t0);
 
-        // Process fallback results only
-        if (fallback) {
-          // Log what arrives from textLookup
-          console.log('[TRACE] UI receive', {
-            hasItems: Array.isArray(fallback?.items),
-            hasRankedAll: Array.isArray(fallback?.rankedAll),
-            itemsCount: fallback?.items?.length,
-            rankedAllCount: fallback?.rankedAll?.length,
-            used: fallback?.used || 'unknown'
-          });
+      if (currentGen !== searchGenRef.current || ctrl.signal.aborted || searchLockedRef.current) {
+        console.log('[SEARCH][STALE]', { requestId }); return;
+      }
 
-          // Use full set in this precedence:
-          const items: any[] =
-            fallback?.rankedAll ||
-            fallback?.results ||
-            fallback?.items ||
-            fallback?.rankedTop3 ||
-            [];
+      const items = fallback?.items || fallback?.rankedTop3 || fallback?.rankedAll || [];
+      console.log('[SEARCH][CHEAP]', { requestId, count: items.length, timeMs: cheapMs });
 
-          const count = Math.min(items.length, 8); // Limit to 5-8 suggestions
-          console.log(`[SUGGEST][CHEAP_FIRST] count=${count}, sources=[fdc,off]`);
-          logTelemetry('FALLBACK', { itemCount: count, used: fallback?.used });
-          setEnriched(null);
+      const newCandidates = processCandidates(items, query);
+      const current = candidatesRef.current;
 
-          // Process candidates from fallback (V3 returns full list now)
-          const candidates = processCandidates(items, query);
-          setCandidates(candidates);
-          setState(candidates.length > 0 ? 'candidates' : 'idle');
-          return;
-        }
+      // SWR guard: only update if we have results, or nothing shown yet
+      if (newCandidates.length > 0 || current.length === 0) {
+        setCandidates(newCandidates);
+        setState(newCandidates.length > 0 ? 'candidates' : 'idle');
+        console.log('[SEARCH][MERGE]', {
+          requestId, cheapCount: newCandidates.length, edgeCount: 0,
+          finalCount: newCandidates.length, cacheHit: newCandidates.length > 0, source: 'manual'
+        });
       } else {
-        // Legacy enrichment path (when flag is off)
-        const { enriched, fallback } = await enrichWithFallback(
-          query,
-          'auto',
-          () => submitTextLookup(query, { source: 'manual' }),
-          selectedCandidate
-        );
-        
-        // Check if this search result is still valid
-        if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
-          return; // Ignore stale results
-        }
-
-        if (enriched) {
-          // Use enriched data
-          logTelemetry('ENRICHED', { source: enriched.source, confidence: enriched.confidence });
-          setEnriched(enriched);
-          
-          // Convert to candidate format
-          const enrichedCandidate: LocalCandidate = {
-            id: 'enriched-primary',
-            name: sanitizeName(enriched.name),
-            isGeneric: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7,
-            portionHint: enriched.perServing ? `${enriched.perServing.serving_grams}g serving` : '100g',
-            defaultPortion: { 
-              amount: enriched.perServing?.serving_grams || 100, 
-              unit: 'g' 
-            },
-            provider: enriched.source === 'GENERIC' ? 'generic' : sourceBadge(enriched.source).label.toLowerCase(),
-            data: enrichedFoodToLogItem(enriched, 100),
-            // NEW: stable identity fields
-            flags: {
-              generic: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7,
-              brand: false,
-              restaurant: false
-            }
-          };
-
-          setCandidates([enrichedCandidate]);
-          setState('candidates');
-          return;
-        }
-
-        // Fall back to existing lookup system
-        if (fallback) {
-          // Log what arrives from textLookup  
-          console.log('[TRACE] UI receive', {
-            hasItems: Array.isArray(fallback?.items),
-            hasRankedAll: Array.isArray(fallback?.rankedAll),
-            itemsCount: fallback?.items?.length,
-            rankedAllCount: fallback?.rankedAll?.length
-          });
-
-          // Use full set in this precedence:
-          const items: any[] =
-            fallback?.rankedAll ||
-            fallback?.results ||
-            fallback?.items ||
-            fallback?.rankedTop3 ||
-            [];
-
-          logTelemetry('FALLBACK', { itemCount: items.length });
-          setEnriched(null);
-          // Process candidates from fallback
-          const candidates = processCandidates(items, query);
-          setCandidates(candidates);
-          setState(candidates.length > 0 ? 'candidates' : 'idle');
-          return;
-        }
-      }
-
-      // No results from either path
-      setCandidates([]);
-      setState('idle');
-      setEnriched(null);
-      
-    } catch (error) {
-      // Check if this error is still relevant
-      if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
-        return; // Ignore stale errors
+        console.log('[SEARCH][MERGE]', {
+          requestId, cheapCount: newCandidates.length, edgeCount: 0,
+          finalCount: current.length, action: 'preserved_existing', cacheHit: true, source: 'manual'
+        });
       }
       
+    } catch (e) {
+      if (currentGen !== searchGenRef.current || ctrl.signal.aborted) return;
+      console.error('[SEARCH][ERROR]', e);
       setState('error');
-      logTelemetry('ERROR', { message: (error as Error).message });
-      toast.error('Search failed. Please try again.');
     }
   }, [enrichWithFallback]);
 
@@ -523,7 +425,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
       searchTimeoutRef.current = setTimeout(() => {
         debouncedSearch(foodName);
-      }, 200);
+      }, 300);
 
       return () => {
         if (searchTimeoutRef.current) {

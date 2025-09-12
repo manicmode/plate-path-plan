@@ -2,26 +2,22 @@ import { fetchCanonicalNutrition } from '@/lib/food/fetchCanonicalNutrition';
 import { normalizeIngredients } from '@/utils/normalizeIngredients';
 import { nvLabelLookup } from '@/lib/nutritionVault';
 import { isEan, offImageForBarcode, offImageCandidates } from '@/lib/imageHelpers';
+import { ENABLE_OFF_PROXY } from '@/lib/flags';
 
 async function fetchOffImageUrls(barcode: string): Promise<string[]> {
   try {
-    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
-    if (!res.ok) return [];
-    const j = await res.json();
-    const p = j?.product ?? {};
-    const urls = [
-      p?.image_front_small_url,
-      p?.image_front_url,
-      p?.image_url,
-      // selected_images (language-specific)
-      p?.selected_images?.front?.display?.en,
-      p?.selected_images?.front?.display?.en_GB,
-      p?.selected_images?.front?.display?.en_US,
-    ].filter(Boolean);
-    return Array.from(new Set(urls));
-  } catch {
-    return [];
-  }
+    if (ENABLE_OFF_PROXY) {
+      const r = await fetch(`/api/off-proxy/${barcode}`);
+      if (!r.ok) return [];
+      const j = await r.json();
+      return j?.success ? (j.images || []) : [];
+    }
+    // legacy fallback (direct OFF)
+    const r = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    if (!r.ok) return [];
+    const j = await r.json(); const p = j?.product ?? {};
+    return [p.image_front_url, p.image_url, p.selected_images?.front?.display?.en].filter(Boolean);
+  } catch { return []; }
 }
 
 export async function enrichCandidate(candidate: any) {

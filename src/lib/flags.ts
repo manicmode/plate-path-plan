@@ -61,3 +61,22 @@ export const NV_MIN_PREFIX =
 
 export const NV_MIN_HITS = 
   Number(import.meta.env.VITE_NV_MIN_HITS ?? '1');
+
+// --- Unified search / infra flags (Phase 1) ---
+export const ENABLE_DEBOUNCED_SEARCH =
+  import.meta.env.VITE_ENABLE_DEBOUNCED_SEARCH !== '0'; // default true
+
+export const ENABLE_CHEAP_FIRST_SWR =
+  import.meta.env.VITE_ENABLE_CHEAP_FIRST_SWR !== '0'; // default true
+
+export const EDGE_MULTI_QUERY =
+  import.meta.env.VITE_EDGE_MULTI_QUERY === '1'; // default false
+
+export const ENABLE_OFF_PROXY =
+  import.meta.env.VITE_ENABLE_OFF_PROXY !== '0'; // default true
+
+export const IMAGE_PROXY_OFF =
+  import.meta.env.VITE_IMAGE_PROXY_OFF !== '0'; // default true
+
+export const ENABLE_FOOD_CLASSIFICATION =
+  import.meta.env.VITE_ENABLE_FOOD_CLASSIFICATION !== '0'; // default true
