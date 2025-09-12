@@ -436,48 +436,18 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
     console.log('[CANDIDATES][PROCESS_START]', { sourceCount: src.length });
 
-    // group by composite key to drop near-identical rows
-    const buckets = new Map<string, any[]>();
+    const normalize = (s: string) => s.toLowerCase().trim();
 
-    for (const it of src.slice(0, 32)) { // safety cap before dedup
-      const key = `${slug(it.name)}|${slug(it.brand || 'unknown')}|${gramsBucket(it.grams ?? it.portionGrams ?? it.servingGrams)}`;
-      if (!buckets.has(key)) buckets.set(key, []);
-      buckets.get(key)!.push(it);
-    }
+    // keep exact brand items distinct; only collapse true duplicates
+    const makeKey = (x: any) => [
+      normalize(x.name),
+      x.providerRef ?? x.brand ?? 'GENERIC',   // brand or source
+      x.kind === 'generic' || looksGeneric(x) ? 'g' : 'b',      // keep generic separate from brand
+    ].join('|');
 
-    // choose "best" per bucket: prefer generic; else with real brand; else first
-    const pickOne = (arr: any[]) => {
-      const withGeneric = arr.find(a => a.kind === 'generic');
-      if (withGeneric) return withGeneric;
-      const withBrand = arr.find(a => !!a.brand);
-      return withBrand || arr[0];
-    };
-
-    // flatten picks
-    let picks = Array.from(buckets.values()).map(pickOne);
-
-    // ensure at most one "generic" per normalized name, keep it first
-    const byName = new Map<string, any[]>();
-    for (const c of picks) {
-      const nameKey = slug(c.name);
-      if (!byName.has(nameKey)) byName.set(nameKey, []);
-      byName.get(nameKey)!.push(c);
-    }
-
-    const ordered: any[] = [];
-    for (const [nameKey, arr] of byName.entries()) {
-      const generic = arr.find(a => a.kind === 'generic');
-      if (generic) ordered.push(generic);             // keep one generic up top for that food
-      // then distinct brands for that name, one per brand
-      const seenBrands = new Set<string>();
-      for (const a of arr) {
-        if (a.kind === 'generic') continue;
-        const bKey = slug(a.brand || 'unknown');
-        if (seenBrands.has(bKey)) continue;
-        seenBrands.add(bKey);
-        ordered.push(a);
-      }
-    }
+    const ordered = Array.from(
+      new Map(src.slice(0, 32).map(i => [makeKey(i), i])).values()
+    );
 
     // sort: keep current ordering stable but ensure generics appear first overall
     ordered.sort((a, b) => (a.kind === 'generic' ? -1 : 0) - (b.kind === 'generic' ? -1 : 0));
