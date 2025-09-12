@@ -103,6 +103,63 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
   // DO NOT recompute the id; use the one passed in
   const resolvedId = typeof index === 'string' ? index : (raw.foodId ?? raw.id ?? raw.storeId ?? generateFoodId(raw));
   
+  const src: 'manual'|'photo'|'barcode'|undefined = (raw as any).source;
+  
+  // Early return for manual (preserve existing macros and serving data)
+  if (src === 'manual') {
+    const servingG = raw.label?.servingSizeG ?? raw.servingG ?? raw.grams ?? 100;
+    const perServing = raw.label?.macrosPerServing || {};
+    const safe = (v: any) => typeof v === 'number' && !isNaN(v) ? v : 0;
+    
+    return {
+      id: resolvedId,
+      name,
+      grams: servingG,
+      baseGrams: servingG,
+      source: 'manual',
+      servingG: servingG,
+      servingLabel: raw.label?.servingLabel || `Per serving (${servingG} g)`,
+      calories: safe(perServing.calories ?? raw.calories),
+      protein: safe(perServing.protein_g ?? raw.protein),
+      carbs: safe(perServing.carbs_g ?? raw.carbs),
+      fat: safe(perServing.fat_g ?? raw.fat),
+      fiber: safe(perServing.fiber_g ?? raw.fiber),
+      sugar: safe(perServing.sugar_g ?? raw.sugar),
+      sodium: safe(perServing.sodium_mg ?? raw.sodium),
+      basePer100: null,
+      portionGrams: servingG,
+      factor: 1,
+      imageUrl: raw.imageUrl,
+      barcode: raw.barcode,
+      ingredientsText: '',
+      ingredientsAvailable: false,
+      confidence: raw.confidence,
+      allergens: [],
+      additives: [],
+      categories: [],
+      nutrition: {
+        calories: safe(perServing.calories ?? raw.calories),
+        protein: safe(perServing.protein_g ?? raw.protein),
+        carbs: safe(perServing.carbs_g ?? raw.carbs),
+        fat: safe(perServing.fat_g ?? raw.fat),
+        sugar: safe(perServing.sugar_g ?? raw.sugar),
+        fiber: safe(perServing.fiber_g ?? raw.fiber),
+        sodium: safe(perServing.sodium_mg ?? raw.sodium),
+        basis: 'perServing',
+        servingGrams: servingG,
+      },
+      analysis: {
+        healthScore: raw.healthScore,
+        flags: [],
+        ingredients: [],
+        source: 'manual',
+        confidence: raw.confidence,
+        imageUrl: raw.imageUrl,
+        dataSourceLabel: null,
+      }
+    } as LegacyFoodItem;
+  }
+  
   // Flag sanity check
   console.log('[SST][FLAGS]', { ENABLE_SST_CONFIRM_READ: enableSST });
 

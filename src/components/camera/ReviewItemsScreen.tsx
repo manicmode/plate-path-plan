@@ -151,17 +151,13 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     
     // Create modalItems synchronously to establish firstCardId immediately  
     const selectedItems = items.filter(item => item.selected && item.name.trim());
-    const prepared = selectedItems.map((item) => {
-      const grams =
-        (item as any).grams ?? (item as any).portionGrams ?? (item as any).baseGrams ??
-        ((item as any).source === 'barcode' ? (item as any)?.label?.servingSizeG : undefined) ?? 100;
-
-      // PHOTO: carry the captured frame so the card has an image immediately
-      const imageUrl =
-        (item as any).imageUrl ?? (item as any).photoUrl ?? (item as any).selectedImage ?? (item as any).directImg ?? (item as any).imageThumbUrl ?? '';
-
-      return { ...item, grams, baseGrams: grams, imageUrl };
-    });
+    const prepared = selectedItems.map(item => (item as any).source === 'manual'
+      ? item
+      : {
+          ...item,
+          imageUrl: (item as any).photoUrl || (item as any).selectedImage || (item as any).imageUrl || (item as any).imageThumbUrl || (item as any).directImg || '',
+          grams: (item as any).grams || (item as any).portionGrams || (item as any).baseGrams || (item as any).label?.servingSizeG || 100,
+        });
 
     const initialModalItems = prepared.map((item, index) => {
       return toLegacyFoodItem(item, index, true);
@@ -174,17 +170,26 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     // Run async hydration
     (async () => {
       try {
-        const names = initialModalItems.map(m => m.name);
+        // BEFORE any resolveGenericFoodBatch / store writes:
+        const nonManual = prepared.filter(it => (it as any).source !== 'manual');
+        
+        // If there are no non-manual items, set modal state and RETURN
+        if (nonManual.length === 0) {
+          setConfirmModalItems(initialModalItems.map(m => ({ ...m, __hydrated: true })));
+          return;
+        }
+        
+        const names = nonManual.map(m => m.name);
         const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
         const results = await resolveGenericFoodBatch(names);
         
-        console.log('[HYDRATE][WRITE]', { ids: prepared.map(i => i.id) });
+        console.log('[HYDRATE][WRITE]', { ids: nonManual.map(i => i.id) });
         
         const storeUpdates: Record<string, any> = {};
         
         // WRITE perGram INTO STORE **USING THE SAME id THE CARD USES** (detect-*)
-        for (const cur of prepared) {
-          const idx = prepared.indexOf(cur);
+        for (const cur of nonManual) {
+          const idx = nonManual.indexOf(cur);
           const r = results?.[idx];
           if (r && r.nutrients) {
             const perGram = {
@@ -206,27 +211,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           useNutritionStore.getState().upsertMany(storeUpdates);
         }
 
-        // Then rebuild modal items by **merging** store perGram back BEFORE adapting:
-        const store = useNutritionStore.getState();
+        // When merging hydrated perGram back into modal items:
         const merged = prepared.map((item, idx) => {
+          if ((item as any).source === 'manual') return { ...item, __hydrated: true }; // <-- leave manual untouched
           const pg = storeUpdates[item.id]?.perGram;
-          console.log('[HYDRATE][MERGE]', { id: item.id, hasStorePG: !!pg });
-          if (pg && Object.keys(pg).length) {
-            const g = item.grams ?? 100;
-            const kcal = Math.round((pg.calories ?? (pg.protein*4 + pg.carbs*4 + pg.fat*9 || 0)) * g);
-            return {
-              ...item,
-              nutrition: { ...(item as any).nutrition || {}, perGram: pg, basis: 'perGram' },
-              calories: kcal,
-              protein: +(pg.protein * g).toFixed(1),
-              carbs:   +(pg.carbs   * g).toFixed(1),
-              fat:     +(pg.fat     * g).toFixed(1),
-              fiber:   +(pg.fiber   * g).toFixed(1),
-              sugar:   +(pg.sugar   * g).toFixed(1),
-              __hydrated: true,
-            };
-          }
-          return { ...item, __hydrated: true };
+          return pg ? { ...item,
+            nutrition: { ...(item as any).nutrition||{}, perGram: pg, basis: 'perGram' },
+            __hydrated: true,
+          } : { ...item, __hydrated: true };
         });
         
         const rebuilt = merged.map((item, idx) => {

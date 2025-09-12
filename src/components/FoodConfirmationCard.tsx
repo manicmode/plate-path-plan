@@ -1135,47 +1135,77 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     ? ((currentFoodItem as any)?.sodium_mg_serving ?? (currentFoodItem as any)?.sodium_mg ?? 0) 
     : currentFoodItem.sodium;
 
-  // Force per-gram mode when we actually have perGram data
+  // Set macros mode explicitly for manual vs others
+  const src = (currentFoodItem as any)?.source;
   const perGram = (currentFoodItem as any)?.nutrition?.perGram;
-  const macrosMode = perGram && (perGram.protein || perGram.carbs || perGram.fat || perGram.calories) ? 'per-gram' : (per100 ? 'per100' : 'NONE');
+  const macrosMode =
+    src === 'manual' ? 'perServing' :
+    perGram && (perGram.protein || perGram.carbs || perGram.fat || perGram.calories) ? 'per-gram' :
+    per100 ? 'per100' : 'NONE';
   
   const grams = (currentFoodItem as any)?.grams ?? (currentFoodItem as any)?.baseGrams ?? 100;
-  const scaled = macrosMode === 'per-gram'
-    ? {
-        calories: Math.round((perGram.calories ?? ((perGram.protein||0)*4 + (perGram.carbs||0)*4 + (perGram.fat||0)*9)) * grams),
-        protein:  Math.round((perGram.protein  || 0) * grams * 10) / 10,
-        carbs:    Math.round((perGram.carbs    || 0) * grams * 10) / 10,
-        fat:      Math.round((perGram.fat      || 0) * grams * 10) / 10,
-        fiber:    Math.round((perGram.fiber    || 0) * grams * 10) / 10,
-        sugar:    Math.round((perGram.sugar    || 0) * grams * 10) / 10,
-      }
-    : per100
-      ? {
-          calories: Math.round((per100.calories || 0) * gramsFactor * sliderFraction),
-          protein: scale(per100.protein_g || 0, gramsFactor * sliderFraction),
-          carbs:   scale(per100.carbs_g   || 0, gramsFactor * sliderFraction),
-          fat:     scale(per100.fat_g     || 0, gramsFactor * sliderFraction),
-          fiber:   scale(per100.fiber_g   || 0, gramsFactor * sliderFraction),
-          sugar:   scale(per100.sugar_g   || 0, gramsFactor * sliderFraction),
-          sodium:  Math.round((per100.sodium_mg || 0) * gramsFactor * sliderFraction),
-        }
-      : {
-          // Use direct values with portion scaling
-          calories: Math.round(baseCalories * portionMultiplier),
-          protein: Math.round(baseProtein * portionMultiplier * 10) / 10,
-          carbs: Math.round(baseCarbs * portionMultiplier * 10) / 10,
-          fat: Math.round(baseFat * portionMultiplier * 10) / 10,
-          fiber: Math.round(baseFiber * portionMultiplier * 10) / 10,
-          sugar: Math.round(baseSugar * portionMultiplier * 10) / 10,
-          sodium: Math.round(baseSodium * portionMultiplier),
-        };
+  
+  let scaled: any;
+  if (macrosMode === 'perServing') {
+    const sg = (currentFoodItem as any)?.servingG || 0;
+    const ratio = sg ? grams / sg : 1;
+    const ps = {
+      calories: currentFoodItem?.calories ?? 0,
+      protein:  currentFoodItem?.protein  ?? 0,
+      carbs:    currentFoodItem?.carbs    ?? 0,
+      fat:      currentFoodItem?.fat      ?? 0,
+      fiber:    currentFoodItem?.fiber    ?? 0,
+      sugar:    currentFoodItem?.sugar    ?? 0,
+    };
+    scaled = {
+      calories: Math.round(ps.calories * ratio),
+      protein:  +(ps.protein * ratio).toFixed(1),
+      carbs:    +(ps.carbs   * ratio).toFixed(1),
+      fat:      +(ps.fat     * ratio).toFixed(1),
+      fiber:    +(ps.fiber   * ratio).toFixed(1),
+      sugar:    +(ps.sugar   * ratio).toFixed(1),
+    };
+  } else if (macrosMode === 'per-gram') {
+    scaled = {
+      calories: Math.round((perGram.calories ?? ((perGram.protein||0)*4 + (perGram.carbs||0)*4 + (perGram.fat||0)*9)) * grams),
+      protein:  Math.round((perGram.protein  || 0) * grams * 10) / 10,
+      carbs:    Math.round((perGram.carbs    || 0) * grams * 10) / 10,
+      fat:      Math.round((perGram.fat      || 0) * grams * 10) / 10,
+      fiber:    Math.round((perGram.fiber    || 0) * grams * 10) / 10,
+      sugar:    Math.round((perGram.sugar    || 0) * grams * 10) / 10,
+    };
+  } else if (per100) {
+    scaled = {
+      calories: Math.round((per100.calories || 0) * gramsFactor * sliderFraction),
+      protein: scale(per100.protein_g || 0, gramsFactor * sliderFraction),
+      carbs:   scale(per100.carbs_g   || 0, gramsFactor * sliderFraction),
+      fat:     scale(per100.fat_g     || 0, gramsFactor * sliderFraction),
+      fiber:   scale(per100.fiber_g   || 0, gramsFactor * sliderFraction),
+      sugar:   scale(per100.sugar_g   || 0, gramsFactor * sliderFraction),
+      sodium:  Math.round((per100.sodium_mg || 0) * gramsFactor * sliderFraction),
+    };
+  } else {
+    // Use direct values with portion scaling
+    scaled = {
+      calories: Math.round(baseCalories * portionMultiplier),
+      protein: Math.round(baseProtein * portionMultiplier * 10) / 10,
+      carbs: Math.round(baseCarbs * portionMultiplier * 10) / 10,
+      fat: Math.round(baseFat * portionMultiplier * 10) / 10,
+      fiber: Math.round(baseFiber * portionMultiplier * 10) / 10,
+      sugar: Math.round(baseSugar * portionMultiplier * 10) / 10,
+      sodium: Math.round(baseSodium * portionMultiplier),
+    };
+  }
   
   const headerCalories = scaled.calories || Math.round((scaled.protein*4)+(scaled.carbs*4)+(scaled.fat*9));
 
   // Subtitle logic
-  const finalSubtitle = (!(currentFoodItem as any)?.servingG && (perGram || currentFoodItem?.basePer100)) ? 'Per 100 g' : ((currentFoodItem as any)?.servingLabel ?? 'Per portion (unknown size)');
+  const finalSubtitle =
+    src === 'manual'
+      ? ((currentFoodItem as any)?.servingLabel || `Per serving (${(currentFoodItem as any)?.servingG ?? 0} g)`)
+      : (!(currentFoodItem as any)?.servingG && (perGram || currentFoodItem?.basePer100) ? 'Per 100 g' : ((currentFoodItem as any)?.servingLabel ?? 'Per portion'));
 
-  console.log('[CARD][BIND]', { id: (currentFoodItem as any)?.id, macrosMode: 'per-gram', grams });
+  console.log('[CARD][BIND]', { id: (currentFoodItem as any)?.id, macrosMode, grams });
 
   const adjustedFood = {
     ...currentFoodItem,
