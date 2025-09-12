@@ -370,5 +370,10 @@ export async function detectFoodsFromAllSources(image: string, abortSignal?: Abo
 
   console.log('✅ [GPT Detection] Final results:', finalResults);
   console.log('✅ [GPT Detection] Total items detected:', finalResults.length);
+  
+  // Add photo detection trace
+  const { trace } = require('@/debug/traceFood');
+  trace('PHOTO:DETECT:RAW', finalResults);
+  
   return finalResults;
 }

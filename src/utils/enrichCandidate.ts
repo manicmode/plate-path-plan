@@ -30,6 +30,10 @@ export async function enrichCandidate(candidate: any) {
     canonicalKey: candidate?.canonicalKey 
   });
 
+  // Add enrichment tracing
+  const { trace } = require('@/debug/traceFood');
+  trace('PHOTO:ENRICH:PRE', candidate);
+
   let enriched = { ...candidate };
   
   // CRITICAL: Preserve brand/generic classification from the original candidate
@@ -254,6 +258,9 @@ export async function enrichCandidate(candidate: any) {
       ingredientsSample: enriched.ingredientsList?.slice(0, 3) ?? []
     });
   }
+  
+  // Add post-enrichment trace
+  trace('PHOTO:ENRICH:POST', enriched);
   
   return enriched;
 }

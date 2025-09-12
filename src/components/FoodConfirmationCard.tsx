@@ -191,6 +191,25 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [isConfirming, setIsConfirming] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [currentFoodItem, setCurrentFoodItem] = useState<FoodItem | null>(foodItem);
+  
+  // Add header calories trace
+  const { trace, caloriesFromMacros } = require('@/debug/traceFood');
+  const headerCalories = currentFoodItem?.calories ?? caloriesFromMacros({
+    protein: currentFoodItem?.protein,
+    carbs: currentFoodItem?.carbs,
+    fat: currentFoodItem?.fat
+  });
+  if (currentFoodItem) {
+    trace('CONFIRM:HEADER:CALS', {
+      raw: currentFoodItem?.calories,
+      fromMacros: caloriesFromMacros({
+        protein: currentFoodItem?.protein,
+        carbs: currentFoodItem?.carbs,
+        fat: currentFoodItem?.fat
+      }),
+      chosen: headerCalories
+    });
+  }
   const [isChecked, setIsChecked] = useState(false);
   const [showManualIngredientEntry, setShowManualIngredientEntry] = useState(false);
   const [manualIngredients, setManualIngredients] = useState('');

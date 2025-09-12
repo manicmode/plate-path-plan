@@ -1,3 +1,5 @@
+import { trace } from '@/debug/traceFood';
+
 export type BarcodeLookupResponse = any; // we'll normalize defensively
 
 const OZ_TO_G = 28.349523125;
@@ -323,5 +325,18 @@ export function mapBarcodeToRecognizedFood(raw: any): RecognizedFood {
   };
 
   console.log('[BARCODE][MAP:ITEM]', { name, brand, servingGrams, portionSource, macro_mode });
+  
+  // Add trace for barcode mapping
+  trace('BARCODE:MAP', mapped);
+  trace('BARCODE:MAP:CALS', {
+    itemCalories: mapped?.calories,
+    kcal100g: mapped?.calories_per_100g,
+    macros100g: {
+      p: mapped?.protein_g_per_100g,
+      c: mapped?.carbs_g_per_100g,
+      f: mapped?.fat_g_per_100g,
+    }
+  });
+  
   return mapped;
 }
