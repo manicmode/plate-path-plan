@@ -370,7 +370,13 @@ export function mapBarcodeToRecognizedFood(raw: any): RecognizedFood {
   // Apply fixes to mapped item (don't overwrite if already set)
   mapped.servingGrams ??= servingGramsInferred;
   if (isFinite(calories as number)) mapped.calories = calories!;
-  if (enhancedImageUrl) mapped.imageUrl ??= enhancedImageUrl;
+  if (enhancedImageUrl) {
+    mapped.imageUrl ??= enhancedImageUrl;
+    // Ensure the UI that expects an array is happy too
+    if (!Array.isArray((mapped as any).imageUrls) || !(mapped as any).imageUrls.length) {
+      (mapped as any).imageUrls = [enhancedImageUrl];
+    }
+  }
 
   // Helper function
   function inferServingGrams(txt?: string | null) {

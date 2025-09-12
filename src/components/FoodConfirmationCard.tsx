@@ -1722,19 +1722,51 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
               <div style={{position:'relative',height:64,width:64,borderRadius:14,overflow:'hidden',background:'rgba(0,0,0,.25)'}}>
-                {resolvedSrc && (
-                  <img
-                    src={resolvedSrc}
-                    alt=""
-                    aria-hidden="true"
-                    style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
-                    onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
-                    onError={() => { console.warn('[IMG][ERROR]', resolvedSrc); if (imgIdx < imageUrls.length-1) setImgIdx(i=>i+1); }}
-                    referrerPolicy="no-referrer"
-                    loading="eager"
-                  />
-                )}
-                {!resolvedSrc && <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>}
+                {(() => {
+                  // Pick the best available local URL first
+                  const directImg =
+                    currentFoodItem?.imageUrl ||
+                    (currentFoodItem as any)?.image ||
+                    (currentFoodItem as any)?.images?.[0] ||
+                    (currentFoodItem as any)?.imageUrls?.[0] ||
+                    undefined;
+
+                  if (directImg) {
+                    // Tell the image binder we're done; no network lookup needed
+                    console.log('[CONFIRM][IMAGE]', { has: true, urls: 1, using: 'direct', url: directImg });
+
+                    return (
+                      <img
+                        src={directImg}
+                        alt=""
+                        aria-hidden="true"
+                        style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
+                        onLoad={() => console.log('[IMG][LOAD][DIRECT]', directImg)}
+                        onError={() => console.warn('[IMG][ERROR][DIRECT]', directImg)}
+                        referrerPolicy="no-referrer"
+                        loading="lazy"
+                      />
+                    );
+                  }
+
+                  // Fallback to existing remote lookup code path
+                  if (resolvedSrc) {
+                    return (
+                      <img
+                        src={resolvedSrc}
+                        alt=""
+                        aria-hidden="true"
+                        style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
+                        onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
+                        onError={() => { console.warn('[IMG][ERROR]', resolvedSrc); if (imgIdx < imageUrls.length-1) setImgIdx(i=>i+1); }}
+                        referrerPolicy="no-referrer"
+                        loading="eager"
+                      />
+                    );
+                  }
+
+                  return <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>;
+                })()}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
