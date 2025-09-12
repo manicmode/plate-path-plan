@@ -45,6 +45,28 @@ const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => 
   </div>
 );
 
+// Pure helpers for confirm card logic
+const n0 = (v: any) => (Number.isFinite(+v) ? +v : 0);
+
+const hasPerGram = (it: any) => !!it?.nutrition?.perGram;
+
+function subtitleFor(item: any) {
+  // If no serving but scalable nutrition exists → "Per 100 g"
+  if (!item?.servingG && (hasPerGram(item) || item?.basePer100)) return 'Per 100 g';
+  return item?.servingLabel || 'Per portion';
+}
+
+function scaledFromPerGram(pg: any, grams: number) {
+  const g = Math.max(0, n0(grams));
+  const val = (k: string, mul = 1) => Math.round(n0(pg?.[k]) * g * mul) / mul;
+  const calories = Math.round(n0(pg?.calories) * g) || Math.round(n0(pg?.protein) * 4 * g + n0(pg?.carbs) * 4 * g + n0(pg?.fat) * 9 * g);
+  return {
+    calories,
+    protein: val('protein', 10), carbs: val('carbs', 10), fat: val('fat', 10),
+    fiber: val('fiber', 10), sugar: val('sugar', 10), sodium: Math.round(n0(pg?.sodium) * g * 1000) / 1000
+  };
+}
+
 
 interface FoodItem {
   id?: string;
@@ -260,10 +282,28 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   
   // Collect URLs: from enrichment then fallback guesses
   const imageUrls: string[] = useMemo(() => {
-    const a = (currentFoodItem as any)?.image?.urls ?? [];
-    const b = (currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : [];
-    return Array.from(new Set([...a, ...b].filter(Boolean)));
-  }, [(currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef]);
+    const cardItem = currentFoodItem as any;
+    
+    // Enhanced image fallback candidates
+    const imgCandidates = [
+      cardItem?.imageUrl,
+      cardItem?.photoUrl,
+      cardItem?.selectedImage,
+      cardItem?.storeAnalysis?.imageUrl,
+      cardItem?.image?.urls?.[0], // First from enrichment
+      ...(cardItem?.providerRef ? offImageCandidates(cardItem.providerRef) : []),
+    ].filter(Boolean) as string[];
+
+    console.log('[CARD][IMAGE:FALLBACK]', { using: imgCandidates[0], total: imgCandidates.length });
+    
+    return Array.from(new Set(imgCandidates));
+  }, [
+    (currentFoodItem as any)?.imageUrl,
+    (currentFoodItem as any)?.photoUrl, 
+    (currentFoodItem as any)?.selectedImage,
+    (currentFoodItem as any)?.image?.urls,
+    (currentFoodItem as any)?.providerRef
+  ]);
 
   useEffect(() => setImgIdx(0), [imageUrls.join('|')]);
 
@@ -478,9 +518,31 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     isBarcodeSource ||
     (bypassHydration && ((currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech'));
 
-  // Pick the per-gram basis we'll use everywhere below
+  // Pick the per-gram basis we'll use everywhere below - enhanced with fallback
   const basisPerGram: Record<string, number> | undefined =
-    (preferItem ? (currentFoodItem as any)?.perGram : storeAnalysis?.perGram) || undefined;
+    (preferItem ? (currentFoodItem as any)?.perGram : storeAnalysis?.perGram) || 
+    (currentFoodItem as any)?.nutrition?.perGram || 
+    undefined;
+
+  // Default portion grams using helper logic
+  const cardGrams = (currentFoodItem as any)?.grams ?? (hasPerGram(currentFoodItem) ? 100 : (currentFoodItem as any)?.baseGrams ?? 100);
+  
+  // If we have perGram data, use it for scaling
+  let displayNutrition;
+  if (hasPerGram(currentFoodItem)) {
+    const sliderGrams = Math.round(cardGrams * (portionPercentage[0] / 100));
+    displayNutrition = scaledFromPerGram(basisPerGram || (currentFoodItem as any)?.nutrition?.perGram, sliderGrams);
+    console.log('[CARD][BASIS]', { 
+      mode: 'per_gram', 
+      grams: sliderGrams, 
+      baseG: cardGrams, 
+      hasPg: !!basisPerGram,
+      hasPs: !!(currentFoodItem as any)?.nutrition?.perServing 
+    });
+  } else {
+    // Fall back to existing logic for per100/serving basis
+    displayNutrition = null;
+  }
 
   // Normalize key aliases so different sources still render
   const getPG = (k: string) => {
@@ -832,12 +894,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const servingText = (currentFoodItem as any)?.servingText as string | undefined;
   const grams = Math.round(servingG ?? 100);
   
-  // Prefer real serving grams, then servingText, then fallback
-  const subtitle = (isBarcodeItem || isTextItem) ? (
-    (servingG && servingG !== 100) ? `Per serving (${servingG} g)` :
-    servingText ? `Per portion (${servingText})` :
-    'Per 100 g'
-  ) : (servingG ? `${servingG} g per portion` : 'Per portion (unknown size)');
+  // Use subtitle helper with per-gram basis
+  const subtitle = subtitleFor(currentFoodItem);
   
   // Legacy compatibility  
   const displayName = title;
@@ -1708,7 +1766,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     aria-hidden="true"
                     style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
                     onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
-                    onError={() => { console.warn('[IMG][ERROR]', resolvedSrc); if (imgIdx < imageUrls.length-1) setImgIdx(i=>i+1); }}
+                    onError={() => { 
+                      console.warn('[IMG][ERROR]', resolvedSrc); 
+                      if (imgIdx < imageUrls.length - 1) {
+                        setImgIdx(i => i + 1);
+                      } else {
+                        console.log('[IMG][EXHAUSTED]', 'hiding image container');
+                      }
+                    }}
                     referrerPolicy="no-referrer"
                     loading="eager"
                   />

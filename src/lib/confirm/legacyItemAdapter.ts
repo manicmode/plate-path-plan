@@ -76,6 +76,25 @@ type AnyItem = Record<string, any>;
 
 const pick = <T = any>(...vals: any[]): T | undefined => vals.find(v => v !== undefined && v !== null);
 
+const n0 = (v: any) => (Number.isFinite(+v) ? +v : 0);
+
+function per100ToPerGram(per100?: {
+  calories?: number; protein?: number; carbs?: number; fat?: number;
+  fiber?: number; sugar?: number; sodium?: number; sodiumMg?: number;
+}): Record<string, number> | null {
+  if (!per100) return null;
+  const sodiumG = per100.sodium ?? (per100.sodiumMg ? per100.sodiumMg/1000 : 0);
+  return {
+    calories: n0(per100.calories)/100,
+    protein:   n0(per100.protein)/100,
+    carbs:     n0(per100.carbs)/100,
+    fat:       n0(per100.fat)/100,
+    fiber:     n0(per100.fiber)/100,
+    sugar:     n0(per100.sugar)/100,
+    sodium:    n0(sodiumG)/100,
+  };
+}
+
 export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST = false): LegacyFoodItem {
   const name = pick<string>(
     raw.displayName, raw.name, raw.productName, raw.title, raw.canonicalName
@@ -87,17 +106,16 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
   // Flag sanity check
   console.log('[SST][FLAGS]', { ENABLE_SST_CONFIRM_READ: enableSST });
 
-  const baseGrams = Math.round(
-    pick<number>(
-      raw.portion?.grams, 
-      raw.grams, 
-      raw.estimatedGrams, 
-      raw.portion_estimate, 
-      raw.defaultGrams,
-      raw.meta?.portion?.grams,
-      100
-    ) as number
+  // Initial grams used by confirm card
+  const initialGrams = pick<number>(
+    raw.grams,
+    raw.portionGrams,
+    raw.baseGrams,
+    (raw.source === 'barcode' ? raw?.label?.servingSizeG : undefined),
+    100
   );
+
+  const baseGrams = Math.round(initialGrams as number);
 
   // Nutrition candidates (prefer detailed analysis)
   const n = raw.analysis?.nutrition ?? raw.nutrition ?? raw.nutritionData ?? raw.meta?.nutrition ?? {};
@@ -114,6 +132,57 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
     if (storeAnalysis?.perGram && Object.values(storeAnalysis.perGram).some(v => (v ?? 0) > 0)) {
       perGram = { ...storeAnalysis.perGram };
       console.log('[SST][read]', { id: resolvedId, name, source: 'store', perGram });
+    }
+  }
+
+  // Guarantee per-gram nutrition + carry image for PHOTO + BARCODE flows
+  const isPhotoSource = raw.source === 'photo';
+  const isBarcodeSource = raw.source === 'barcode';
+
+  if (!Object.keys(perGram).length && (isPhotoSource || isBarcodeSource)) {
+    if (isPhotoSource) {
+      // PHOTO items: use existing perGram or derive from basePer100/per100
+      if (raw.nutrition?.perGram) {
+        perGram = { ...raw.nutrition.perGram };
+      } else {
+        const per100Like = raw.basePer100 || raw.per100 || per100;
+        const computed = per100ToPerGram(per100Like);
+        if (computed) {
+          perGram = computed;
+          // If calories missing, compute from macros
+          if (!perGram.calories && (perGram.protein || perGram.carbs || perGram.fat)) {
+            perGram.calories = (perGram.protein || 0) * 4 + (perGram.carbs || 0) * 4 + (perGram.fat || 0) * 9;
+          }
+        }
+      }
+    } else if (isBarcodeSource) {
+      // BARCODE items: derive from perServing or per100g
+      const servingSizeG = raw.label?.servingSizeG || raw.nutrition?.servingGrams || raw.servingGrams;
+      if (servingSizeG && raw.nutrition?.perServing) {
+        // Build perGram from perServing
+        const serving = raw.nutrition.perServing;
+        perGram = {
+          calories: n0(serving.calories) / servingSizeG,
+          protein: n0(serving.protein) / servingSizeG,
+          carbs: n0(serving.carbs) / servingSizeG,
+          fat: n0(serving.fat) / servingSizeG,
+          fiber: n0(serving.fiber) / servingSizeG,
+          sugar: n0(serving.sugar) / servingSizeG,
+          sodium: n0(serving.sodium) / servingSizeG,
+        };
+      } else {
+        // Derive from per100g
+        const per100Like = raw.nutrition?.per100g || per100;
+        const computed = per100ToPerGram(per100Like);
+        if (computed) {
+          perGram = computed;
+        }
+      }
+      
+      // If calories missing, compute from macros
+      if (!perGram.calories && (perGram.protein || perGram.carbs || perGram.fat)) {
+        perGram.calories = (perGram.protein || 0) * 4 + (perGram.carbs || 0) * 4 + (perGram.fat || 0) * 9;
+      }
     }
   }
 
@@ -225,13 +294,40 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
   ) ?? [];
   
   const confidence = storeAnalysis?.confidence ?? pick<number>(raw.confidence, raw.analysis?.confidence);
-  const imageUrl = storeAnalysis?.imageUrl ?? pick<string>(
-    raw.image, 
-    raw.imageUrl, 
-    raw.productImageUrl, 
-    raw.photoUrl,
-    raw.image_url
-  );
+  
+  // Enhanced image URL selection for PHOTO and BARCODE flows
+  let imageUrl = storeAnalysis?.imageUrl;
+  if (!imageUrl) {
+    if (isPhotoSource) {
+      // PHOTO: prefer captured photo, then enrichment sources
+      imageUrl = pick<string>(
+        raw.imageUrl, 
+        raw.photoUrl, 
+        raw.selectedImage, 
+        raw.directImg,
+        raw.image,
+        raw.productImageUrl
+      );
+    } else if (isBarcodeSource) {
+      // BARCODE: prefer OFF images, then other sources
+      imageUrl = pick<string>(
+        raw.imageUrl,
+        raw.imageThumbUrl,
+        raw.directImg,
+        raw.image,
+        raw.productImageUrl
+      );
+    } else {
+      // Default fallback for other sources
+      imageUrl = pick<string>(
+        raw.image, 
+        raw.imageUrl, 
+        raw.productImageUrl, 
+        raw.photoUrl,
+        raw.image_url
+      );
+    }
+  }
 
   const dataSourceLabel = raw.analysis?.dataSourceLabel
     ?? raw.meta?.dataSourceLabel
