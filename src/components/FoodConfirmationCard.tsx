@@ -1687,45 +1687,19 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-{(() => {
-                const imgSrc = React.useMemo(() => {
-                  const img = (currentFoodItem as any)?.image;
-
-                  if (img?.url) return img.url;
-
-                  if (img?.kind === 'provider' && img.from === 'openfoodfacts' && (currentFoodItem as any)?.providerRef) {
-                    const p = (currentFoodItem as any).providerRef;
-                    const parts = [p.slice(0,3), p.slice(3,6), p.slice(6,9), p.slice(9)];
-                    return `https://images.openfoodfacts.org/images/products/${parts.join("/")}/front_en.200.jpg`;
-                  }
-
-                  // Fallback to legacy fields
-                  return (currentFoodItem as any)?.imageUrl ?? (currentFoodItem as any)?.url ?? displayImage ?? null;
-                }, [(currentFoodItem as any)?.image, (currentFoodItem as any)?.providerRef, displayImage]);
-
-                const [imgOk, setImgOk] = React.useState(true);
-
-                return (
-                  <div className="relative h-16 w-16 rounded-2xl overflow-hidden bg-muted/40">
-                    {imgSrc && imgOk ? (
-                      <img
-                        src={imgSrc}
-                        alt={(currentFoodItem as any)?.name ?? 'Food'}
-                        className="h-full w-full object-cover"
-                        referrerPolicy="no-referrer"
-                        crossOrigin=""
-                        onLoad={() => console.log('[CONFIRM][IMAGE][OK]', { url: imgSrc })}
-                        onError={() => {
-                          setImgOk(false);
-                          console.warn('[CONFIRM][IMAGE][ERROR]', { url: imgSrc });
-                        }}
-                      />
-                    ) : (
-                      <FallbackEmoji className="m-auto h-8 w-8 opacity-80" />
-                    )}
-                  </div>
-                );
-              })()}
+              {hasImage ? (
+                <img
+                  src={displayImage}
+                  alt={(currentFoodItem as any)?.title ?? (currentFoodItem as any)?.name}
+                  className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/10"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="h-14 w-14 rounded-xl bg-white/5 grid place-items-center">
+                  <FallbackEmoji className="h-8 w-8" />
+                </div>
+              )}
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg">

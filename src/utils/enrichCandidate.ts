@@ -110,24 +110,39 @@ export async function enrichCandidate(candidate: any) {
           enriched.imageAttribution = img.imageAttribution;
           enriched.imageUrlKind = 'provider';
         }
+        
+        // Add image diagnostics logging
+        console.log('[ENRICH][IMG]', { 
+          has: !!enriched.imageUrl, 
+          kind: enriched.imageUrlKind, 
+          src: enriched.imageAttribution 
+        });
+        
+        // Ingredients pipeline logging
+        console.log('[ING][SET]', {
+          language: 'unknown', // Would need language detection
+          hasList: !!ingredientsList?.length,
+          listLen: ingredientsList?.length,
+          hasText: !!ingredientsText,
+          analysisTags: enriched?.ingredients_analysis_tags?.slice(0, 5) || []
+        });
+        
+        if (import.meta.env.DEV) {
+          console.log('[ENRICH][NV_LABEL]', {
+            name: candidate?.name,
+            source,
+            listLen: enriched.ingredientsList?.length ?? 0,
+            first3: enriched.ingredientsList?.slice(0, 3) ?? []
+          });
+        }
+      } else {
+        enriched.ingredientsUnavailable = true;
+        enriched.hasIngredients = false;
       }
     } catch (error) {
       console.warn('[ENRICH][NV_LABEL][ERROR]', error);
       enriched.ingredientsUnavailable = true;
       enriched.hasIngredients = false;
-    }
-  }
-
-  // Normalize image to always provide http URL
-  if (!enriched.image || enriched.image?.kind === 'provider') {
-    if (enriched.providerRef && isEan(enriched.providerRef)) {
-      const cleanEan = enriched.providerRef.replace(/\D/g, '');
-      const parts = [cleanEan.slice(0,3), cleanEan.slice(3,6), cleanEan.slice(6,9), cleanEan.slice(9)];
-      enriched.image = {
-        kind: 'http',
-        url: `https://images.openfoodfacts.org/images/products/${parts.join("/")}/front_en.200.jpg`,
-        source: 'off'
-      };
     }
   }
 
