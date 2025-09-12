@@ -90,6 +90,15 @@ export async function enrichCandidate(candidate: any) {
         enriched.hasIngredients = true;
         enriched.enrichmentSource = source;
         
+        // Ingredients pipeline logging
+        console.log('[ING][SET]', {
+          language: 'unknown', // Would need language detection
+          hasList: !!ingredientsList?.length,
+          listLen: ingredientsList?.length,
+          hasText: !!ingredientsText,
+          analysisTags: enriched?.ingredients_analysis_tags?.slice(0, 5) || []
+        });
+        
         if (import.meta.env.DEV) {
           console.log('[ENRICH][NV_LABEL]', {
             name: candidate?.name,
@@ -139,6 +148,21 @@ export async function enrichCandidate(candidate: any) {
     canonicalKey: enriched?.canonicalKey,
     isGeneric: enriched?.isGeneric,
     provider: enriched?.provider
+  });
+  
+  // ENRICH OUT logging
+  console.log('[ENRICH][OUT]', {
+    name: enriched?.name,
+    classId: enriched?.classId,
+    isGeneric: enriched?.isGeneric,
+    labelSource: enriched?.enrichmentSource || 'none',
+    brandName: enriched?.brandName || enriched?.brand,
+    barcode: enriched?.providerRef,
+    providerRef: enriched?.providerRef,
+    servingSizeG: enriched?.label?.servingSizeG,
+    macrosPerServing: enriched?.label?.macrosPerServing,
+    basePer100: !!enriched?.basePer100,
+    perGram: !!enriched?.perGram
   });
   
   if (import.meta.env.DEV) {

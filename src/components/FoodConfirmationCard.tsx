@@ -128,6 +128,39 @@ interface FoodConfirmationCardProps {
 
 const CONFIRM_FIX_REV = "2025-08-31T15:43Z-r11";
 
+// Add helper to normalize nutrition to per-100g basis
+const ensurePer100 = (item: any) => {
+  // Inputs can be any of: perGram, basePer100, label.servingSizeG + macrosPerServing
+  if (item?.basePer100) return item.basePer100;
+  
+  if (item?.perGram) {
+    return {
+      calories: Math.round((item.perGram.calories || 0) * 100),
+      proteinG: Math.round((item.perGram.protein || 0) * 100 * 10) / 10,
+      carbsG: Math.round((item.perGram.carbs || 0) * 100 * 10) / 10,
+      fatG: Math.round((item.perGram.fat || 0) * 100 * 10) / 10,
+      fiberG: Math.round((item.perGram.fiber || 0) * 100 * 10) / 10,
+      sugarG: Math.round((item.perGram.sugar || 0) * 100 * 10) / 10,
+      sodium_mg: Math.round((item.perGram.sodium || 0) * 100)
+    };
+  }
+  
+  if (item?.label?.servingSizeG && item?.label?.macrosPerServing) {
+    const f = 100 / item.label.servingSizeG;
+    return {
+      calories: Math.round((item.label.macrosPerServing.calories || 0) * f),
+      proteinG: Math.round((item.label.macrosPerServing.proteinG || 0) * f * 10) / 10,
+      carbsG: Math.round((item.label.macrosPerServing.carbsG || 0) * f * 10) / 10,
+      fatG: Math.round((item.label.macrosPerServing.fatG || 0) * f * 10) / 10,
+      fiberG: Math.round((item.label.macrosPerServing.fiberG || 0) * f * 10) / 10,
+      sugarG: Math.round((item.label.macrosPerServing.sugarG || 0) * f * 10) / 10,
+      sodium_mg: Math.round((item.label.macrosPerServing.sodium_mg || 0) * f)
+    };
+  }
+  
+  return null;
+};
+
 const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   mode = 'standard',
   isOpen,
@@ -453,43 +486,111 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const g1 = (n?: number) => Math.round(safe(n) * scaleMult * 10) / 10; // grams to 1 decimal
   const kcal = (n?: number) => Math.round(safe(n) * scaleMult);         // calories to int
 
+  // Normalize nutrition using ensurePer100 helper
+  const per100 = ensurePer100(currentFoodItem);
+  const normalizedPerGram = per100 ? {
+    calories: per100.calories / 100,
+    protein: per100.proteinG / 100,
+    carbs: per100.carbsG / 100,
+    fat: per100.fatG / 100,
+    fiber: per100.fiberG / 100,
+    sugar: per100.sugarG / 100,
+    sodium: per100.sodium_mg / 100
+  } : null;
+  
+  // Set macros mode based on available data
+  const macrosMode = per100 ? 'normalized' : 'legacy_text_lookup';
+  
   console.log('[CONFIRM][SCALING]', {
-    basis: isPerGramBasis ? 'per-gram' : 'per-100g',
-    servingG: actualServingG,
-    mult: scaleMult,
-    source: dataSource || 'unknown'
+    basisChosen: per100 ? 'per-100g-normalized' : 'legacy',
+    baseServingG: actualServingG,
+    uiServingLabel: 'calculated_later',
+    sliderG: actualServingG,
+    sourcePaths: {
+      perGram: !!currentFoodItem?.perGram,
+      basePer100: !!(currentFoodItem as any)?.basePer100,
+      perPortion: !!(currentFoodItem as any)?.basePerPortion,
+      labelData: !!(currentFoodItem as any)?.label
+    },
+    inputs: {
+      perServingMacros: (currentFoodItem as any)?.label?.macrosPerServing,
+      servingSizeG: (currentFoodItem as any)?.label?.servingSizeG,
+      basePer100: (currentFoodItem as any)?.basePer100,
+      perGram: currentFoodItem?.perGram
+    },
+    outputs: per100 ? { 
+      kcal: Math.round((per100.calories * actualServingG) / 100), 
+      proteinG: Math.round((per100.proteinG * actualServingG) / 100 * 10) / 10, 
+      carbsG: Math.round((per100.carbsG * actualServingG) / 100 * 10) / 10, 
+      fatG: Math.round((per100.fatG * actualServingG) / 100 * 10) / 10 
+    } : { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
+    macrosMode,
+    dataSource: dataSource || 'unknown'
   });
 
-  // Use the helpers when binding values
-  const headerKcal = kcal(getPG('calories'));
-  const proteinG = g1(getPG('protein'));
-  const carbsG = g1(getPG('carbs'));
-  const fatG = g1(getPG('fat'));
-  const fiberG = g1(getPG('fiber'));
-  const sugarG = g1(getPG('sugar'));
+  // Calculate final nutrition values using normalized per100 basis
+  const finalNutrition = per100 ? {
+    calories: Math.round((per100.calories * actualServingG) / 100),
+    protein: Math.round((per100.proteinG * actualServingG) / 100 * 10) / 10,
+    carbs: Math.round((per100.carbsG * actualServingG) / 100 * 10) / 10,
+    fat: Math.round((per100.fatG * actualServingG) / 100 * 10) / 10,
+    fiber: Math.round((per100.fiberG * actualServingG) / 100 * 10) / 10,
+    sugar: Math.round((per100.sugarG * actualServingG) / 100 * 10) / 10,
+    sodium: Math.round((per100.sodium_mg * actualServingG) / 100)
+  } : {
+    // Fallback to legacy calculation
+    calories: kcal(getPG('calories')),
+    protein: g1(getPG('protein')),
+    carbs: g1(getPG('carbs')),
+    fat: g1(getPG('fat')),
+    fiber: g1(getPG('fiber')),
+    sugar: g1(getPG('sugar')),
+    sodium: Math.round(getPG('sodium') * scaleMult * 1000)
+  };
+
+  // Use the helpers when binding values (keep for backward compatibility)
+  const headerKcal = finalNutrition.calories;
+  const proteinG = finalNutrition.protein;
+  const carbsG = finalNutrition.carbs;
+  const fatG = finalNutrition.fat;
+  const fiberG = finalNutrition.fiber;
+  const sugarG = finalNutrition.sugar;
 
   const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
   const isTextItem = (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech';
   
-  // Use selection flags for badge (not post-enrichment flags) - Fix chip logic
+  // Compute display badge from the FINAL item, not the original candidate
   const badge = useMemo(() => {
     const sourceFlags = (currentFoodItem as any)?.selectionFlags || currentFoodItem?.flags;
     const isGeneric = (currentFoodItem as any)?.isGeneric;
     const provider = (currentFoodItem as any)?.provider;
+    const barcode = (currentFoodItem as any)?.providerRef || (currentFoodItem as any)?.barcode;
+    const brandName = (currentFoodItem as any)?.brandName || (currentFoodItem as any)?.brand;
+    const enrichmentSource = (currentFoodItem as any)?.enrichmentSource;
     
-    // First check explicit isGeneric flag
+    // Badge truth: item is branded if it has real brand evidence
+    const isBrand = !!(barcode || brandName || enrichmentSource === 'off' || enrichmentSource === 'label');
+    
+    if (isBrand) return 'Brand';
     if (isGeneric === true || provider === 'generic') return 'Generic';
-    
-    // Then check for brand evidence
-    if (sourceFlags?.brand || provider === 'brand' || provider === 'nutritionix') return 'Brand';
     
     // Use flags as fallback, but ensure brand takes priority over generic
     const fromFlags = labelFromFlags(sourceFlags);
     if (fromFlags === 'Brand') return 'Brand';
     
-    // Default to Brand for unknown items (conservative approach)
-    return fromFlags || 'Brand';
+    // Default to 'Item' for ambiguous cases
+    return fromFlags || 'Item';
   }, [currentFoodItem]);
+  
+  // Badge logging for debugging
+  console.log('[CONFIRM][BADGE]', { 
+    isGeneric: (currentFoodItem as any)?.isGeneric, 
+    providerRef: (currentFoodItem as any)?.providerRef, 
+    brandName: (currentFoodItem as any)?.brandName || (currentFoodItem as any)?.brand, 
+    enrichmentSource: (currentFoodItem as any)?.enrichmentSource,
+    provider: (currentFoodItem as any)?.provider,
+    finalBadge: badge
+  });
 
   // Normalize props to avoid layout branch flips
   const normalizedItem = useMemo(() => ({
@@ -586,15 +687,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const normalizedName = extractName({ name: rawName }) || (isBarcodeItem ? `Product ${(currentFoodItem as any)?.barcode || 'Unknown'}` : 'Unknown Product');
   const title = sanitizeName(normalizedName);
 
-  // Serving grams and label
+  // Serving grams and label - use consistent gram-based labeling
   const servingG = preferItem
     ? ((currentFoodItem as any)?.servingGrams ?? (isBarcodeSource ? 100 : null))
     : (currentFoodItem?.portionGrams ?? null);
   
-  // Remove flag gate - always use real servings when available
-  const servingLabel = (isBarcodeSource && servingG && servingG !== 100)
-    ? `Per serving (${servingG} g)`
-    : (isBarcodeSource ? 'Per 100 g' : 'Per portion (100 g)');
+  // Always show grams in serving label for consistency
+  const servingLabel = `${actualServingG}g`;
 
   console.log('[SERVING][FINAL]', { isBarcodeSource, bypassHydration, preferItem, servingG, servingLabel });
   console.log('[PORTION][SOURCE]', (currentFoodItem as any)?.portionSource || (isBarcodeItem ? 'UPC' : 'unknown'));
@@ -922,6 +1021,19 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
     const flags = detectFlags(ingredientsText, nutritionThresholds);
     
+    // Health flags input logging
+    const tokensLen = ingredientsText.split(/\s+/).filter(Boolean).length;
+    const hasAnalysisTags = !!(food as any)?.ingredients_analysis_tags;
+    
+    console.log('[HEALTH][IN]', { 
+      tokensLen, 
+      lang: 'unknown', // Would need language detection
+      usingAnalysisTags: hasAnalysisTags,
+      allergens: (food as any)?.allergens?.slice(0, 5) || [],
+      additives: (food as any)?.additives?.slice(0, 5) || [],
+      ingredientsTextLen: ingredientsText.length
+    });
+    
     console.debug('[FLAGS][INPUT]', {
       hasIngredients: !!ingredientsText,
       allergens: (food as any).allergens?.length || 0,
@@ -1199,6 +1311,31 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     provider,
     sourceFlags: (currentFoodItem as any)?.selectionFlags || currentFoodItem?.flags
   });
+  
+  // Also add slider change logging
+  useEffect(() => {
+    console.log('[CONFIRM][SCALING]', {
+      basisChosen: isPerGramBasis ? 'per-gram' : 'per-100g',
+      baseServingG: actualServingG,
+      uiServingLabel: servingLabel,
+      sliderG: actualServingG,
+      sourcePaths: {
+        perGram: !!basisPerGram,
+        basePer100: !!(currentFoodItem as any)?.basePer100,
+        perPortion: !!(currentFoodItem as any)?.basePerPortion
+      },
+      inputs: {
+        perServingMacros: (currentFoodItem as any)?.label?.macrosPerServing,
+        servingSizeG: (currentFoodItem as any)?.label?.servingSizeG,
+        basePer100: (currentFoodItem as any)?.basePer100,
+        perGram: basisPerGram
+      },
+      outputs: { kcal: headerKcal, proteinG, carbsG, fatG },
+      scaleMult,
+      dataSource: dataSource || 'unknown',
+      trigger: 'slider_change'
+    });
+  }, [portionPercentage[0], isPerGramBasis, actualServingG, servingLabel, basisPerGram, headerKcal, proteinG, carbsG, fatG, scaleMult, dataSource]);
 
   // Show loading state during transition in multi-item flow
   if (!currentFoodItem && dialogOpen) {
@@ -1670,6 +1807,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </TabsContent>
               
               <TabsContent value="ingredients" className="space-y-4 mt-4">
+                {/* Enhanced ingredients tab with OFF analysis indicator */}
+                {import.meta.env.DEV && (currentFoodItem as any)?.ingredients_analysis_tags?.length > 0 && (
+                  <div className="text-xs text-green-600 dark:text-green-400 mb-2 flex items-center gap-1">
+                    <span>✓</span>
+                    <span>Using label analysis</span>
+                  </div>
+                )}
+                
                 <div className="ingredients-panel min-h-24">
                   {ingredientsList.length > 0 ? (
                     <div className="space-y-3">
