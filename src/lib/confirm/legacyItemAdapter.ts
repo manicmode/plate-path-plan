@@ -12,7 +12,16 @@ export type LegacyNutrition = {
   fiber?: number; 
   sodium?: number;
   // Per-gram basis for live recompute on portion changes
-  perGram?: Partial<Record<'calories'|'protein'|'carbs'|'fat'|'sugar'|'fiber'|'sodium', number>>;
+  perGram?: {
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+    sugar?: number;
+    fiber?: number;
+    sodium?: number;
+    normalizedFrom?: string;
+  };
   basis?: 'per100g' | 'perServing' | 'perGram';
   servingGrams?: number; // if perServing basis
 };
@@ -78,6 +87,12 @@ export type LegacyFoodItem = {
 type AnyItem = Record<string, any>;
 
 const pick = <T = any>(...vals: any[]): T | undefined => vals.find(v => v !== undefined && v !== null);
+
+const num = (v: any) => {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  const n = Number.parseFloat(String(v ?? ''));
+  return Number.isFinite(n) ? n : 0;
+};
 
 export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST = false): LegacyFoodItem {
   const name = pick<string>(
@@ -171,21 +186,21 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
 
         // Always assign a value (0 if not found) for key nutrients
         if (value !== undefined && foundKey) {
-          perGram[nutrientKey as keyof typeof perGram] = num(value) / divisor;
+          (perGram as any)[nutrientKey] = num(value) / divisor;
         } else if (['protein', 'carbs', 'fat'].includes(nutrientKey)) {
           // Fill missing key macros with 0 (salmon will get carbs: 0 instead of undefined)
-          perGram[nutrientKey as keyof typeof perGram] = 0;
+          (perGram as any)[nutrientKey] = 0;
         }
         
         if (process.env.NODE_ENV === 'development') {
           const finalValue = perGram[nutrientKey as keyof typeof perGram];
           if (foundKey) {
             console.log('[SST][PERGRAM][CALC]', {
-              item: name, nutrient: nutrientKey, foundKey, rawValue: value, divisor, perGram: finalValue, basis
+              item: name, nutrient: nutrientKey, foundKey, rawValue: value, divisor, perGram: (perGram as any)[nutrientKey], basis
             });
           } else if (['protein', 'carbs', 'fat'].includes(nutrientKey)) {
             console.log('[SST][PERGRAM][FILL]', {
-              item: name, nutrient: nutrientKey, basis, filled: finalValue
+              item: name, nutrient: nutrientKey, basis, filled: (perGram as any)[nutrientKey]
             });
           }
         }
@@ -201,12 +216,13 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
           ? +sourceData.calories
           : Math.round(p100 * 4 + c100 * 4 + f100 * 9);
           
-        // ✅ Normalize ONCE to per gram - using 'calories' instead of 'kcal'
+        // ✅ Normalize ONCE to per gram with normalizedFrom flag
         perGram = {
           protein: p100 / 100,
           carbs: c100 / 100,
           fat: f100 / 100,
           calories: kcal100 / 100,
+          normalizedFrom: 'per-100g',
         };
         
         // Mark ready if at least calories or any macro is present (zeros allowed)
@@ -222,6 +238,30 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
           (raw as any).pgSum = (perGram.protein ?? 0) + (perGram.carbs ?? 0) + (perGram.fat ?? 0);
         }
       }
+      
+      // Always emit per-gram for all valid basis types
+      if (Object.keys(perGram).length === 0 && sourceData && divisor > 0) {
+        const macros = {
+          protein100: num(sourceData?.protein_100g ?? sourceData?.proteins_100g ?? sourceData?.protein),
+          carbs100:   num(sourceData?.carbohydrates_100g ?? sourceData?.carbohydrates_g ?? sourceData?.carbs),
+          fat100:     num(sourceData?.fat_100g ?? sourceData?.fat),
+          kcal100:    num(sourceData?.calories ?? sourceData?.energy_kcal ?? sourceData?.energy),
+        };
+        
+        // Always emit per-gram
+        perGram = {
+          protein: macros.protein100 / 100,
+          carbs:   macros.carbs100   / 100,
+          fat:     macros.fat100     / 100,
+          calories: (macros.kcal100 > 0 ? macros.kcal100 : (macros.protein100*4 + macros.carbs100*4 + macros.fat100*9)) / 100,
+          normalizedFrom: 'per-100g',
+        };
+        
+        (raw as any).perGram = perGram;
+        (raw as any).perGramReady = [perGram.protein, perGram.carbs, perGram.fat, perGram.calories]
+          .some((v) => Number.isFinite(v) && v >= 0);
+        (raw as any).pgSum = perGram.protein + perGram.carbs + perGram.fat;
+      }
     } else if (process.env.NODE_ENV === 'development') {
       console.warn('[SST][NO_BASIS]', {
         item: name, hasPer100: !!per100, hasPerServing: !!perServing, hasRawNutrients: !!raw.nutrients,
@@ -232,7 +272,9 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
 
   // Final adapter diagnostics
   if (process.env.NODE_ENV === 'development') {
-    const pgSum = Object.values(perGram || {}).reduce((sum, v: any) => sum + (+v || 0), 0);
+    const pgSum = Object.entries(perGram || {}).reduce((sum, [key, v]) => {
+      return key === 'normalizedFrom' ? sum : sum + (Number(v) || 0);
+    }, 0);
     console.log('[SST][ADAPTER_READ]', {
       passedId: resolvedId,
       generatedId: generateFoodId(raw),

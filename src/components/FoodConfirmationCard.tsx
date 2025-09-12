@@ -39,6 +39,15 @@ import confetti from 'canvas-confetti';
 import { labelFromFlags } from '@/lib/food/search/getFoodCandidates';
 import { trace, caloriesFromMacros } from '@/debug/traceFood';
 
+// ---- numeric safety helpers (zeros are valid!) ----
+const toNum = (v: unknown): number => {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  const n = Number.parseFloat(String(v ?? ''));
+  return Number.isFinite(n) ? n : NaN;
+};
+const isNum = (v: unknown) => Number.isFinite(toNum(v));
+const nz = (v: unknown) => (isNum(v) ? toNum(v) : 0);
+
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
   <div className={`flex items-center justify-center bg-gray-100 dark:bg-gray-800 ${className}`}>
@@ -392,13 +401,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   const useHydration = !bypassHydration;
   
-  // Check per-gram readiness (detect-* items)
-  const pg = currentFoodItem?.perGram ?? {};
-  const perGramReady =
-    num(pg.calories) !== undefined ||
-    num(pg.protein)  !== undefined ||
-    num(pg.carbs)    !== undefined ||
-    num(pg.fat)      !== undefined;
+  // Build per-gram snapshot once, allow zeros
+  const pgRaw = currentFoodItem?.perGram ?? storeAnalysis?.perGram ?? {};
+  const PG = {
+    protein: nz((pgRaw as any).protein),
+    carbs:   nz((pgRaw as any).carbs),
+    fat:     nz((pgRaw as any).fat),
+    kcal:    nz((pgRaw as any).kcal || (pgRaw as any).calories),
+  };
+  const perGramReady = [PG.protein, PG.carbs, PG.fat, PG.kcal].some((v) => Number.isFinite(v));
+  const pgSum = PG.protein + PG.carbs + PG.fat;
 
   // NEW: consider per-serving as a valid basis (manual/barcode items)
   const ps = (currentFoodItem as any)?.nutrition?.perServing ?? (currentFoodItem as any)?.perServing ?? {};
@@ -431,8 +443,20 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     num(macrosSource?.calories) ??
     kcalFromMacrosFn(num(macrosSource?.protein), num(macrosSource?.carbs), num(macrosSource?.fat));
 
-  // Bind header calories
-  const headerCalories = Math.round(headerKcalRaw);
+  // We standardize on **per-gram** internally:
+  // If kcal per gram missing, derive from macros (4/4/9).
+  const kcalPerGram = isNum(PG.kcal) && PG.kcal > 0
+    ? PG.kcal
+    : nz(PG.protein) * 4 + nz(PG.carbs) * 4 + nz(PG.fat) * 9;
+
+  const gramsShown = nz(currentGrams ?? 100);
+  let headerCalories = Math.round(kcalPerGram * gramsShown);
+
+  // Hard fallback only if everything is missing (shouldn't happen now)
+  if (!Number.isFinite(headerCalories) || headerCalories <= 0) {
+    const legacyKcal = num(macrosSource?.calories);
+    headerCalories = Number.isFinite(legacyKcal) && legacyKcal! > 0 ? legacyKcal! : 100;
+  }
 
   // Compute macros based on chosen basis
   const displayProteinG = perGramReady 
@@ -1890,16 +1914,23 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   // Fallback to existing remote lookup code path
                   if (resolvedSrc) {
                     return (
-                      <img
-                        src={resolvedSrc}
-                        alt=""
-                        aria-hidden="true"
-                        style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
-                        onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
-                        onError={() => { console.warn('[IMG][ERROR]', resolvedSrc); if (imgIdx < imageUrls.length-1) setImgIdx(i=>i+1); }}
-                        referrerPolicy="no-referrer"
-                        loading="eager"
-                      />
+                        <img
+                          src={resolvedSrc}
+                          alt=""
+                          aria-hidden="true"
+                          style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
+                          onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
+                          onError={(e) => {
+                            console.warn('[IMG][ERROR]', resolvedSrc);
+                            const fallbacks = imageUrls.filter((u) => u && u !== resolvedSrc);
+                            if (fallbacks.length && imgIdx < imageUrls.length-1) {
+                              setImgIdx(i=>i+1);
+                            }
+                          }}
+                          referrerPolicy="no-referrer"
+                          loading="eager"
+                          decoding="async"
+                        />
                     );
                   }
 

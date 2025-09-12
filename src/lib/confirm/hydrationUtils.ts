@@ -1,6 +1,6 @@
 export const MACROS = ['calories','protein','carbs','fat','sugar','fiber','sodium'] as const;
 
-export function perGramSum(pg?: Record<string, number>) {
+export function perGramSum(pg?: Record<string, any>) {
   if (!pg) return 0;
   return MACROS.reduce((a,k)=>a + (Number(pg[k]) || 0), 0);
 }
