@@ -1,2 +1,2 @@
-// Feature flags for confirm pipeline changes
-export const ENABLE_PHOTO_BARCODE_ENRICH = false; // Phase 1: keep legacy behavior
+// Feature flags for confirmation pipelines (manual vs photo/barcode)
+export const ENABLE_PHOTO_BARCODE_ENRICH = false as const;
