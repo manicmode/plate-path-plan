@@ -7,7 +7,8 @@ import {
   FOOD_TEXT_DEBUG, 
   MAX_PER_FAMILY_MANUAL,
   REQUIRE_CORE_TOKEN_MANUAL,
-  MIN_PREFIX_LEN 
+  MIN_PREFIX_LEN,
+  ENABLE_CHEAP_FIRST_SWR
 } from '@/lib/flags';
 import { parseQuery } from '@/lib/food/text/parse';
 import { getFoodCandidates } from '@/lib/food/search/getFoodCandidates';
@@ -17,12 +18,13 @@ import { canonicalFor } from '@/lib/food/text/canonicalMap';
 // Feature flag for rollback capability
 export const FEATURE_TEXT_LOOKUP_V2 = true;
 
-export type TextLookupSource = 'manual' | 'speech';
+export type TextLookupSource = 'manual' | 'speech' | 'photo' | 'barcode';
 
 export interface TextLookupOptions {
   source: TextLookupSource;
   bypassCache?: boolean;
   portionOverrideGrams?: number;
+  skipEdge?: boolean;
 }
 
 // Telemetry counters
@@ -38,7 +40,8 @@ const telemetry = {
  * Main text lookup function with v3 support for manual/voice
  */
 export async function submitTextLookup(query: string, options: TextLookupOptions): Promise<any> {
-  const { source, bypassCache = false, portionOverrideGrams } = options;
+  const { source, bypassCache = false, portionOverrideGrams, skipEdge } = options;
+  const shouldSkipEdge = skipEdge ?? (source === 'manual' || ENABLE_CHEAP_FIRST_SWR);
 
   if (!query?.trim()) {
     throw new Error('Query cannot be empty');
@@ -50,11 +53,11 @@ export async function submitTextLookup(query: string, options: TextLookupOptions
 
   // Use v3 pipeline for manual/voice when enabled
   if (ENABLE_FOOD_TEXT_V3 && (source === 'manual' || source === 'speech')) {
-    return await submitTextLookupV3(query, options);
+    return await submitTextLookupV3(query, { ...options, skipEdge: shouldSkipEdge });
   }
 
   // Fallback to legacy for all other cases or when v3 disabled
-  return await submitTextLookupLegacy(query, options);
+  return await submitTextLookupLegacy(query, { ...options, skipEdge: shouldSkipEdge });
 }
 
 /**

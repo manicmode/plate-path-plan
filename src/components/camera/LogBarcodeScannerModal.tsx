@@ -836,6 +836,26 @@ export const LogBarcodeScannerModal: React.FC<LogBarcodeScannerModalProps> = ({
       if (error) {
         status = error.status || 'error';
         console.log(`[LOG] off_error:`, error);
+        
+        // NEW: direct fallback to our proxy on stub error
+        try {
+          const r = await fetch(`/api/off-proxy/${barcode}`);
+          const j = await r.json().catch(() => null);
+          if (j?.success && (j.images?.length || j.nutrition)) {
+            console.log('[LOG][OFF_PROXY] fallback success', { barcode });
+            // Close modal and let parent handle the result
+            setIsLookingUp(false);
+            onOpenChange(false);
+            
+            // Notify parent with the barcode string so it can handle the fallback
+            setTimeout(() => {
+              onBarcodeDetected(barcode);
+            }, 100);
+            return;
+          }
+        } catch (e) {
+          console.log('[LOG][OFF_PROXY] fallback failed', e);
+        }
       } else {
         status = 200;
         hit = !!result?.ok && !!result.product;

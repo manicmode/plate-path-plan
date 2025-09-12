@@ -1722,10 +1722,53 @@ console.log('Global search enabled:', enableGlobalSearch);
           body: { health: true },
           headers
         });
-        console.log('Health check response:', healthResponse);
-      } catch (healthError) {
-        console.error('Health check failed:', healthError);
-        if (healthError.message?.includes('404') || healthError.message?.includes('not found')) {
+      console.log('Health check response:', healthResponse);
+      
+      let ok = false;
+      try {
+        ok = !!healthResponse?.data?.ok;
+      } catch (e) {
+        console.log('[BARCODE][HEALTH] soft-fail', { status: healthResponse?.error?.status ?? 'unknown' });
+      }
+    } catch (healthError) {
+      console.error('Health check failed:', healthError);
+      console.log('[BARCODE][HEALTH] soft-fail', { status: healthError?.status ?? 'unknown' });
+      
+      // NEW: direct fallback to our proxy
+      try {
+        const r = await fetch(`/api/off-proxy/${cleanBarcode}`);
+        const j = await r.json().catch(() => null);
+        if (j?.success && (j.images?.length || j.nutrition)) {
+          // construct candidate → open confirmation
+          console.log('[BARCODE][OFF_PROXY] fallback success', { barcode: cleanBarcode });
+          const recognizedFood = {
+            id: `off-proxy-${cleanBarcode}`,
+            name: j.name || 'Unknown Product',
+            brand: j.brand || '',
+            calories: j.nutrition?.perServing?.calories || j.nutrition?.per100g?.calories || 0,
+            protein: j.nutrition?.perServing?.protein || j.nutrition?.per100g?.protein || 0,
+            carbs: j.nutrition?.perServing?.carbs || j.nutrition?.per100g?.carbs || 0,
+            fat: j.nutrition?.perServing?.fat || j.nutrition?.per100g?.fat || 0,
+            fiber: j.nutrition?.perServing?.fiber || j.nutrition?.per100g?.fiber || 0,
+            sugar: j.nutrition?.perServing?.sugar || j.nutrition?.per100g?.sugar || 0,
+            sodium: j.nutrition?.perServing?.sodium || j.nutrition?.per100g?.sodium || 0,
+            imageUrl: j.images?.[0],
+            source: 'barcode',
+            barcode: cleanBarcode,
+            servingGrams: j.nutrition?.servingG || 100,
+            confidence: 80
+          };
+          setInputSource('barcode');
+          setRecognizedFoods([recognizedFood]);
+          setBypassHydration(true);
+          setIsLoadingBarcode(false);
+          return;
+        }
+      } catch (e) {
+        console.log('[BARCODE][OFF_PROXY] fallback failed', e);
+      }
+      
+      if (healthError.message?.includes('404') || healthError.message?.includes('not found')) {
           toast.error("Service temporarily unavailable", {
             description: "Please enter product manually below",
             action: {

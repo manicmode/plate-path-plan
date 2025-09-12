@@ -271,9 +271,9 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     const disableEnrichmentOnType = (import.meta.env.VITE_DISABLE_ENRICHMENT_ON_TYPE ?? '1') === '1';
 
     try {
-      // cheap-first path (no enrichment while typing)
-      const t0 = performance.now();
-      const fallback = await submitTextLookup(query, { source: 'manual' });
+    // cheap-first path (no enrichment while typing)
+    const t0 = performance.now();
+    const fallback = await submitTextLookup(query, { source: 'manual', skipEdge: true });
       const cheapMs = Math.round(performance.now() - t0);
 
       if (currentGen !== searchGenRef.current || ctrl.signal.aborted || searchLockedRef.current) {

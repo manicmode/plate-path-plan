@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useId } from 'react';
-import { Dialog, DialogHeader, DialogClose, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogHeader, DialogClose, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { withSafeCancel } from '@/lib/ui/withSafeCancel';
-import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
@@ -34,8 +33,7 @@ import { inferPortion } from '@/lib/food/portion/inferPortion';
 import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR } from '@/lib/flags';
 import { extractName } from '@/lib/debug/extractName';
 import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
-import { DialogTitle } from '@radix-ui/react-dialog';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import confetti from 'canvas-confetti';
 import { labelFromFlags } from '@/lib/food/search/getFoodCandidates';
@@ -194,6 +192,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const allowEnrich = inputSource === 'manual' || ENABLE_PHOTO_BARCODE_ENRICH;
 
   // All hooks called unconditionally first
+  const titleId = useId();
   const descId = useId();
   const [portionPercentage, setPortionPercentage] = useState([100]);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -270,21 +269,29 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const PLACEHOLDER = '/images/food-placeholder.png';
   const isManualImage = inputSource === 'manual';
   
+  const ensureProxied = (u?: string) =>
+    u && u.startsWith('https://images.openfoodfacts.org')
+      ? `/api/image-proxy?url=${encodeURIComponent(u)}`
+      : u;
+
   const imageUrls = useMemo(() => {
-    let urls: string[] = [];
+    const candidates: string[] = [
+      (currentFoodItem as any)?.imageUrl,
+      (currentFoodItem as any)?.thumbnailUrl,
+      (currentFoodItem as any)?.photoUrl,
+    ].filter(Boolean) as string[];
 
-    const provider = (currentFoodItem as any)?._provider;
-    const providerRef = (currentFoodItem as any)?.providerRef;
-
-    if ((currentFoodItem as any)?.imageUrl) urls.push((currentFoodItem as any).imageUrl);
-    if ((currentFoodItem as any)?.thumbnailUrl) urls.push((currentFoodItem as any).thumbnailUrl);
-    if (provider === 'off' && providerRef && IMAGE_PROXY_OFF) {
-      // prefer proxy for OFF
-      urls.push(`/api/image-proxy?url=${encodeURIComponent(`https://images.openfoodfacts.org/images/products/${String(providerRef).replace(/(\d{3})(\d{3})(\d{3})(\d+)/, '$1/$2/$3/$4')}/front_en.400.jpg`)}`);
-    }
-    if (urls.length === 0) urls = ['/images/food-placeholder.png'];
-    return Array.from(new Set(urls));
-  }, [(currentFoodItem as any)?.imageUrl, (currentFoodItem as any)?.thumbnailUrl, (currentFoodItem as any)?._provider, (currentFoodItem as any)?.providerRef]);
+    // map all to proxied
+    const dedup = Array.from(new Set(candidates.map(ensureProxied)));
+    return dedup.length ? dedup : [PLACEHOLDER];
+  }, [
+    (currentFoodItem as any)?.imageUrl,
+    (currentFoodItem as any)?.thumbnailUrl,
+    (currentFoodItem as any)?.photoUrl,
+    (currentFoodItem as any)?.providerRef,
+    (currentFoodItem as any)?._provider,
+    isManualImage
+  ]);
 
   useEffect(() => setImgIdx(0), [imageUrls.join('|')]);
 
@@ -1053,13 +1060,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Guard content rendering ONLY; hooks already executed
   if (!ready) {
     return (
-      <AccessibleDialogContent 
-        title="Confirm Food"
-        aria-describedby="confirm-card-desc"
-      >
-        <p id="confirm-card-desc" className="sr-only">Confirm your food log.</p>
-        <div style={{ minHeight: 420 }} />
-      </AccessibleDialogContent>
+      <div className="min-h-[420px] flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </div>
     );
   }
 
@@ -1519,11 +1522,15 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   if (!currentFoodItem && dialogOpen) {
     return (
       <Dialog open={dialogOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
-        <AccessibleDialogContent 
+        <DialogContent 
           className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
-          title="Loading next item"
-          description="Please wait while the next food item is being loaded."
         >
+          <DialogHeader className="sr-only">
+            <DialogTitle>Loading next item</DialogTitle>
+          </DialogHeader>
+          <DialogDescription className="sr-only">
+            Please wait while the next food item is being loaded.
+          </DialogDescription>
           <div className="p-6 flex items-center justify-center min-h-[200px]">
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 dark:bg-emerald-900/20 rounded-full mb-4">
@@ -1539,7 +1546,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               )}
             </div>
           </div>
-        </AccessibleDialogContent>
+        </DialogContent>
       </Dialog>
     );
   }
@@ -1559,20 +1566,20 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
           console.log('[CANCEL][DONE]');
         }}
       >
-        <AccessibleDialogContent 
+        <DialogContent 
           className="food-confirm-card with-stable-panels max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden max-h-[90vh] flex flex-col"
-          title="Confirm Food Log"
-          description="Review nutrition information and adjust serving size as needed."
           showCloseButton={!reminderOpen}
           data-dialog-root="confirm-food-log"
           onEscapeKeyDown={(e) => forceConfirm && e.preventDefault()}
           onInteractOutside={(e) => forceConfirm && e.preventDefault()}
           aria-describedby={descId}
         >
-          <VisuallyHidden><DialogTitle>Confirm Food Log</DialogTitle></VisuallyHidden>
-          <div id={descId} className="sr-only">
+          <DialogHeader className="sr-only">
+            <DialogTitle id={titleId}>Confirm Food Log</DialogTitle>
+          </DialogHeader>
+          <DialogDescription id={descId} className="sr-only">
             Review nutrition information and adjust serving size as needed.
-          </div>
+          </DialogDescription>
           <div className="p-6 overflow-y-auto flex-1 min-h-0">
             {/* Manual Entry Enrichment Loading */}
             {(isManual && !readyForManual) ? (
@@ -2227,7 +2234,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             </>
             )}
           </div>
-        </AccessibleDialogContent>
+        </DialogContent>
       </Dialog>
 
       {/* Edit Screen */}
