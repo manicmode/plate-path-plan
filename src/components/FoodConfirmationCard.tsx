@@ -284,19 +284,21 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const imageUrls: string[] = useMemo(() => {
     const cardItem = currentFoodItem as any;
     
-    // Enhanced image fallback candidates
-    const imgCandidates = [
+    // Enhanced image candidates with barcode fallbacks
+    const candidates = [
       cardItem?.imageUrl,
+      cardItem?.directImg,
+      cardItem?.imageThumbUrl,
       cardItem?.photoUrl,
       cardItem?.selectedImage,
       cardItem?.storeAnalysis?.imageUrl,
       cardItem?.image?.urls?.[0], // First from enrichment
-      ...(cardItem?.providerRef ? offImageCandidates(cardItem.providerRef) : []),
+      ...(cardItem?.barcode ? offImageCandidates(cardItem.barcode, 200, 'en') : []),
     ].filter(Boolean) as string[];
 
-    console.log('[CARD][IMAGE:FALLBACK]', { using: imgCandidates[0], total: imgCandidates.length });
+    console.log('[CARD][IMAGE:FALLBACK]', { using: candidates[0], total: candidates.length });
     
-    return Array.from(new Set(imgCandidates));
+    return Array.from(new Set(candidates));
   }, [
     (currentFoodItem as any)?.imageUrl,
     (currentFoodItem as any)?.photoUrl, 
@@ -673,11 +675,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const fiberG = finalNutrition.fiber;
   const sugarG = finalNutrition.sugar;
 
-  // Diagnostics for macros mode and grams
-  try {
-    const computedMacrosMode = hasPerGram(currentFoodItem) ? 'perGram' : (per100 ? 'per100' : (((currentFoodItem as any)?.label?.servingSizeG ? 'perServing' : 'NONE')));
-    console.log('[CARD]', { id: (currentFoodItem as any)?.id || currentFoodItem?.name, macrosMode: computedMacrosMode, grams: actualServingG });
-  } catch {}
+  // Remove duplicate macrosMode declarations and variable naming conflicts
 
   const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
   const isTextItem = (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech';
@@ -898,10 +896,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   console.log('[PORTION][SOURCE]', (currentFoodItem as any)?.portionSource || (isBarcodeItem ? 'UPC' : 'unknown'));
 
   const servingText = (currentFoodItem as any)?.servingText as string | undefined;
-  const grams = Math.round(servingG ?? 100);
+  const portionGrams = Math.round(servingG ?? 100);
   
-  // Use subtitle helper with per-gram basis
-  const subtitle = subtitleFor(currentFoodItem);
+  // Dynamic subtitle based on serving and nutrition basis
+  const subtitle = (!(currentFoodItem as any)?.servingG && ((currentFoodItem as any)?.nutrition?.perGram || (currentFoodItem as any)?.basePer100)) ? 
+    "Per 100 g" : 
+    ((currentFoodItem as any)?.servingLabel || "Per portion");
   
   // Legacy compatibility  
   const displayName = title;
@@ -1144,16 +1144,22 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Add macro mode logging
   console.log('[CONFIRM][MACROS_MODE]', (currentFoodItem as any)?.macro_mode || 'UNKNOWN');
 
-  const effective = basisPerGram && Object.keys(basisPerGram).length > 0
+  // Force per-gram mode when we actually have perGram data
+  const pgData = (currentFoodItem as any)?.nutrition?.perGram;
+  const hasPgData = pgData && (pgData.protein || pgData.carbs || pgData.fat || pgData.calories);
+  const currentMacrosMode = hasPgData ? 'per-gram' : (per100 ? 'per100' : (((currentFoodItem as any)?.label?.servingSizeG ? 'perServing' : 'NONE')));
+  
+  const portionGrams2 = (currentFoodItem as any)?.grams ?? (hasPgData ? 100 : (currentFoodItem as any)?.baseGrams ?? 100);
+  
+  const effective = currentMacrosMode === 'per-gram' && pgData
     ? {
-        // Use normalized per-gram data with portion scaling
-        calories: headerKcal,
-        protein: proteinG,
-        carbs: carbsG,
-        fat: fatG,
-        fiber: fiberG,
-        sugar: sugarG,
-        sodium: Math.round(getPG('sodium') * scaleMult * 1000), // convert to mg
+        calories: Math.round((pgData.calories || 0) * portionGrams2),
+        protein:  Math.round((pgData.protein || 0)  * portionGrams2 * 10) / 10,
+        carbs:    Math.round((pgData.carbs || 0)    * portionGrams2 * 10) / 10,
+        fat:      Math.round((pgData.fat || 0)      * portionGrams2 * 10) / 10,
+        fiber:    Math.round((pgData.fiber || 0)    * portionGrams2 * 10) / 10,
+        sugar:    Math.round((pgData.sugar || 0)    * portionGrams2 * 10) / 10,
+        sodium:   Math.round((pgData.sodium || 0)   * portionGrams2 * 1000), // convert to mg
       }
     : base && !preferItem
       ? {
@@ -1175,6 +1181,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
           sugar: Math.round(baseSugar * portionMultiplier * 10) / 10,
           sodium: Math.round(baseSodium * portionMultiplier),
         };
+  
+  const headerCalories = effective.calories || Math.round((effective.protein*4)+(effective.carbs*4)+(effective.fat*9));
+  
+  console.log('[CARD][BIND]', { id: (currentFoodItem as any)?.id, macrosMode: currentMacrosMode, grams: portionGrams2, hasPG: !!pgData });
 
   const adjustedFood = {
     ...currentFoodItem,

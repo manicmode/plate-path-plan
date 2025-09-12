@@ -151,21 +151,20 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     
     // Create modalItems synchronously to establish firstCardId immediately  
     const selectedItems = items.filter(item => item.selected && item.name.trim());
-    const initialModalItems = selectedItems.map((item, index) => {
-      const canonicalId = item.id; // Use existing item.id as canonical
-      
-      // Seed grams and photo image early for confirm card
-      const grams = (item as any).grams ?? (item as any).portionGrams ?? (item as any).baseGrams ?? 
-                   ((item as any).source === 'barcode' ? (item as any)?.label?.servingSizeG : undefined) ?? 100;
+    const prepared = selectedItems.map((item) => {
+      const grams =
+        (item as any).grams ?? (item as any).portionGrams ?? (item as any).baseGrams ??
+        ((item as any).source === 'barcode' ? (item as any)?.label?.servingSizeG : undefined) ?? 100;
 
-      const imageUrl = (item as any).imageUrl || 
-                      ((item as any).source === 'photo' ? 
-                        ((item as any).photoUrl || (item as any).selectedImage || (item as any).directImg) : 
-                        ((item as any).imageThumbUrl || (item as any).directImg));
+      // PHOTO: carry the captured frame so the card has an image immediately
+      const imageUrl =
+        (item as any).imageUrl ?? (item as any).photoUrl ?? (item as any).selectedImage ?? (item as any).directImg ?? (item as any).imageThumbUrl ?? '';
 
-      const prepared = { ...item, grams, baseGrams: grams, imageUrl, id: canonicalId };
-      
-      return toLegacyFoodItem(prepared, index, true);
+      return { ...item, grams, baseGrams: grams, imageUrl };
+    });
+
+    const initialModalItems = prepared.map((item, index) => {
+      return toLegacyFoodItem(item, index, true);
     });
     
     // Set modal items BEFORE async hydration
@@ -179,42 +178,45 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
         const results = await resolveGenericFoodBatch(names);
         
-        console.log('[HYDRATE][WRITE]', { foundCount: results?.filter(Boolean).length });
+        console.log('[HYDRATE][WRITE]', { ids: prepared.map(i => i.id) });
         
         const storeUpdates: Record<string, any> = {};
-        const enrichedItems = initialModalItems.map((m, i) => {
-          const r = results?.[i];
-          if (!r) return { ...m, __hydrated: false };
-          
-          const canonicalId = m.id; // Use same ID from modal item
-          const enrichedInput = { ...m, nutrients: r.nutrients, serving: r.serving };
-          const merged = toLegacyFoodItem(enrichedInput, i, true);
-          
-          // Per-item diagnostics
-          try {
-            console.log('[HYDRATE][WRITE]', { id: canonicalId, pgKeys: Object.keys(merged.nutrition?.perGram || {}).length });
-          } catch {}
-          
-          // Write to store using canonical ID - preserve ingredients from merged data
-          storeUpdates[canonicalId] = {
-            perGram: merged.nutrition?.perGram || {},
-            healthScore: 0,
-            flags: [],
-            ingredients: merged.analysis?.ingredients || [], // Use ingredients from analysis field
-            __hydrated: true,
-            updatedAt: Date.now(),
-          };
-          
-          return { ...merged, id: canonicalId, __hydrated: true, __rev: (m as any)?.__rev ? (m as any).__rev + 1 : 1 };
-        });
         
+        // WRITE perGram INTO STORE **USING THE SAME id THE CARD USES**
+        const photoItems = prepared.filter(p => (p as any).source === 'photo');
+        for (const cur of photoItems) {
+          const idx = prepared.indexOf(cur);
+          const r = results?.[idx];
+          if (r && r.nutrients) {
+            // Create perGram from generic result
+            const perGram = {
+              calories: r.nutrients.calories ? r.nutrients.calories / 100 : 0,
+              protein: r.nutrients.protein_g ? r.nutrients.protein_g / 100 : 0,
+              carbs: r.nutrients.carbs_g ? r.nutrients.carbs_g / 100 : 0,
+              fat: r.nutrients.fat_g ? r.nutrients.fat_g / 100 : 0,
+              fiber: r.nutrients.fiber_g ? r.nutrients.fiber_g / 100 : 0,
+              sugar: ((r.nutrients as any).sugar_g || (r.nutrients as any).sugars_g || 0) / 100,
+              sodium: r.nutrients.sodium_mg ? r.nutrients.sodium_mg / 100000 : 0, // mg to g
+            };
+            storeUpdates[cur.id] = { perGram, updatedAt: Date.now() };
+          }
+        }
+
         if (Object.keys(storeUpdates).length) {
           useNutritionStore.getState().upsertMany(storeUpdates);
-          console.log('[HYDRATE][WROTE]', { ids: Object.keys(storeUpdates) });
         }
+
+        // Then rebuild modal items by **merging** store perGram back BEFORE adapting:
+        const store = useNutritionStore.getState();
+        const rebuilt = prepared.map((item, idx) => {
+          const storePG = store.byId[item.id]?.perGram;
+          console.log('[HYDRATE][MERGE]', { id: item.id, hasStorePG: !!storePG });
+          const merged = storePG ? { ...item, nutrition: { ...(item as any).nutrition, perGram: storePG } } : item;
+          return toLegacyFoodItem(merged, idx, true);
+        });
         
-        setConfirmModalItems(enrichedItems);
-        console.log('[HYDRATE][END]', { hydratedCount: enrichedItems.filter(i => i.__hydrated).length });
+        setConfirmModalItems(rebuilt);
+        console.log('[HYDRATE][END]', { hydratedCount: rebuilt.filter((i: any) => i.__hydrated).length });
         
       } catch (e) {
         console.error('[HYDRATE][ERROR]', e);
