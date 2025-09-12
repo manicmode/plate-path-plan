@@ -628,22 +628,42 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     sodium: Math.round(getPG('sodium') * scaleMult * 1000)
   };
 
+  // NaN-proof helper
+  const clamp0 = (n: any) => Number.isFinite(+n) ? +n : 0;
+
   // 1) Helper near the top of the file
   const kcalFromMacros = (p = 0, c = 0, f = 0, alcohol = 0) =>
     Math.round(p * 4 + c * 4 + f * 9 + alcohol * 7);
 
   // 2) Inside the component, right after you compute the values for the tiles
   //    Use the *scaled* numbers you already render in the three macro cards.
-  const p = finalNutrition?.protein ?? 0;
-  const c = finalNutrition?.carbs ?? 0;
-  const f = finalNutrition?.fat ?? 0;
-  const alc = (finalNutrition as any)?.alcohol ?? 0;
+  const p = clamp0(finalNutrition?.protein);
+  const c = clamp0(finalNutrition?.carbs);
+  const f = clamp0(finalNutrition?.fat);
+  const alc = clamp0((finalNutrition as any)?.alcohol);
 
-  // Prefer item.kcal if present; otherwise derive from the (already scaled) macros.
+  // Compute kcal from per-gram if available, otherwise from scaled macros
+  const pg = (currentFoodItem as any)?.perGram;
+  const currentServingG = actualServingG;
+  
+  let kcalFromPg = 0;
+  if (pg) {
+    const pgP = clamp0(pg.protein) * currentServingG;
+    const pgC = clamp0(pg.carbs) * currentServingG;
+    const pgF = clamp0(pg.fat) * currentServingG;
+    
+    kcalFromPg = Number.isFinite(pg.kcal)
+      ? Math.round(clamp0(pg.kcal) * currentServingG)
+      : Math.round(pgP * 4 + pgC * 4 + pgF * 9);
+  }
+
+  // Prefer item.kcal if present; otherwise derive from per-gram or scaled macros.
   const headerKcal =
     (typeof (currentFoodItem as any)?.kcal === 'number' && (currentFoodItem as any).kcal > 0)
       ? (currentFoodItem as any).kcal
-      : kcalFromMacros(p, c, f, alc);
+      : (Number.isFinite((currentFoodItem as any)?.calories) && (currentFoodItem as any).calories > 0)
+        ? (currentFoodItem as any).calories
+        : (kcalFromPg > 0 ? kcalFromPg : kcalFromMacros(p, c, f, alc));
   
   const proteinG = finalNutrition.protein;
   const carbsG = finalNutrition.carbs;

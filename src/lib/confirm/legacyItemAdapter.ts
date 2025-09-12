@@ -58,6 +58,7 @@ export type LegacyFoodItem = {
   // Additional FoodConfirmationCard properties
   image?: string;
   imageUrl?: string;
+  imageUrls?: string[]; // Add imageUrls array for UI compatibility
   barcode?: string;
   ingredientsText?: string;
   ingredientsAvailable?: boolean;
@@ -66,6 +67,7 @@ export type LegacyFoodItem = {
   allergens?: string[];
   additives?: string[];
   categories?: string[];
+  portionSource?: string; // Add portion source metadata
   
   // Legacy analysis data (for backwards compatibility)
   nutrition?: LegacyNutrition;
@@ -151,32 +153,64 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
         console.log('[SST][BASIS]', { item: name, basis, divisor, sourceKeys: Object.keys(sourceData).slice(0, 8) });
       }
 
+      // Helper to ensure numeric values, defaulting missing macros to 0
+      const num = (v: any) => Number.isFinite(+v) ? +v : 0;
+
       for (const [nutrientKey, aliases] of Object.entries(nutrientAliases)) {
         let value: number | undefined;
         let foundKey: string | undefined;
 
         for (const alias of aliases) {
           const v1 = sourceData[alias];
-          if (typeof v1 === 'number' && v1 > 0) { value = v1; foundKey = alias; break; }
+          if (typeof v1 === 'number') { value = v1; foundKey = alias; break; }
 
           const v2 = sourceData?.nutrients?.[alias];
-          if (typeof v2 === 'number' && v2 > 0) { value = v2; foundKey = `nutrients.${alias}`; break; }
+          if (typeof v2 === 'number') { value = v2; foundKey = `nutrients.${alias}`; break; }
         }
 
+        // Always assign a value (0 if not found) for key nutrients
         if (value !== undefined && foundKey) {
-          perGram[nutrientKey as keyof typeof perGram] = value / divisor;
-          if (process.env.NODE_ENV === 'development') {
+          perGram[nutrientKey as keyof typeof perGram] = num(value) / divisor;
+        } else if (['protein', 'carbs', 'fat'].includes(nutrientKey)) {
+          // Fill missing key macros with 0 (salmon will get carbs: 0 instead of undefined)
+          perGram[nutrientKey as keyof typeof perGram] = 0;
+        }
+        
+        if (process.env.NODE_ENV === 'development') {
+          const finalValue = perGram[nutrientKey as keyof typeof perGram];
+          if (foundKey) {
             console.log('[SST][PERGRAM][CALC]', {
-              item: name, nutrient: nutrientKey, foundKey, rawValue: value, divisor, perGram: value / divisor, basis
+              item: name, nutrient: nutrientKey, foundKey, rawValue: value, divisor, perGram: finalValue, basis
+            });
+          } else if (['protein', 'carbs', 'fat'].includes(nutrientKey)) {
+            console.log('[SST][PERGRAM][FILL]', {
+              item: name, nutrient: nutrientKey, basis, filled: finalValue
             });
           }
-        } else {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('[SST][PERGRAM][MISS]', {
-              item: name, nutrient: nutrientKey, basis,
-              availableKeys: Object.keys(sourceData).filter(k => typeof (sourceData as any)[k] === 'number').slice(0, 8)
-            });
-          }
+        }
+      }
+
+      // For rawNutrients basis, compute kcal safely and mark perGramReady
+      if (basis === 'rawNutrients') {
+        const p100 = num(sourceData.protein_g || sourceData.protein);
+        const c100 = num(sourceData.carbs_g || sourceData.carbohydrates_g || sourceData.carbs);
+        const f100 = num(sourceData.fat_g || sourceData.fat);
+        
+        const kcal100 = Number.isFinite(+sourceData.calories)
+          ? +sourceData.calories
+          : Math.round(p100 * 4 + c100 * 4 + f100 * 9);
+          
+        perGram.calories = kcal100 / divisor;
+        
+        // Mark perGramReady when protein/carbs/fat are numeric (zero counts as numeric)
+        const perGramReady = 
+          Number.isFinite(perGram.protein ?? 0) &&
+          Number.isFinite(perGram.carbs ?? 0) &&
+          Number.isFinite(perGram.fat ?? 0);
+          
+        if (perGramReady) {
+          (raw as any).perGramReady = true;
+          (raw as any).pgSum = (perGram.protein ?? 0) + (perGram.carbs ?? 0) + (perGram.fat ?? 0);
         }
       }
     } else if (process.env.NODE_ENV === 'development') {
@@ -225,13 +259,21 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
   ) ?? [];
   
   const confidence = storeAnalysis?.confidence ?? pick<number>(raw.confidence, raw.analysis?.confidence);
+  
+  // Enhanced image URL mapping to carry photos through the adapter
   const imageUrl = storeAnalysis?.imageUrl ?? pick<string>(
-    raw.image, 
-    raw.imageUrl, 
-    raw.productImageUrl, 
+    raw.imageUrl,
+    raw.selectedImage,
     raw.photoUrl,
+    raw.image, 
+    raw.productImageUrl,
     raw.image_url
   );
+  
+  // Build imageUrls array for UI components that expect arrays
+  const imageUrls = Array.isArray(raw.imageUrls) && raw.imageUrls.length
+    ? raw.imageUrls
+    : (imageUrl ? [imageUrl] : []);
 
   const dataSourceLabel = raw.analysis?.dataSourceLabel
     ?? raw.meta?.dataSourceLabel
@@ -274,6 +316,7 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
     // Additional properties
     image: imageUrl,
     imageUrl,
+    imageUrls, // Add imageUrls array for UI compatibility
     barcode: raw.barcode,
     ingredientsText: ingredients.join(', '),
     ingredientsAvailable: ingredients.length > 0,
@@ -282,6 +325,9 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
     allergens: raw.allergens || [],
     additives: raw.additives || [],
     categories: raw.categories || [],
+    
+    // Add portion metadata polish
+    portionSource: raw.portionSource || (basis === 'rawNutrients' ? 'vision' : 'inferred'),
     
     // Legacy compatibility
     nutrition: {
