@@ -192,10 +192,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [isEvaluatingQuality, setIsEvaluatingQuality] = useState(false);
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
-  const [activeTab, setActiveTab] = useState('nutrition');
+  const [prevItem, setPrevItem] = useState<any | null>(null);
   
-  // Sodium value for display
-  const sodiumMg = finalNutrition.sodium;
+  const { toast } = useToast();
 
   // Minimal tokenization with tiny stopword set (inline, local only)
   const STOP = new Set(['the','a','an','with','and','of']);
@@ -560,25 +559,24 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
   const isTextItem = (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech';
   
-  // --- Chip truth (put this WITH the other top-of-render consts, after hooks) ---  
-  const enrichmentSource = (currentFoodItem?.enrichmentSource ?? undefined) as
-    | 'off'
-    | 'label' 
-    | 'provider'
-    | 'legacy_text_lookup'
-    | string
-    | undefined;
-
-  const hasBrandEvidence = Boolean(
-    currentFoodItem?.barcode || (currentFoodItem as any)?.providerRef || (currentFoodItem as any)?.brandName
-  );
-
-  // Brand if we have barcode/providerRef/brand OR we attached an OFF/label fetch
-  const isBrand = hasBrandEvidence || enrichmentSource === 'off' || enrichmentSource === 'label';
-
-  // Keep it super simple for TS/JSX:
-  const chipVariant: 'brand' | 'generic' = isBrand ? 'brand' : 'generic';
-  const chipLabel = isBrand ? 'Brand' : 'Generic';
+  // Compute display badge from the FINAL item, not the original candidate  
+  const badge = useMemo(() => {
+    const enrichmentSource = (currentFoodItem as any)?.enrichmentSource;
+    const brandEvidence = Boolean(
+      (currentFoodItem as any)?.barcode || 
+      (currentFoodItem as any)?.providerRef || 
+      (currentFoodItem as any)?.brandName ||
+      (currentFoodItem as any)?.brand
+    );
+    const labelEvidence = enrichmentSource === 'off' || enrichmentSource === 'label';
+    
+    const isBrand = brandEvidence || labelEvidence;
+    const isGeneric = (currentFoodItem as any)?.isGeneric || (currentFoodItem as any)?.provider === 'generic';
+    
+    const showChip = isBrand ? 'Brand' : (isGeneric ? 'Generic' : 'Generic');
+    
+    return showChip;
+  }, [currentFoodItem]);
   
   // Badge logging for debugging
   console.log('[CONFIRM][BADGE]', { 
@@ -1365,7 +1363,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         }}
       >
         <AccessibleDialogContent 
-          className="max-w-sm p-0 overflow-hidden"
+          className="food-confirm-card with-stable-panels max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
           title="Confirm Food Log"
           description="We'll save these items to your log."
           showCloseButton={!reminderOpen}
@@ -1374,182 +1372,39 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
           onInteractOutside={(e) => forceConfirm && e.preventDefault()}
         >
           <VisuallyHidden><DialogTitle>Confirm Food Log</DialogTitle></VisuallyHidden>
-          
-          {/* Placeholder to prevent flash when currentFoodItem is missing */}
-          {showPlaceholder ? (
-            <div style={{ minHeight: 280 }} className="flex items-center justify-center p-6">
-              <div className="text-center space-y-3">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 dark:bg-emerald-900/20 rounded-full">
-                  <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-                </div>
-                <p className="text-gray-600 dark:text-gray-400">Loading next item...</p>
-                {totalItems > 1 && (
-                  <p className="text-sm text-gray-500 dark:text-gray-500">
-                    Item {((currentIndex ?? 0) + 1)} of {totalItems}
-                  </p>
-                )}
-              </div>
-            </div>
-          ) : (
-            <Card className="bg-slate-900/60 backdrop-blur border-0">
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 pt-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-md bg-slate-700/60 flex items-center justify-center">
-                    🍽️
+          <div className="p-6">
+            {/* Placeholder to prevent flash when currentFoodItem is missing */}
+            {showPlaceholder ? (
+              <div style={{ minHeight: 280 }} className="flex items-center justify-center">
+                <div className="text-center space-y-3">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 dark:bg-emerald-900/20 rounded-full">
+                    <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
                   </div>
-                  <div>
-                    <div className="text-base font-semibold leading-tight text-white">
-                      {currentFoodItem?.name ?? 'Food'}
-                    </div>
-                    <div className="text-xs text-slate-300">
-                      {headerKcal} calories
-                    </div>
+                  <p className="text-gray-600 dark:text-gray-400">Loading next item...</p>
+                  {totalItems > 1 && (
+                    <p className="text-sm text-gray-500 dark:text-gray-500">
+                      Item {((currentIndex ?? 0) + 1)} of {totalItems}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+            /* Manual Entry Enrichment Loading */
+            (isManual && !readyForManual) ? (
+              <div className="space-y-4">
+                <div className="animate-pulse space-y-3">
+                  <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-1/2"></div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-5/6"></div>
                   </div>
                 </div>
-                <Badge variant={chipVariant}>{chipLabel}</Badge>
+                <p className="text-sm text-muted-foreground text-center">Loading enrichment data...</p>
               </div>
-
-              {/* Portion slider */}
-              <div className="px-4 pt-3">
-                <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
-                  <span>100 g per portion</span>
-                  <span className="text-emerald-400">Full portion</span>
-                </div>
-                <Slider
-                  value={portionPercentage}
-                  onValueChange={(vals) => setPortionPercentage(vals)}
-                  min={0}
-                  max={100}
-                  step={1}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-[11px] text-slate-400 mt-1">
-                  <span>0%</span>
-                  <span>25%</span>
-                  <span>50%</span>
-                  <span>75%</span>
-                  <span>100%</span>
-                </div>
-              </div>
-
-              {/* Tabs */}
-              <div className="px-3 pt-4">
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid grid-cols-3 gap-2 w-full">
-                    <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
-                    <TabsTrigger value="health">Health Check</TabsTrigger>
-                    <TabsTrigger value="ingredients">Ingredients</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="nutrition" className="mt-4">
-                    {/* nutrition summary cards */}
-                    <div className="grid grid-cols-3 gap-3">
-                      <Card className="p-3">
-                        <div className="text-xs text-slate-400">Protein</div>
-                        <div className="text-lg font-semibold">{proteinG}g</div>
-                      </Card>
-                      <Card className="p-3">
-                        <div className="text-xs text-slate-400">Carbs</div>
-                        <div className="text-lg font-semibold">{carbsG}g</div>
-                      </Card>
-                      <Card className="p-3">
-                        <div className="text-xs text-slate-400">Fat</div>
-                        <div className="text-lg font-semibold">{fatG}g</div>
-                      </Card>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3 mt-3">
-                      <Card className="p-3">
-                        <div className="text-xs text-slate-400">Fiber</div>
-                        <div className="text-lg font-semibold">{fiberG}g</div>
-                      </Card>
-                      <Card className="p-3">
-                        <div className="text-xs text-slate-400">Sugar</div>
-                        <div className="text-lg font-semibold">{sugarG}g</div>
-                      </Card>
-                      <Card className="p-3">
-                        <div className="text-xs text-slate-400">Sodium</div>
-                        <div className="text-lg font-semibold">{sodiumMg}mg</div>
-                      </Card>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="health" className="mt-4">
-                    <div className="text-center p-4">
-                      <p className="text-slate-300">Health analysis coming soon...</p>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="ingredients" className="mt-4">
-                    {ingredientsList && ingredientsList.length > 0 ? (
-                      <Card className="p-4">
-                        <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                          {ingredientsList.map((x, i) => `• ${x}`).join('\n')}
-                        </div>
-                      </Card>
-                    ) : (currentFoodItem as any)?.ingredientsText ? (
-                      <Card className="p-4">
-                        <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                          {(currentFoodItem as any).ingredientsText}
-                        </div>
-                      </Card>
-                    ) : (currentFoodItem as any)?.ingredientsUnavailable ? (
-                      <Card className="p-4 text-slate-300">
-                        No label data available (no provider label found).
-                      </Card>
-                    ) : (
-                      <Card className="p-4 text-slate-300">Loading…</Card>
-                    )}
-                  </TabsContent>
-                </Tabs>
-              </div>
-
-              {/* Footer */}
-              <div className="px-4 py-4 flex flex-col gap-3">
-                <ReminderToggle 
-                  isOpen={reminderOpen}
-                  onOpenChange={setReminderOpen}
-                />
-                <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1" onClick={onClose}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    className="flex-1" 
-                    onClick={handleConfirm}
-                    disabled={isConfirming}
-                  >
-                    {isConfirming ? 'Logging...' : 'Log Food'}
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          )}
-        </AccessibleDialogContent>
-      </Dialog>
-
-      {/* Edit Screen */}
-      <FoodEditScreen
-        isOpen={isEditOpen}
-        onClose={() => setIsEditOpen(false)}
-        onSave={handleEditSave}
-        foodItem={currentFoodItem}
-      />
-
-      {/* Manual Ingredient Entry */}
-      <ManualIngredientEntry
-        isOpen={showManualIngredientEntry}
-        onClose={() => setShowManualIngredientEntry(false)}
-        onSave={(ingredients: string) => {
-          setManualIngredients(ingredients);
-          setShowManualIngredientEntry(false);
-        }}
-        currentIngredients={manualIngredients}
-      />
-    </>
-  );
-};
+            ) : (
+              <>
+            {/* Unknown Product Alert */}
             {isUnknownProduct && (
               <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800 mb-4">
                 <div className="flex items-start gap-3">
@@ -1710,9 +1565,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
                     {displayName}
                   </h3>
-                   <Badge variant={chipVariant}>
-                     {chipLabel}
-                   </Badge>
+                  {(currentFoodItem?.source || (currentFoodItem as any)?.enrichmentSource) && (
+                    <DataSourceChip 
+                      source={(currentFoodItem?.source as any) || (currentFoodItem as any)?.enrichmentSource}
+                      confidence={currentFoodItem?.confidence || (currentFoodItem as any)?.enrichmentConfidence}
+                      className="ml-2"
+                    />
+                  )}
                 </div>
                  <p className="text-sm text-gray-600 dark:text-gray-400">
                    {Number.isFinite(adjustedFood.calories) ? adjustedFood.calories : 0} calories
@@ -2069,16 +1928,39 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               onReminderClose={() => setReminderOpen(false)}
             />
 
-    </>
-  );
-};
-
-// Global debug function
-if (typeof window !== 'undefined') {
-  // Need access to component state - will be set from inside component
-}
-
-export default FoodConfirmationCard;
+            {/* Bottom Action Buttons - New Clean Layout */}
+            <div className="space-y-3">
+              {totalItems && totalItems > 1 ? (
+                // Multi-Item Layout
+                <>
+                  <div className="flex space-x-3">
+                    {/* Don't Log - Left Half */}
+                    {showSkip && onSkip && (
+                      <Button
+                        variant="outline"
+                        onClick={onSkip}
+                        className="flex-1 border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                      >
+                        <MinusCircle className="h-4 w-4 mr-2" />
+                        Don't Log
+                      </Button>
+                    )}
+                    
+                    {/* Cancel All - Right Half */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={withSafeCancel(() => {
+                        console.log('[CANCEL][CLICK]', { component: 'FoodConfirmationCard', action: 'cancel-all' });
+                        onCancelAll?.();
+                        console.log('[CANCEL][DONE]', { component: 'FoodConfirmationCard', action: 'cancel-all' });
+                      })}
+                      className="flex-1 border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel All
+                    </Button>
+                  </div>
                   
                   {/* Log Item - Full Width Primary */}
                   <Button
@@ -2134,6 +2016,36 @@ export default FoodConfirmationCard;
                       <>
                         <div className="animate-spin h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full" />
                         Logging...
+                      </>
+                    ) : (
+                      'Log Food'
+                    )}
+                  </Button>
+                 </>
+                )}
+            </div>
+            </>
+            )}
+          </div>
+        </AccessibleDialogContent>
+      </Dialog>
+
+      {/* Edit Screen */}
+      <FoodEditScreen
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        onSave={handleEditSave}
+        foodItem={currentFoodItem}
+      />
+
+      {/* Manual Ingredient Entry */}
+      <ManualIngredientEntry
+        isOpen={showManualIngredientEntry}
+        onClose={() => setShowManualIngredientEntry(false)}
+        onIngredientsSubmit={handleManualIngredientSubmit}
+        productName={currentFoodItem?.name || ''}
+      />
+
       {/* Debug Overlay */}
       {(new URLSearchParams(window.location.search).get('debug') === 'confirm' || 
         localStorage.getItem('debugConfirm') === 'true') && (
@@ -2146,6 +2058,7 @@ export default FoodConfirmationCard;
           <div><strong>Ingredients:</strong> {ingredientsList.length} items</div>
           <div><strong>First 3:</strong> {ingredientsList.slice(0, 3).join(', ') || 'none'}</div>
           <div><strong>hasIngredients:</strong> {hasIngredients.toString()}</div>
+          <div><strong>Layout Class:</strong> {cardLayoutClass}</div>
           <div><strong>Provider:</strong> {normalizedItem.providerRef}</div>
           <div><strong>Portion Source:</strong> {normalizedItem.portionSource}</div>
           <div className="mt-2 text-xs text-gray-400">
