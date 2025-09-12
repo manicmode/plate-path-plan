@@ -264,26 +264,53 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // 🧪 DEBUG INSTRUMENTATION
   const __IMG_DEBUG = false; // keep instrumentation off in UI
   
-  // Collect URLs: from enrichment then fallback guesses
+  // Collect URLs: safe candidates for manual, enriched for photo/barcode
+  const PLACEHOLDER = '/images/food-placeholder.png';
+  const isManualImage = inputSource === 'manual';
+  
   const imageUrls: string[] = useMemo(() => {
-    const a = (currentFoodItem as any)?.image?.urls ?? [];
-    const providerRef = (currentFoodItem as any)?.providerRef;
-    const ean = typeof providerRef === 'string' && /^\d{8,}$/.test(providerRef) ? providerRef : null;
-    const b = ean ? offImageCandidatesNew(ean, 'en') : [];
-    return Array.from(new Set([...a, ...b].filter(Boolean)));
-  }, [(currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef]);
+    // Prefer only safe, local/manual URLs for manual flow
+    let candidates: string[] = [];
+
+    if (isManualImage) {
+      candidates = [
+        (currentFoodItem as any)?.imageUrl,
+        (currentFoodItem as any)?.thumbnailUrl,
+        (currentFoodItem as any)?.photoUrl,
+      ].filter(Boolean) as string[];
+    } else if (ENABLE_PHOTO_BARCODE_ENRICH) {
+      // keep existing enrichment / barcode candidates
+      const fromEnrichment = (currentFoodItem as any)?.image?.urls ?? [];
+      const providerRef = (currentFoodItem as any)?.providerRef;
+      const ean = typeof providerRef === 'string' && /^\d{8,}$/.test(providerRef) ? providerRef : null;
+      const fromBarcodeGuess = ean ? offImageCandidatesNew(ean, 'en') : [];
+      
+      candidates = [
+        ...fromEnrichment,
+        ...fromBarcodeGuess,
+      ].filter(Boolean) as string[];
+    }
+
+    // Guaranteed fallback so the <img> never goes blank
+    if (candidates.length === 0) candidates = [PLACEHOLDER];
+    
+    return Array.from(new Set(candidates));
+  }, [(currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef, (currentFoodItem as any)?.imageUrl, (currentFoodItem as any)?.thumbnailUrl, (currentFoodItem as any)?.photoUrl, isManualImage]);
 
   useEffect(() => setImgIdx(0), [imageUrls.join('|')]);
 
-  const resolvedSrc = imageUrls[imgIdx] || '';
+  const resolvedSrc = imageUrls[Math.min(imgIdx, imageUrls.length - 1)] || PLACEHOLDER;
   useEffect(() => {
+    const fromEnrichment = isManualImage ? [] : ((currentFoodItem as any)?.image?.urls ?? []);
+    const fromBarcodeGuess = isManualImage ? [] : ((currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : []);
+    
     console.log('[IMG][CARD][BIND]', {
       providerRef: (currentFoodItem as any)?.providerRef,
-      fromEnrichment: (currentFoodItem as any)?.image?.urls ?? [],
-      fromBarcodeGuess: (currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : [],
+      fromEnrichment,
+      fromBarcodeGuess,
       using: resolvedSrc,
     });
-  }, [resolvedSrc, imageUrls, (currentFoodItem as any)?.providerRef]);
+  }, [resolvedSrc, imageUrls, (currentFoodItem as any)?.providerRef, isManualImage]);
 
 
   // Derive a stable ID from props (not from transient state)
@@ -1719,7 +1746,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     aria-hidden="true"
                     style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
                     onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
-                    onError={() => { console.warn('[IMG][ERROR]', resolvedSrc); if (imgIdx < imageUrls.length-1) setImgIdx(i=>i+1); }}
+                    onError={() => {
+                      const next = imgIdx + 1;
+                      if (next < imageUrls.length) {
+                        console.log('[IMG][ERROR]', resolvedSrc);
+                        setImgIdx(next);
+                      } else if (resolvedSrc !== PLACEHOLDER) {
+                        console.log('[IMG][ERROR][FALLBACK]', resolvedSrc);
+                        setImgIdx(imageUrls.length > 0 ? imageUrls.length - 1 : 0);
+                      }
+                    }}
                     referrerPolicy="no-referrer"
                     loading="eager"
                   />
