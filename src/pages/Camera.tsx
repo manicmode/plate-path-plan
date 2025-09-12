@@ -2822,7 +2822,9 @@ console.log('Global search enabled:', enableGlobalSearch);
             sodium: Math.round((grams / 100) * 300),
             confidence: 85,
             serving: item.portion,
-            _provider: 'ensemble-v1'
+            _provider: 'ensemble-v1',
+            id: item.id, // Preserve detect- ID
+            imageUrl: selectedImage || undefined // Attach photo
           });
         } else {
           // Create a placeholder entry for items that couldn't be mapped
@@ -2838,7 +2840,9 @@ console.log('Global search enabled:', enableGlobalSearch);
             sodium: Math.round(grams * 3),
             confidence: 50, // Low confidence for unmapped items
             serving: item.portion,
-            _provider: 'ensemble-v1-unmapped'
+            _provider: 'ensemble-v1-unmapped',
+            id: item.id, // Preserve detect- ID
+            imageUrl: selectedImage || undefined // Attach photo
           });
         }
       }

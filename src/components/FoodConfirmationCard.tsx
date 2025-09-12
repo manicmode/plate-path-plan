@@ -722,6 +722,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     // Skip if we already have ingredients or marked unavailable
     if (hasItemIngredients || hasLazyIngredients || isUnavailable) return;
     
+    // Skip lazy ingredient fetch for whole foods
+    if ((currentFoodItem as any).__disableLazyIngredients) {
+      console.log('[LAZY][ING] skipped: whole-food');
+      return;
+    }
+    
     console.log('[LAZY][ING] Starting fetch for:', itemKey);
     
     // Set loading state
