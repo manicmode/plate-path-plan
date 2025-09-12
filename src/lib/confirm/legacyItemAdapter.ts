@@ -2,7 +2,6 @@
 // Maps various data formats from detection/report pipelines to legacy card expectations
 
 import { useNutritionStore, generateFoodId, type NutritionAnalysis } from '@/stores/nutritionStore';
-import type { PerGram } from '@/types/food';
 
 export type LegacyNutrition = {
   calories?: number;
@@ -13,16 +12,7 @@ export type LegacyNutrition = {
   fiber?: number; 
   sodium?: number;
   // Per-gram basis for live recompute on portion changes
-  perGram?: {
-    calories?: number;
-    protein?: number;
-    carbs?: number;
-    fat?: number;
-    sugar?: number;
-    fiber?: number;
-    sodium?: number;
-    normalizedFrom?: string;
-  };
+  perGram?: Partial<Record<'calories'|'protein'|'carbs'|'fat'|'sugar'|'fiber'|'sodium', number>>;
   basis?: 'per100g' | 'perServing' | 'perGram';
   servingGrams?: number; // if perServing basis
 };
@@ -34,7 +24,6 @@ export type LegacyAnalysis = {
   source?: string;                   // 'ocr' | 'base' | 'est' | 'db'
   confidence?: number;               // 0..1
   imageUrl?: string;
-  imageUrls?: string[];              // Add imageUrls array for UI compatibility
   dataSourceLabel?: string;          // appears under panel
 };
 
@@ -69,7 +58,6 @@ export type LegacyFoodItem = {
   // Additional FoodConfirmationCard properties
   image?: string;
   imageUrl?: string;
-  imageUrls?: string[]; // Add imageUrls array for UI compatibility
   barcode?: string;
   ingredientsText?: string;
   ingredientsAvailable?: boolean;
@@ -78,7 +66,6 @@ export type LegacyFoodItem = {
   allergens?: string[];
   additives?: string[];
   categories?: string[];
-  portionSource?: string; // Add portion source metadata
   
   // Legacy analysis data (for backwards compatibility)
   nutrition?: LegacyNutrition;
@@ -88,22 +75,6 @@ export type LegacyFoodItem = {
 type AnyItem = Record<string, any>;
 
 const pick = <T = any>(...vals: any[]): T | undefined => vals.find(v => v !== undefined && v !== null);
-
-const num = (v: any) => {
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
-  const n = Number.parseFloat(String(v ?? ''));
-  return Number.isFinite(n) ? n : 0;
-};
-
-function per100ToPerGram(per100?: { kcal:number; protein:number; carbs:number; fat:number }): PerGram | undefined {
-  if (!per100) return undefined;
-  return {
-    kcal: per100.kcal / 100,
-    protein: per100.protein / 100,
-    carbs: per100.carbs / 100,
-    fat: per100.fat / 100,
-  };
-}
 
 export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST = false): LegacyFoodItem {
   const name = pick<string>(
@@ -180,98 +151,33 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
         console.log('[SST][BASIS]', { item: name, basis, divisor, sourceKeys: Object.keys(sourceData).slice(0, 8) });
       }
 
-      // Helper to ensure numeric values, defaulting missing macros to 0
-      const num = (v: any) => Number.isFinite(+v) ? +v : 0;
-
       for (const [nutrientKey, aliases] of Object.entries(nutrientAliases)) {
         let value: number | undefined;
         let foundKey: string | undefined;
 
         for (const alias of aliases) {
           const v1 = sourceData[alias];
-          if (typeof v1 === 'number') { value = v1; foundKey = alias; break; }
+          if (typeof v1 === 'number' && v1 > 0) { value = v1; foundKey = alias; break; }
 
           const v2 = sourceData?.nutrients?.[alias];
-          if (typeof v2 === 'number') { value = v2; foundKey = `nutrients.${alias}`; break; }
+          if (typeof v2 === 'number' && v2 > 0) { value = v2; foundKey = `nutrients.${alias}`; break; }
         }
 
-        // Always assign a value (0 if not found) for key nutrients
         if (value !== undefined && foundKey) {
-          (perGram as any)[nutrientKey] = num(value) / divisor;
-        } else if (['protein', 'carbs', 'fat'].includes(nutrientKey)) {
-          // Fill missing key macros with 0 (salmon will get carbs: 0 instead of undefined)
-          (perGram as any)[nutrientKey] = 0;
-        }
-        
-        if (process.env.NODE_ENV === 'development') {
-          const finalValue = perGram[nutrientKey as keyof typeof perGram];
-          if (foundKey) {
+          perGram[nutrientKey as keyof typeof perGram] = value / divisor;
+          if (process.env.NODE_ENV === 'development') {
             console.log('[SST][PERGRAM][CALC]', {
-              item: name, nutrient: nutrientKey, foundKey, rawValue: value, divisor, perGram: (perGram as any)[nutrientKey], basis
+              item: name, nutrient: nutrientKey, foundKey, rawValue: value, divisor, perGram: value / divisor, basis
             });
-          } else if (['protein', 'carbs', 'fat'].includes(nutrientKey)) {
-            console.log('[SST][PERGRAM][FILL]', {
-              item: name, nutrient: nutrientKey, basis, filled: (perGram as any)[nutrientKey]
+          }
+        } else {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[SST][PERGRAM][MISS]', {
+              item: name, nutrient: nutrientKey, basis,
+              availableKeys: Object.keys(sourceData).filter(k => typeof (sourceData as any)[k] === 'number').slice(0, 8)
             });
           }
         }
-      }
-
-      // For rawNutrients basis, compute kcal safely and mark perGramReady
-      if (basis === 'rawNutrients') {
-        const p100 = num(sourceData.protein_g || sourceData.protein);
-        const c100 = num(sourceData.carbs_g || sourceData.carbohydrates_g || sourceData.carbs);
-        const f100 = num(sourceData.fat_g || sourceData.fat);
-        
-        const kcal100 = Number.isFinite(+sourceData.calories)
-          ? +sourceData.calories
-          : Math.round(p100 * 4 + c100 * 4 + f100 * 9);
-          
-        // ✅ Normalize ONCE to per gram with normalizedFrom flag
-        perGram = {
-          protein: p100 / 100,
-          carbs: c100 / 100,
-          fat: f100 / 100,
-          calories: kcal100 / 100,
-          normalizedFrom: 'per-100g',
-        };
-        
-        // Mark ready if at least calories or any macro is present (zeros allowed)
-        const perGramReady = 
-          Number.isFinite(perGram.calories) ||
-          Number.isFinite(perGram.protein) ||
-          Number.isFinite(perGram.carbs) ||
-          Number.isFinite(perGram.fat);
-          
-        if (perGramReady) {
-          (raw as any).perGram = perGram;
-          (raw as any).perGramReady = true;
-          (raw as any).pgSum = (perGram.protein ?? 0) + (perGram.carbs ?? 0) + (perGram.fat ?? 0);
-        }
-      }
-      
-      // Always emit per-gram for all valid basis types
-      if (Object.keys(perGram).length === 0 && sourceData && divisor > 0) {
-        const macros = {
-          protein100: num(sourceData?.protein_100g ?? sourceData?.proteins_100g ?? sourceData?.protein),
-          carbs100:   num(sourceData?.carbohydrates_100g ?? sourceData?.carbohydrates_g ?? sourceData?.carbs),
-          fat100:     num(sourceData?.fat_100g ?? sourceData?.fat),
-          kcal100:    num(sourceData?.calories ?? sourceData?.energy_kcal ?? sourceData?.energy),
-        };
-        
-        // Always emit per-gram
-        perGram = {
-          protein: macros.protein100 / 100,
-          carbs:   macros.carbs100   / 100,
-          fat:     macros.fat100     / 100,
-          calories: (macros.kcal100 > 0 ? macros.kcal100 : (macros.protein100*4 + macros.carbs100*4 + macros.fat100*9)) / 100,
-          normalizedFrom: 'per-100g',
-        };
-        
-        (raw as any).perGram = perGram;
-        (raw as any).perGramReady = [perGram.protein, perGram.carbs, perGram.fat, perGram.calories]
-          .some((v) => Number.isFinite(v) && v >= 0);
-        (raw as any).pgSum = perGram.protein + perGram.carbs + perGram.fat;
       }
     } else if (process.env.NODE_ENV === 'development') {
       console.warn('[SST][NO_BASIS]', {
@@ -283,9 +189,7 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
 
   // Final adapter diagnostics
   if (process.env.NODE_ENV === 'development') {
-    const pgSum = Object.entries(perGram || {}).reduce((sum, [key, v]) => {
-      return key === 'normalizedFrom' ? sum : sum + (Number(v) || 0);
-    }, 0);
+    const pgSum = Object.values(perGram || {}).reduce((sum, v: any) => sum + (+v || 0), 0);
     console.log('[SST][ADAPTER_READ]', {
       passedId: resolvedId,
       generatedId: generateFoodId(raw),
@@ -321,81 +225,29 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
   ) ?? [];
   
   const confidence = storeAnalysis?.confidence ?? pick<number>(raw.confidence, raw.analysis?.confidence);
-  
-  // Enhanced image URL mapping to carry photos through the adapter
-  const candidates = [
-    raw.selectedImage, raw.imageUrl, raw.image_url, raw.photoUrl, raw.thumbnailUrl,
-    raw.previewUrl, raw.detectFrameUrl, // Add new image fields
-    // Open Food Facts image fallbacks
-    raw.image_front_url,
-    raw?.selected_images?.front?.display?.en,
-    raw?.selected_images?.front?.display?.en_small,
-    raw.image_small_url,
-    ...(Array.isArray(raw.imageUrls) ? raw.imageUrls : []),
-    ...(Array.isArray(raw.images) ? raw.images : []),        // many brand/manual items use this
-    ...(Array.isArray(raw.photos) ? raw.photos : []),
-    raw.brandImage, raw.nutrition?.image
-  ].filter(Boolean);
-
-  const imageUrl = storeAnalysis?.imageUrl ?? candidates[0];
-  const imageUrls = [...new Set(candidates)];
+  const imageUrl = storeAnalysis?.imageUrl ?? pick<string>(
+    raw.image, 
+    raw.imageUrl, 
+    raw.productImageUrl, 
+    raw.photoUrl,
+    raw.image_url
+  );
 
   const dataSourceLabel = raw.analysis?.dataSourceLabel
     ?? raw.meta?.dataSourceLabel
     ?? null;
 
-  // Build basePer100 for FoodConfirmationCard portion scaling with robust Open Food Facts mapping
+  // Build basePer100 for FoodConfirmationCard portion scaling
   let basePer100 = null;
   if (sourceData && divisor > 0) {
-    // Helper to extract calories, handling kJ conversion if needed
-    const extractCalories = (data: any) => {
-      return pick<number>(
-        data?.calories_100g,
-        data?.['energy-kcal_100g'],
-        data?.energy_kcal_100g,
-        data?.calories,
-        n?.calories
-      ) || 0;
-    };
-
-    // Helper to extract carbs with various naming conventions
-    const extractCarbs = (data: any) => {
-      return pick<number>(
-        data?.carbohydrates_100g,
-        data?.carbohydrates_g,
-        data?.carbs_100g,
-        data?.carbs,
-        data?.carbs_g,
-        n?.carbs,
-        n?.carbs_g
-      ) || 0;
-    };
-
-    // Helper to extract sodium, converting from salt if needed
-    const extractSodium = (data: any) => {
-      const directSodium = pick<number>(
-        data?.sodium_100g,
-        data?.sodium_mg,
-        data?.sodium,
-        n?.sodium,
-        n?.sodium_mg
-      );
-      
-      if (directSodium) return directSodium;
-      
-      // Convert salt to sodium (salt contains ~40% sodium)
-      const saltValue = pick<number>(data?.salt_100g, data?.salt_mg, data?.salt);
-      return saltValue ? saltValue * 400 : 0;
-    };
-
     basePer100 = {
-      calories: extractCalories(sourceData),
-      protein_g: pick<number>(sourceData?.proteins_100g, sourceData?.protein_100g, sourceData?.protein, sourceData?.protein_g, n?.protein, n?.protein_g) || 0,
-      carbs_g: extractCarbs(sourceData),
-      fat_g: pick<number>(sourceData?.fat_100g, sourceData?.fat, sourceData?.fat_g, n?.fat, n?.fat_g) || 0,
-      fiber_g: pick<number>(sourceData?.fiber_100g, sourceData?.fiber, sourceData?.fiber_g, n?.fiber, n?.fiber_g) || 0,
-      sugar_g: pick<number>(sourceData?.sugars_100g, sourceData?.sugar, sourceData?.sugar_g, n?.sugar, n?.sugar_g) || 0,
-      sodium_mg: extractSodium(sourceData),
+      calories: pick<number>(sourceData?.calories, n?.calories) || 0,
+      protein_g: pick<number>(sourceData?.protein, sourceData?.protein_g, n?.protein, n?.protein_g) || 0,
+      carbs_g: pick<number>(sourceData?.carbs, sourceData?.carbs_g, n?.carbs, n?.carbs_g) || 0,
+      fat_g: pick<number>(sourceData?.fat, sourceData?.fat_g, n?.fat, n?.fat_g) || 0,
+      fiber_g: pick<number>(sourceData?.fiber, sourceData?.fiber_g, n?.fiber, n?.fiber_g) || 0,
+      sugar_g: pick<number>(sourceData?.sugar, sourceData?.sugar_g, n?.sugar, n?.sugar_g) || 0,
+      sodium_mg: pick<number>(sourceData?.sodium, sourceData?.sodium_mg, n?.sodium, n?.sodium_mg) || 0,
     };
   }
 
@@ -422,7 +274,6 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
     // Additional properties
     image: imageUrl,
     imageUrl,
-    imageUrls, // Add imageUrls array for UI compatibility
     barcode: raw.barcode,
     ingredientsText: ingredients.join(', '),
     ingredientsAvailable: ingredients.length > 0,
@@ -431,9 +282,6 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
     allergens: raw.allergens || [],
     additives: raw.additives || [],
     categories: raw.categories || [],
-    
-    // Add portion metadata polish
-    portionSource: raw.portionSource || (basis === 'rawNutrients' ? 'vision' : 'inferred'),
     
     // Legacy compatibility
     nutrition: {
@@ -459,7 +307,6 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
       source: raw.source ?? raw.analysis?.source ?? 'db',
       confidence,
       imageUrl,
-      imageUrls,
       dataSourceLabel,
     }
   };

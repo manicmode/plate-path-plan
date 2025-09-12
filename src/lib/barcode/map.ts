@@ -1,5 +1,3 @@
-import { trace } from '@/debug/traceFood';
-
 export type BarcodeLookupResponse = any; // we'll normalize defensively
 
 const OZ_TO_G = 28.349523125;
@@ -325,65 +323,5 @@ export function mapBarcodeToRecognizedFood(raw: any): RecognizedFood {
   };
 
   console.log('[BARCODE][MAP:ITEM]', { name, brand, servingGrams, portionSource, macro_mode });
-  
-  // Add trace for barcode mapping
-  trace('BARCODE:MAP', mapped);
-  trace('BARCODE:MAP:CALS', {
-    itemCalories: mapped?.calories,
-    kcal100g: mapped?.calories_per_100g,
-    macros100g: {
-      p: mapped?.protein_g_per_100g,
-      c: mapped?.carbs_g_per_100g,
-      f: mapped?.fat_g_per_100g,
-    }
-  });
-
-  // FIX 1: Enhanced calorie calculation and image mapping
-  const n = raw?.nutriments || {};
-  const kcalPerServing = raw?.kcal_serving ?? n['energy-kcal_serving'];
-  const kcalPer100 = raw?.kcal_100g ?? n['energy-kcal_100g'] ?? n['energy-kcal_value'];
-
-  const servingGramsInferred = raw?.serving_grams ?? inferServingGrams(raw?.serving_size) ?? 100;
-
-  // per-100g macros if available
-  const p100 = raw?.proteins_100g ?? n.proteins_100g;
-  const c100 = raw?.carbohydrates_100g ?? n.carbohydrates_100g;
-  const f100 = raw?.fat_100g ?? n.fat_100g;
-
-  let calories: number | undefined;
-  if (isFinite(kcalPerServing as number)) {
-    calories = Math.round(Number(kcalPerServing));
-  } else if (isFinite(kcalPer100 as number)) {
-    calories = Math.round(Number(kcalPer100) * (servingGramsInferred / 100));
-  } else if ([p100, c100, f100].some(x => isFinite(x))) {
-    const scale = servingGramsInferred / 100;
-    calories = Math.round(
-      Number(p100 || 0) * 4 * scale +
-      Number(c100 || 0) * 4 * scale +
-      Number(f100 || 0) * 9 * scale
-    );
-  }
-
-  // Wire image
-  const enhancedImageUrl = raw?.image_url || raw?.image_front_small_url || raw?.image_front_url || undefined;
-
-  // Apply fixes to mapped item (don't overwrite if already set)
-  mapped.servingGrams ??= servingGramsInferred;
-  if (isFinite(calories as number)) mapped.calories = calories!;
-  if (enhancedImageUrl) {
-    mapped.imageUrl ??= enhancedImageUrl;
-    // Ensure the UI that expects an array is happy too
-    if (!Array.isArray((mapped as any).imageUrls) || !(mapped as any).imageUrls.length) {
-      (mapped as any).imageUrls = [enhancedImageUrl];
-    }
-  }
-
-  // Helper function
-  function inferServingGrams(txt?: string | null) {
-    if (!txt) return undefined;
-    const m = String(txt).match(/(\d+(?:\.\d+)?)\s*g/i);
-    return m ? Number(m[1]) : undefined;
-  }
-
   return mapped;
 }

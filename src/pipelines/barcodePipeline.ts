@@ -5,7 +5,6 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { trace } from '@/debug/traceFood';
 
 export type PipelineResult = { ok: true, report: any } | { ok: false, reason: string };
 
@@ -31,14 +30,6 @@ export async function analyzeBarcode(input: { code: string }): Promise<PipelineR
     }
     
     console.log('[BARCODE][LOOKUP][HIT]', { barcode, product: data.product.name });
-    
-    // Trace raw OFF response
-    trace('BARCODE:OFF:RAW', data.product ? {
-      product_name: data.product.product_name,
-      brands: data.product.brands,
-      image_front_small_url: data.product.image_front_small_url,
-      nutriments: data.product.nutriments, // energy-kcal_100g, proteins_100g, carbohydrates_100g, fat_100g
-    } : data);
     
     // Transform to expected report format
     const report = {

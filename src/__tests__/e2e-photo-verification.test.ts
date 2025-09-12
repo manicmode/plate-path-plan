@@ -119,8 +119,9 @@ describe('Pipeline Integration Safety', () => {
 
   it('should not affect shared analyzer function', () => {
     // Test that the shared analyzer function remains unchanged
-    // Note: This test is disabled as the module doesn't exist yet
-    expect(true).toBe(true); // Placeholder test
+    const { analyzeProductForQuality } = require('@/shared/barcode-analyzer');
+    
+    expect(typeof analyzeProductForQuality).toBe('function');
     
     // Function should accept the same input structure as before
     const testInput = {
@@ -129,7 +130,7 @@ describe('Pipeline Integration Safety', () => {
       nutrition: { calories: 100 }
     };
     
-    // Test would verify analyzeProductForQuality(testInput) works
-    expect(testInput.name).toBe('Test Product');
+    // Should not throw on valid input structure
+    expect(() => analyzeProductForQuality(testInput)).not.toThrow();
   });
 });

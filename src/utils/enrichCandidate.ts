@@ -1,38 +1,12 @@
 import { fetchCanonicalNutrition } from '@/lib/food/fetchCanonicalNutrition';
 import { normalizeIngredients } from '@/utils/normalizeIngredients';
 import { nvLabelLookup } from '@/lib/nutritionVault';
-import { isEan, offImageForBarcode, offImageCandidates } from '@/lib/imageHelpers';
-import { trace } from '@/debug/traceFood';
-
-async function fetchOffImageUrls(barcode: string): Promise<string[]> {
-  try {
-    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
-    if (!res.ok) return [];
-    const j = await res.json();
-    const p = j?.product ?? {};
-    const urls = [
-      p?.image_front_small_url,
-      p?.image_front_url,
-      p?.image_url,
-      // selected_images (language-specific)
-      p?.selected_images?.front?.display?.en,
-      p?.selected_images?.front?.display?.en_GB,
-      p?.selected_images?.front?.display?.en_US,
-    ].filter(Boolean);
-    return Array.from(new Set(urls));
-  } catch {
-    return [];
-  }
-}
 
 export async function enrichCandidate(candidate: any) {
   console.log('[ENRICH][START]', { 
     isGeneric: candidate?.isGeneric, 
     canonicalKey: candidate?.canonicalKey 
   });
-
-  // Add enrichment tracing
-  trace('PHOTO:ENRICH:PRE', candidate);
 
   let enriched = { ...candidate };
   
@@ -114,54 +88,13 @@ export async function enrichCandidate(candidate: any) {
         enriched.ingredientsText = ingredientsText;
         enriched.ingredientsList = ingredientsList.length ? ingredientsList : normalizeIngredients(ingredientsText);
         enriched.hasIngredients = true;
-        enriched.enrichmentSource = source;
-
-        // Map image fields after label success
-        const label = { ingredientsText, ingredientsList, source } as any;
-        const img =
-          label.imageUrl ? { 
-            imageUrl: label.imageUrl, 
-            imageThumbUrl: label.imageThumbUrl, 
-            imageAttribution: label.imageAttribution ?? 'openfoodfacts', 
-            imageUrlKind: 'provider' 
-          }
-          : (candidate.providerRef && isEan(candidate.providerRef))
-            ? { ...offImageForBarcode(candidate.providerRef), imageAttribution: 'openfoodfacts', imageUrlKind: 'provider' }
-            : undefined;
-
-        if (img?.imageUrl) {
-          enriched.imageUrl = img.imageUrl;
-          enriched.imageThumbUrl = img.imageThumbUrl ?? img.imageUrl;
-          enriched.imageAttribution = img.imageAttribution;
-          enriched.imageUrlKind = 'provider';
-        }
-
-        // Fetch and attach authoritative OFF image URLs when we have a barcode and label/off source
-        if (enriched.providerRef && (enriched.enrichmentSource === 'off' || enriched.enrichmentSource === 'label' || source === 'off')) {
-          const official = await fetchOffImageUrls(enriched.providerRef);
-          // keep existing synthesized guesses as *fallbacks*
-          const synthetic = enriched.image?.urls ?? [];
-          const urls = Array.from(new Set([...official, ...synthetic]));
-
-          if (urls.length) {
-            enriched.image = {
-              ...(enriched.image ?? {}),
-              kind: 'provider',
-              attribution: 'OpenFoodFacts',
-              urls,
-              // optional for backward-compat
-              url: enriched.image?.url ?? urls[0],
-            };
-            console.log('[ENRICH][IMG][OFF]', { count: urls.length, first: urls[0] });
-          }
-        }
+        enriched.enrichmentSource = source === 'off' ? 'label' : source;
         
-        // Add image diagnostics logging
-        console.log('[ENRICH][IMG]', { 
-          has: !!enriched.imageUrl, 
-          kind: enriched.imageUrlKind, 
-          src: enriched.imageAttribution 
-        });
+        // When we successfully attach a label (OFF or barcode/providerRef match), flip isGeneric
+        if (enriched.brandName || enriched.barcode || enriched.providerRef || source === 'off') {
+          enriched.isGeneric = false;
+          enriched.enrichmentSource = 'label';
+        }
         
         // Ingredients pipeline logging
         console.log('[ING][SET]', {
@@ -210,18 +143,26 @@ export async function enrichCandidate(candidate: any) {
     }
   }
 
+  // For candidates with classId but no canonicalKey, try the canonical fetch path once  
+  if (candidate?.classId && !candidate?.canonicalKey && !enriched.hasIngredients) {
+    try {
+      const canonical = await fetchCanonicalNutrition(candidate.classId);
+      if (canonical) {
+        enriched.enrichmentSource = 'provider';
+      }
+    } catch (error) {
+      console.warn('[ENRICH][CANONICAL_CLASSID_FALLBACK][ERROR]', error);
+    }
+  }
+
   // Always return normalized fields
   enriched.ingredientsText = enriched.ingredientsText || "";
   enriched.ingredientsList = Array.isArray(enriched.ingredientsList) ? enriched.ingredientsList : [];
 
-  // Flip to branded when evidence is present
-  const brandEvidence =
-    Boolean(enriched.brandName || (enriched as any).barcode || enriched.providerRef) ||
-    enriched.enrichmentSource === 'off' ||
-    enriched.enrichmentSource === 'label';
-
-  if (brandEvidence) {
-    enriched.isGeneric = false;
+  // If no ingredients available after all attempts, set flags
+  if (!enriched.hasIngredients) {
+    enriched.ingredientsUnavailable = true;
+    enriched.hasIngredients = false;
   }
 
   console.log('[ENRICH][DONE]', { 
@@ -258,52 +199,6 @@ export async function enrichCandidate(candidate: any) {
       ingredientsSample: enriched.ingredientsList?.slice(0, 3) ?? []
     });
   }
-  
-  // FIX 4: Photo enrichment - preserve identity, clamp ingredients, scale units
-  const original = (candidate?.name || '').toLowerCase().trim();
-  const isWholeFood = [
-    'salmon','atlantic salmon','asparagus','broccoli','spinach','avocado',
-    'egg','banana','apple','rice','chicken breast','steak','tuna','oats'
-  ].some(k => original === k || original.startsWith(k));
-
-  if (isWholeFood) {
-    // keep the detected identity
-    enriched.name = candidate.name ?? enriched.name;
-    // collapse ingredients to the single whole-food line
-    enriched.ingredients = [enriched.name.toLowerCase()];
-    // never swap to a branded bowl just because OFF returns it first
-    enriched.brandName = enriched.brandName; // keep metadata, but name stays simple
-  }
-
-  // per-100g → per-serving scaling if macros look tiny
-  const g = enriched.gramsPerServing ?? 100;
-  const tiny = (enriched.macros?.protein ?? 0) <= 1 &&
-    (enriched.macros?.carbs ?? 0) <= 1 &&
-    (enriched.macros?.fat ?? 0) <= 1 &&
-    g > 100;
-
-  if (tiny && enriched.macros) {
-    const s = g / 100;
-    enriched.macros = {
-      protein: Number(enriched.macros.protein || 0) * s,
-      carbs:   Number(enriched.macros.carbs   || 0) * s,
-      fat:     Number(enriched.macros.fat     || 0) * s,
-      fiber:   Number(enriched.macros.fiber   || 0) * s,
-      sugar:   Number(enriched.macros.sugar   || 0) * s,
-    };
-  }
-
-  // final calorie safety
-  if ((!enriched.calories || enriched.calories === 0) && enriched.macros) {
-    enriched.calories = Math.round(
-      (enriched.macros.protein || 0) * 4 +
-      (enriched.macros.carbs   || 0) * 4 +
-      (enriched.macros.fat     || 0) * 9
-    );
-  }
-  
-  // Add post-enrichment trace
-  trace('PHOTO:ENRICH:POST', enriched);
   
   return enriched;
 }

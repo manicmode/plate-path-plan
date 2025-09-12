@@ -13,30 +13,29 @@ interface Props {
 
 export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCancel }: Props) {
   // ✅ Always call hooks first
-  const [portionGrams, setPortionGrams] = useState(() => enrichedData?.servingGrams || 100);
+  const [portionGrams, setPortionGrams] = useState(() => 
+    Math.max(1, Math.round(enrichedData?.servingGrams ?? candidate?.servingGrams ?? 100))
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const stepperIntervalRef = useRef<NodeJS.Timeout>();
-  
-  // Guard against incomplete data (show skeleton)
-  if (!candidate || !enrichedData || !enrichedData.ingredientsList) {
-    console.error('[DIALOG][ERROR] Incomplete data', {
-      candidate: !!candidate,
-      enrichedData: !!enrichedData,
-      ingredients: enrichedData?.ingredientsList?.length || 0,
-    });
-    return (
-      <div className="fixed inset-0 bg-black/50 grid place-items-center z-50">
-        <div className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4">
-          <div className="animate-pulse space-y-4">
-            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-          </div>
-        </div>
-      </div>
-    );
+  const defaultGrams = enrichedData?.servingGrams || candidate?.servingGrams || 100;
+
+  // Close safely if data is missing, but after hooks are set up
+  useEffect(() => {
+    if (!candidate || !enrichedData) {
+      console.error('[DIALOG][ERROR] Missing data, closing dialog', { 
+        candidate: !!candidate, 
+        enrichedData: !!enrichedData 
+      });
+      onCancel?.();
+    }
+  }, [candidate, enrichedData, onCancel]);
+
+  // Render nothing if we lack data, but AFTER hooks were called
+  if (!candidate || !enrichedData) {
+    return null;
   }
-  
-  const defaultGrams = enrichedData?.servingGrams || 100;
 
   // Log when dialog actually mounts
   console.log('[PORTION][OPEN]', { name: candidate?.name, defaultG: defaultGrams });
@@ -82,21 +81,16 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
       keys: Object.keys(enrichedData || {})
     });
     
-      onContinue({
-        ...enrichedData,
-        // Forward image fields
-        imageUrl: enrichedData?.imageUrl,
-        imageThumbUrl: enrichedData?.imageThumbUrl,
-        imageAttribution: enrichedData?.imageAttribution,
-        imageUrlKind: enrichedData?.imageUrlKind,
-        // Ensure ingredients pass through:
-        ingredientsList: enrichedData?.ingredientsList ?? [],
-        ingredientsText:
-          enrichedData?.ingredientsText ??
-          (Array.isArray(enrichedData?.ingredientsList)
-            ? enrichedData.ingredientsList.join(', ')
-            : ''),
-        hasIngredients:
+    onContinue({
+      ...enrichedData,
+      // Ensure ingredients pass through:
+      ingredientsList: enrichedData?.ingredientsList ?? [],
+      ingredientsText:
+        enrichedData?.ingredientsText ??
+        (Array.isArray(enrichedData?.ingredientsList)
+          ? enrichedData.ingredientsList.join(', ')
+          : ''),
+      hasIngredients:
         !!(enrichedData?.ingredientsText ||
            (enrichedData?.ingredientsList && enrichedData.ingredientsList.length)),
       servingGrams: portionGrams,
