@@ -186,18 +186,19 @@ function processSearchResults(data: any, error: any, dt: number, normalized: str
   const searchResults = data.results as CanonicalSearchResult[];
   console.log(`✅ [FoodSearch] Found ${searchResults.length} results`);
   
-  // Merge vault hits with cheap results if we have vault hits
-  let mergedResults = searchResults;
-  if (vaultHits.length > 0) {
-    const vaultAsCanonical = vaultHits.map(transformVaultToCanonical);
-    mergedResults = deduplicateResults([...vaultAsCanonical, ...searchResults]);
-  }
+  // After you have cheapFirst (edge) and vaultCandidates computed:
+  const edgeList = Array.isArray(searchResults) ? searchResults : [];
+  const vaultCandidates = vaultHits.length > 0 ? vaultHits.map(transformVaultToCanonical) : [];
+  const useEdge = edgeList.length > 0;
+
+  // Prefer edge when it returns something; otherwise fall back to vault/lexical
+  const final = useEdge ? edgeList : vaultCandidates;
   
   // Apply enhanced ranking with word matching and category boosts
-  const ranked = reorderForQuery(mergedResults, trimmedQuery);
+  const ranked = reorderForQuery(final, trimmedQuery);
   
   // Log pipeline summary
-  console.log(`[SUGGEST][PIPE] vault=${vaultHits.length} cheap=${searchResults.length} final=${ranked.length}`);
+  console.log('[SUGGEST][PIPE]', { source: 'manual', q: trimmedQuery, vault: vaultCandidates?.length ?? 0, cheap: edgeList.length, final: ranked.length });
   
   return ranked.slice(0, maxResults);
 }
