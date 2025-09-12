@@ -562,12 +562,22 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     sodium: Math.round(getPG('sodium') * scaleMult * 1000)
   };
 
-  // A. Helper for calories fallback from macros
-  const kcalFromMacros = (p=0, c=0, f=0, alcohol=0) => Math.round(p*4 + c*4 + f*9 + alcohol*7);
+  // 1) Helper near the top of the file
+  const kcalFromMacros = (p = 0, c = 0, f = 0, alcohol = 0) =>
+    Math.round(p * 4 + c * 4 + f * 9 + alcohol * 7);
 
-  // Use the helpers when binding values (keep for backward compatibility)
-  const baseMacros = finalNutrition; // scaledMacros ?? rawMacros logic
-  const headerKcal = (currentFoodItem as any)?.kcal ?? baseMacros?.calories ?? kcalFromMacros(baseMacros?.protein, baseMacros?.carbs, baseMacros?.fat, (baseMacros as any)?.alcohol);
+  // 2) Inside the component, right after you compute the values for the tiles
+  //    Use the *scaled* numbers you already render in the three macro cards.
+  const p = finalNutrition?.protein ?? 0;
+  const c = finalNutrition?.carbs ?? 0;
+  const f = finalNutrition?.fat ?? 0;
+  const alc = (finalNutrition as any)?.alcohol ?? 0;
+
+  // Prefer item.kcal if present; otherwise derive from the (already scaled) macros.
+  const headerKcal =
+    (typeof (currentFoodItem as any)?.kcal === 'number' && (currentFoodItem as any).kcal > 0)
+      ? (currentFoodItem as any).kcal
+      : kcalFromMacros(p, c, f, alc);
   
   const proteinG = finalNutrition.protein;
   const carbsG = finalNutrition.carbs;
@@ -621,10 +631,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   console.log('[CONFIRM][BADGE]', { hasBrandEvidence, enrichmentSource, chipVariant, brandName: (item as any)?.brandName, barcode: (item as any)?.barcode, providerRef: (item as any)?.providerRef });
 
-  // A. [CONFIRM][BIND] log as requested
-  const bindBasis = isPerGramBasis ? 'per-gram' : 'per-100g';
-  const bindServingGrams = actualServingG;
-  console.log('[CONFIRM][BIND]', { badge: chipLabel, basis: bindBasis, servingG: bindServingGrams, headerKcal });
+  // 3) When binding the title/summary, use headerKcal (not item.kcal)
+  console.log('[CONFIRM][BIND]', { badge: chipLabel, basis: isPerGramBasis ? 'per-gram' : 'per-100g', servingG: actualServingG, headerKcal });
 
   // Normalize props to avoid layout branch flips
   const normalizedItem = useMemo(() => ({
@@ -1916,14 +1924,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 )}
                 
                  <div className="ingredients-panel min-h-24">
-                   {/* B. Show loading state for lazy fetch */}
-                   {lazyIngredients?.isLoading && (
-                     <div className="text-center py-4">
-                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                         Fetching label…
-                       </div>
-                     </div>
-                   )}
+                    {/* B. Show loading state for lazy fetch */}
+                    {(!hasIngredients && !(currentFoodItem as any)?.ingredientsUnavailable && !lazyIngredients?.ingredientsUnavailable) && (
+                      <div className="text-center py-4">
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Fetching label…
+                        </div>
+                      </div>
+                    )}
                    {ingredientsList.length > 0 ? (
                     <div className="space-y-3">
                       {/* Flagged Ingredients Alert */}

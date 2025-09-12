@@ -89,6 +89,14 @@ export async function enrichCandidate(candidate: any) {
         enriched.ingredientsList = ingredientsList.length ? ingredientsList : normalizeIngredients(ingredientsText);
         enriched.hasIngredients = true;
         enriched.enrichmentSource = source;
+
+        // 3) Fill the brand image from OFF (or fallback)
+        // After you receive the OFF product in your enrichment
+        const offImg = (source as any)?.image_url || (source as any)?.image_front_url || (source as any)?.selected_images?.front?.display?.en;
+        if (offImg && !enriched.imageUrl) {
+          enriched.imageUrl = offImg;
+          enriched.imageUrlKind = 'off';
+        }
         
         // Ingredients pipeline logging
         console.log('[ING][SET]', {
