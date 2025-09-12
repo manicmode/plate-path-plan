@@ -22,6 +22,7 @@ import { useSound } from '@/hooks/useSound';
 import { SoundGate } from '@/lib/soundGate';
 import { supabase } from '@/integrations/supabase/client';
 import { detectFlags } from '@/lib/health/flagger';
+import { nvLabelLookup } from '@/lib/nutritionVault';
 import type { NutritionThresholds } from '@/lib/health/flagRules';
 import { useNutritionStore } from '@/stores/nutritionStore';
 // Add the FoodCandidate type import
@@ -197,6 +198,15 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [prevItem, setPrevItem] = useState<any | null>(null);
+  
+  // B. Lazy ingredients state
+  const [lazyIngredients, setLazyIngredients] = useState<{
+    ingredientsList: string[];
+    ingredientsText: string;
+    hasIngredients: boolean;
+    ingredientsUnavailable: boolean;
+    isLoading: boolean;
+  } | null>(null);
   
   const { toast } = useToast();
 
@@ -552,8 +562,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     sodium: Math.round(getPG('sodium') * scaleMult * 1000)
   };
 
+  // A. Helper for calories fallback from macros
+  const kcalFromMacros = (p=0, c=0, f=0, alcohol=0) => Math.round(p*4 + c*4 + f*9 + alcohol*7);
+
   // Use the helpers when binding values (keep for backward compatibility)
-  const headerKcal = finalNutrition.calories;
+  const baseMacros = finalNutrition; // scaledMacros ?? rawMacros logic
+  const headerKcal = (currentFoodItem as any)?.kcal ?? baseMacros?.calories ?? kcalFromMacros(baseMacros?.protein, baseMacros?.carbs, baseMacros?.fat, (baseMacros as any)?.alcohol);
+  
   const proteinG = finalNutrition.protein;
   const carbsG = finalNutrition.carbs;
   const fatG = finalNutrition.fat;
@@ -586,7 +601,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return fromFlags || 'Item';
   }, [currentFoodItem]);
   
-  // helpers for brand/generic chip
+  // C. Badge truth logic - final evidence based computation
   const item = currentFoodItem;
   const enrichmentSource = (item?.enrichmentSource ?? undefined) as
     | 'off'
@@ -598,11 +613,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   const hasBrandEvidence = Boolean((item as any)?.barcode || (item as any)?.providerRef || (item as any)?.brandName);
   const isBrand = hasBrandEvidence || enrichmentSource === 'off' || enrichmentSource === 'label';
-  const chipVariant: 'brand' | 'generic' = isBrand ? 'brand' : 'generic';
-  const chipLabel = isBrand ? 'Brand' : 'Generic';
+  const isGenericCandidate = (item as any)?.provider === 'generic' || (item as any)?.isGeneric;
+  
+  const chipVariant: 'brand' | 'generic' | 'hidden' = isBrand ? 'brand' : (isGenericCandidate ? 'generic' : 'hidden');
+  const chipLabel = chipVariant === 'brand' ? 'Brand' : (chipVariant === 'generic' ? 'Generic' : '');
   const badgeVariant: 'default' | 'secondary' = isBrand ? 'default' : 'secondary';
 
   console.log('[CONFIRM][BADGE]', { hasBrandEvidence, enrichmentSource, chipVariant, brandName: (item as any)?.brandName, barcode: (item as any)?.barcode, providerRef: (item as any)?.providerRef });
+
+  // A. [CONFIRM][BIND] log as requested
+  const bindBasis = isPerGramBasis ? 'per-gram' : 'per-100g';
+  const bindServingGrams = actualServingG;
+  console.log('[CONFIRM][BIND]', { badge: chipLabel, basis: bindBasis, servingG: bindServingGrams, headerKcal });
 
   // Normalize props to avoid layout branch flips
   const normalizedItem = useMemo(() => ({
@@ -612,16 +634,77 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     classId: (currentFoodItem as any)?.classId || 'generic_food',
   }), [currentFoodItem]);
 
-  // Read ingredientsList with fallback to ingredientsText
+  // Read ingredientsList with fallback to ingredientsText (enhanced with lazy loading)
   const ingredientsList = useMemo(() => {
-    const list = (currentFoodItem as any)?.ingredientsList || [];
-    const text = (currentFoodItem as any)?.ingredientsText || '';
+    const itemList = (currentFoodItem as any)?.ingredientsList || [];
+    const itemText = (currentFoodItem as any)?.ingredientsText || '';
+    const lazyList = lazyIngredients?.ingredientsList || [];
+    const lazyText = lazyIngredients?.ingredientsText || '';
+    
+    // Use lazy data if available, otherwise item data
+    const list = lazyList.length ? lazyList : itemList;
+    const text = lazyText || itemText;
+    
     // If list is empty but text exists, try to split text into list
     const ingredients = list.length 
       ? list 
       : (text ? text.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
     return Array.isArray(ingredients) ? ingredients : [];
-  }, [currentFoodItem?.id, (currentFoodItem as any)?.ingredientsList, (currentFoodItem as any)?.ingredientsText]);
+  }, [currentFoodItem?.id, (currentFoodItem as any)?.ingredientsList, (currentFoodItem as any)?.ingredientsText, lazyIngredients]);
+
+  // B. Lazy ingredient fetching effect
+  useEffect(() => {
+    // Only fetch if we have an item and no ingredients yet
+    if (!currentFoodItem || lazyIngredients?.isLoading) return;
+    
+    const itemKey = `${currentFoodItem.id}-${(currentFoodItem as any)?.providerRef || currentFoodItem.name}`;
+    const hasItemIngredients = (currentFoodItem as any)?.ingredientsList?.length || (currentFoodItem as any)?.ingredientsText;
+    const hasLazyIngredients = lazyIngredients?.ingredientsList?.length || lazyIngredients?.ingredientsText;
+    const isUnavailable = (currentFoodItem as any)?.ingredientsUnavailable || lazyIngredients?.ingredientsUnavailable;
+    
+    // Skip if we already have ingredients or marked unavailable
+    if (hasItemIngredients || hasLazyIngredients || isUnavailable) return;
+    
+    console.log('[LAZY][ING] Starting fetch for:', itemKey);
+    
+    // Set loading state
+    setLazyIngredients(prev => ({ ...(prev || {}), isLoading: true, ingredientsList: [], ingredientsText: '', hasIngredients: false, ingredientsUnavailable: false }));
+    
+    // Fetch ingredients
+    nvLabelLookup({
+      providerRef: (currentFoodItem as any)?.providerRef || (currentFoodItem as any)?.barcode,
+      name: currentFoodItem.name
+    }).then(result => {
+      if (result.ingredientsList?.length || result.ingredientsText) {
+        console.log('[LAZY][ING] Success:', { listLen: result.ingredientsList?.length, hasText: !!result.ingredientsText });
+        setLazyIngredients({
+          ingredientsList: result.ingredientsList || [],
+          ingredientsText: result.ingredientsText || '',
+          hasIngredients: true,
+          ingredientsUnavailable: false,
+          isLoading: false
+        });
+      } else {
+        console.log('[LAZY][ING] No data found');
+        setLazyIngredients({
+          ingredientsList: [],
+          ingredientsText: '',
+          hasIngredients: false,
+          ingredientsUnavailable: true,
+          isLoading: false
+        });
+      }
+    }).catch(error => {
+      console.warn('[LAZY][ING] Error:', error);
+      setLazyIngredients({
+        ingredientsList: [],
+        ingredientsText: '',
+        hasIngredients: false,
+        ingredientsUnavailable: true,
+        isLoading: false
+      });
+    });
+  }, [currentFoodItem?.id, (currentFoodItem as any)?.providerRef, currentFoodItem?.name, lazyIngredients?.isLoading]);
 
   // Log ingredient availability for debugging
   useEffect(() => {
@@ -1589,11 +1672,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     {displayName}
                   </h3>
                   {/* Brand/Generic truth chip (NOT provider source) */}
-                  <Badge variant={badgeVariant} className="ml-2">{chipLabel}</Badge>
+                  {chipVariant !== 'hidden' && (
+                    <Badge variant={badgeVariant} className="ml-2">{chipLabel}</Badge>
+                  )}
                 </div>
                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                   {Number.isFinite(adjustedFood.calories) ? adjustedFood.calories : 0} calories
-                 </p>
+                    {Number.isFinite(headerKcal) ? headerKcal : 0} calories
+                  </p>
                  {((currentFoodItem as any)?.enrichmentSource === "ESTIMATED" || 
                    ((currentFoodItem as any)?.enrichmentConfidence && (currentFoodItem as any).enrichmentConfidence < 0.7)) && (
                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
@@ -1830,8 +1915,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   </div>
                 )}
                 
-                <div className="ingredients-panel min-h-24">
-                  {ingredientsList.length > 0 ? (
+                 <div className="ingredients-panel min-h-24">
+                   {/* B. Show loading state for lazy fetch */}
+                   {lazyIngredients?.isLoading && (
+                     <div className="text-center py-4">
+                       <div className="text-xs text-gray-500 dark:text-gray-400">
+                         Fetching label…
+                       </div>
+                     </div>
+                   )}
+                   {ingredientsList.length > 0 ? (
                     <div className="space-y-3">
                       {/* Flagged Ingredients Alert */}
                       {flaggedIngredients.length > 0 && (
@@ -1887,7 +1980,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   ) : (
                     <div className="text-center py-6">
                       <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                       {currentFoodItem?.ingredientsUnavailable ? (
+                       {(currentFoodItem?.ingredientsUnavailable || lazyIngredients?.ingredientsUnavailable) ? (
                         <div className="space-y-2">
                           <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
                             No label data available
@@ -1896,7 +1989,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                             No provider label found for this item.
                           </p>
                         </div>
-                      ) : (
+                       ) : !lazyIngredients?.isLoading && (
                         <div className="space-y-2">
                           <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                             No ingredients information available yet
