@@ -32,12 +32,13 @@ import { inferPortion } from '@/lib/food/portion/inferPortion';
 import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR } from '@/lib/flags';
 import { extractName } from '@/lib/debug/extractName';
 import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
-import { DialogTitle } from '@radix-ui/react-dialog';
+import { DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import confetti from 'canvas-confetti';
 import { labelFromFlags } from '@/lib/food/search/getFoodCandidates';
 import { trace, caloriesFromMacros } from '@/debug/traceFood';
+import type { ConfirmItem, PerGram } from '@/types/food';
 
 // ---- numeric safety helpers (zeros are valid!) ----
 const toNum = (v: unknown): number => {
@@ -47,6 +48,15 @@ const toNum = (v: unknown): number => {
 };
 const isNum = (v: unknown) => Number.isFinite(toNum(v));
 const nz = (v: unknown) => (isNum(v) ? toNum(v) : 0);
+
+function calcMacros(perGram: PerGram, grams: number) {
+  return {
+    kcal: Math.round(perGram.kcal * grams),
+    protein: Math.round(perGram.protein * grams * 10) / 10,
+    carbs: Math.round(perGram.carbs * grams * 10) / 10,
+    fat: Math.round(perGram.fat * grams * 10) / 10,
+  };
+}
 
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -324,7 +334,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // 🧪 DEBUG INSTRUMENTATION
   const __IMG_DEBUG = false; // keep instrumentation off in UI
   
-  // Pick the best available direct image first
+  // Image handling - show captured photo or fallback images
   const directImg = useMemo(() => {
     return currentFoodItem?.imageUrl ||
       (currentFoodItem as any)?.image ||
@@ -332,6 +342,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       (currentFoodItem as any)?.imageUrls?.[0] ||
       undefined;
   }, [currentFoodItem]);
+
+  const imageToShow = directImg;
   
   // Collect URLs: from enrichment then fallback guesses with corrected OFF paths
   const imageUrls: string[] = useMemo(() => {
@@ -416,6 +428,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const perGramReady = [PG.protein, PG.carbs, PG.fat, PG.kcal].some((v) => Number.isFinite(v) && v >= 0);
   const pgSum = PG.protein + PG.carbs + PG.fat;
 
+  // Check if per-gram nutrition is available
+  const hasPg = perGramReady && 
+    ["kcal", "protein", "carbs", "fat"].every(k => typeof PG[k as keyof typeof PG] === "number");
+
   // NEW: consider per-serving as a valid basis (manual/barcode items)
   const ps = (currentFoodItem as any)?.nutrition?.perServing ?? (currentFoodItem as any)?.perServing ?? {};
   const perServingReady =
@@ -429,14 +445,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   
   const isNutritionReady = !shouldBlockNutrition;
   
-  // Permanent fix 1: normalize to per-gram no matter the source
-  const baseServingG = 100;
-  const detectedGrams = initialGrams ?? 
-                        (currentFoodItem as any)?.grams ?? 
-                        currentFoodItem?.portionGrams ?? 
-                        baseServingG;
+  // Default to 100g when portion unknown, use initialGrams when provided
+  const baseDefaultG = 100;
+  const baseServingG = initialGrams ?? 
+                       (currentFoodItem as any)?.grams ?? 
+                       currentFoodItem?.portionGrams ?? 
+                       baseDefaultG;
   
-  const currentGrams = clamp0(detectedGrams);
+  const currentGrams = clamp0(baseServingG);
   const portionPct = (portionPercentage[0] || 100) / 100;
 
   // Decide basis once
@@ -1692,9 +1708,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return (
       <Dialog open={dialogOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
         <AccessibleDialogContent 
-          className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
           title="Loading next item"
           description="Please wait while the next food item is being loaded."
+          className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
         >
           <div className="p-6 flex items-center justify-center min-h-[200px]">
             <div className="text-center">
@@ -1732,9 +1748,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         }}
       >
         <AccessibleDialogContent 
-          className="food-confirm-card with-stable-panels max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden max-h-[90vh] flex flex-col"
           title="Confirm Food Log"
           description="We'll save these items to your log."
+          className="food-confirm-card with-stable-panels max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden max-h-[90vh] flex flex-col"
           showCloseButton={!reminderOpen}
           data-dialog-root="confirm-food-log"
           onEscapeKeyDown={(e) => forceConfirm && e.preventDefault()}

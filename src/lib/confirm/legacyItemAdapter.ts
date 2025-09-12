@@ -2,6 +2,7 @@
 // Maps various data formats from detection/report pipelines to legacy card expectations
 
 import { useNutritionStore, generateFoodId, type NutritionAnalysis } from '@/stores/nutritionStore';
+import type { PerGram } from '@/types/food';
 
 export type LegacyNutrition = {
   calories?: number;
@@ -93,6 +94,16 @@ const num = (v: any) => {
   const n = Number.parseFloat(String(v ?? ''));
   return Number.isFinite(n) ? n : 0;
 };
+
+function per100ToPerGram(per100?: { kcal:number; protein:number; carbs:number; fat:number }): PerGram | undefined {
+  if (!per100) return undefined;
+  return {
+    kcal: per100.kcal / 100,
+    protein: per100.protein / 100,
+    carbs: per100.carbs / 100,
+    fat: per100.fat / 100,
+  };
+}
 
 export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST = false): LegacyFoodItem {
   const name = pick<string>(
