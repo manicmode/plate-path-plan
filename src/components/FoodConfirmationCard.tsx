@@ -206,20 +206,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Derive a stable ID from props (not from transient state)
   const foodId = foodItem?.id ?? null;
 
-  // Confetti timing: fire on next animation frame after mount
-  useEffect(() => {
-    if (isOpen) {
-      // Schedule on next frame to avoid layout thrash / reflow
-      const id = requestAnimationFrame(() => {
-        confetti({
-          particleCount: 50,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      });
-      return () => cancelAnimationFrame(id);
-    }
-  }, [isOpen]);
+  // Confetti removed from modal open - now only fires after successful logging
 
   // A) Log what FoodConfirmationCard receives as props
   useEffect(() => {
