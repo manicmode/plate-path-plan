@@ -61,9 +61,12 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
 
   const handleContinue = () => {
     setIsSubmitting(true);
-    console.log('[DIALOG][COMMIT]', { 
-      hasIngredients: !!enrichedData?.ingredientsList?.length,
-      portionGrams
+    console.log('[PORTION][COMMIT]', { 
+      sendName: enrichedData?.name,
+      sendServingG: portionGrams,
+      sendIngredients: !!enrichedData?.ingredientsList?.length,
+      sendText: !!enrichedData?.ingredientsText,
+      keys: Object.keys(enrichedData || {})
     });
     
     onContinue({

@@ -22,6 +22,7 @@ export async function enrichCandidate(candidate: any) {
       ingredientsList: normalized.length ? normalized : undefined,
       ingredientsText,
       hasIngredients: Boolean((normalized && normalized.length) || ingredientsText),
+      ingredientsUnavailable: !Boolean((normalized && normalized.length) || ingredientsText),
       enrichmentSource: 'canonical'
     };
     
@@ -50,6 +51,7 @@ export async function enrichCandidate(candidate: any) {
     ingredientsList: normalized.length ? normalized : undefined,
     ingredientsText,
     hasIngredients: Boolean((normalized && normalized.length) || ingredientsText),
+    ingredientsUnavailable: !Boolean((normalized && normalized.length) || ingredientsText),
     enrichmentSource: 'provider'
   };
   

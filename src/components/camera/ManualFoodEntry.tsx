@@ -193,8 +193,11 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       if (!manualFlow.selectedCandidate || manualFlow.enrichmentReady) return;
       
       console.log('[MANUAL][SELECT]', { 
-        isGeneric: manualFlow.selectedCandidate?.isGeneric, 
-        canonicalKey: manualFlow.selectedCandidate?.canonicalKey 
+        name: manualFlow.selectedCandidate?.name,
+        provider: manualFlow.selectedCandidate?.provider,
+        isGeneric: manualFlow.selectedCandidate?.isGeneric,
+        classId: manualFlow.selectedCandidate?.classId,
+        canonicalKey: manualFlow.selectedCandidate?.canonicalKey,
       });
       
       try {
@@ -204,9 +207,16 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         const enrichedData = await enrichCandidate(manualFlow.selectedCandidate);
         if (dead) return;
         
-        console.log('[ENRICH][DONE]', { 
+        console.log('[MANUAL][ENRICH][DONE]', {
+          name: enrichedData?.name,
           hasIngredients: !!enrichedData?.ingredientsList?.length,
-          count: enrichedData?.ingredientsList?.length || 0
+          ingredientsLen: enrichedData?.ingredientsList?.length ?? 0,
+          textLen: enrichedData?.ingredientsText?.length ?? 0,
+          basePer100: !!enrichedData?.basePer100,
+          perGram: !!enrichedData?.perGram,
+          servingGrams: enrichedData?.servingGrams,
+          source: enrichedData?.source,
+          confidence: enrichedData?.confidence,
         });
         
         setEnriched(enrichedData);
