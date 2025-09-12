@@ -45,6 +45,7 @@ import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsSc
 import { SummaryReviewPanel, SummaryItem } from '@/components/camera/SummaryReviewPanel';
 import { TransitionScreen } from '@/components/camera/TransitionScreen';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
+import { HandoffOverlay } from '@/components/common/HandoffOverlay';
 import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { UnifiedLoggingTabs } from '@/components/camera/UnifiedLoggingTabs';
@@ -2687,6 +2688,28 @@ console.log('Global search enabled:', enableGlobalSearch);
 
   const [pendingItems, setPendingItems] = useState<SummaryItem[]>([]);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
+  
+  // Handoff overlay state for smooth transitions
+  const [handoffOpen, setHandoffOpen] = useState(false);
+  const handoffStart = useCallback(() => setHandoffOpen(true), []);
+  const handoffEnd = useCallback(() => setHandoffOpen(false), []);
+
+  // Auto-clear overlay when confirm card opens with an item
+  useEffect(() => {
+    if (showConfirmation && selectedFoodItem) {
+      handoffEnd();
+    }
+  }, [showConfirmation, selectedFoodItem, handoffEnd]);
+
+  // Safety timeout for handoff overlay
+  useEffect(() => {
+    if (!handoffOpen) return;
+    const timeout = setTimeout(() => {
+      setHandoffOpen(false);
+      toast.error("Something took too long. Please try again.");
+    }, 8000);
+    return () => clearTimeout(timeout);
+  }, [handoffOpen]);
 
   // New handler for Summary Review Panel
   const handleSummaryNext = async (selectedItems: SummaryItem[]) => {
@@ -4003,6 +4026,7 @@ console.log('Global search enabled:', enableGlobalSearch);
           setShowSmartLoader(false); // Make sure loader doesn't hide the main UI
         }}
         onResults={(items) => routeRecognizedItems(items, 'manual')}
+        onHandoffStart={handoffStart}
       />
 
       {/* Speak to Log Modal */}
@@ -4108,6 +4132,9 @@ console.log('Global search enabled:', enableGlobalSearch);
             />
           </div>
         )}
+      
+      {/* Handoff overlay for smooth transitions */}
+      <HandoffOverlay active={handoffOpen} />
       
       </div>
     );

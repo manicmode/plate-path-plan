@@ -34,6 +34,7 @@ interface ManualFoodEntryProps {
   isOpen: boolean;
   onClose: () => void;
   onResults?: (items: any[]) => void;
+  onHandoffStart?: () => void;
 }
 
 type ModalState = 'idle' | 'searching' | 'candidates' | 'loading' | 'error';
@@ -132,7 +133,8 @@ const sharesCore = (candidateName?: string, primaryName?: string) => {
 export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   isOpen,
   onClose,
-  onResults
+  onResults,
+  onHandoffStart
 }) => {
   // All hooks declared unconditionally at top
   const manualFlow = useManualFlowStatus();
@@ -801,17 +803,17 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
   return (
     <>
-      <HandoffOverlay show={handoff} />
+      <HandoffOverlay active={handoff} />
       {showPortionDialog && (
         <ManualPortionDialog
           candidate={manualFlow.selectedCandidate}
           enrichedData={manualFlow.portionDraft}
           onContinue={(finalData) => {
-            setHandoff(true); // Show handoff overlay immediately
+            manualFlow.setState(s => ({ ...s, uiCommitted: true }));
+            onHandoffStart?.(); // Trigger parent handoff overlay
+            setHandoff(true); // Show local handoff overlay immediately
             
             console.log('[DIALOG][COMMIT]', { hasIngredients: !!finalData?.ingredientsList?.length });
-            
-            manualFlow.setState(s => ({ ...s, uiCommitted: true }));
             
             // Hand off to parent (keep as-is)
             onResults?.([finalData]);
