@@ -343,8 +343,29 @@ const CameraPage = () => {
 
     console.log(`[ROUTE_ITEMS] Processing ${items.length} items from ${sourceHint || 'unknown'} source`);
 
-    // Check if items are fully enriched (route guard)
-    const allEnriched = items.every(i => i?.enrichmentSource && Array.isArray(i?.ingredientsList));
+    // Normalize ingredients at routing boundary (defensive)
+    const ensureIngredients = (it: any) => {
+      const list = Array.isArray(it?.ingredientsList) ? it.ingredientsList : [];
+      const text = it?.ingredientsText ?? (list.length ? list.join(', ') : '');
+      return {
+        ...it,
+        ingredientsList: list,
+        ingredientsText: text,
+        hasIngredients: Boolean(text || (list && list.length)),
+      };
+    };
+    const normalizedItems = items.map(ensureIngredients);
+
+    if (import.meta.env.DEV) {
+      console.log('[CONFIRM][OPEN][PAYLOAD]', {
+        name: normalizedItems?.[0]?.name,
+        listLen: normalizedItems?.[0]?.ingredientsList?.length ?? 0,
+        hasText: !!normalizedItems?.[0]?.ingredientsText,
+      });
+    }
+
+    // Check if items are fully enriched (route guard) - use normalized items
+    const allEnriched = normalizedItems.every(i => i?.enrichmentSource && Array.isArray(i?.ingredientsList));
     if (!allEnriched && (sourceHint === 'manual' || sourceHint === 'speech')) {
       console.warn('[ROUTE][BLOCKED]', 'Items not fully enriched');
       return; // keep user on dialog
@@ -359,8 +380,8 @@ const CameraPage = () => {
 
     if (isManualLike) {
       // For manual/voice inputs, hydrate nutrition before opening confirmation
-      if (items.length === 1) {
-        const item = items[0];
+      if (normalizedItems.length === 1) {
+        const item = normalizedItems[0];
         
         // Create abort controller for hydration
         const controller = new AbortController();
@@ -402,8 +423,8 @@ const CameraPage = () => {
       }
     }
 
-    if (items.length === 1) {
-      const item = items[0];
+    if (normalizedItems.length === 1) {
+      const item = normalizedItems[0];
       setRecognizedFoods([item]);
       
       // Allow confirm-card to bypass hydration gate for text-sourced items

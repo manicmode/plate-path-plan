@@ -68,6 +68,16 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
     
     onContinue({
       ...enrichedData,
+      // Ensure ingredients pass through:
+      ingredientsList: enrichedData?.ingredientsList ?? [],
+      ingredientsText:
+        enrichedData?.ingredientsText ??
+        (Array.isArray(enrichedData?.ingredientsList)
+          ? enrichedData.ingredientsList.join(', ')
+          : ''),
+      hasIngredients:
+        !!(enrichedData?.ingredientsText ||
+           (enrichedData?.ingredientsList && enrichedData.ingredientsList.length)),
       servingGrams: portionGrams,
       userConfirmed: true
     });

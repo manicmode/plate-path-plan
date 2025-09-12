@@ -9,32 +9,58 @@ export async function enrichCandidate(candidate: any) {
 
   if (candidate?.isGeneric && candidate?.canonicalKey) {
     const canonical = await fetchCanonicalNutrition(candidate.canonicalKey);
-    const ingredientsList = normalizeIngredients(canonical); // [] allowed
+    const normalized = Array.isArray(canonical) 
+      ? normalizeIngredients(canonical) 
+      : normalizeIngredients(canonical);
+    const ingredientsText = 
+      canonical?.ingredientsText ?? 
+      (normalized.length ? normalized.join(', ') : undefined);
     
-    console.log('[ENRICH][DONE]', { 
-      ingredientsCount: ingredientsList.length,
-      ingredientsSample: ingredientsList.slice(0, 3)
-    });
-    
-    return {
+    const enriched = {
       ...canonical,
       ...candidate,
-      ingredientsList,
+      ingredientsList: normalized.length ? normalized : undefined,
+      ingredientsText,
+      hasIngredients: Boolean((normalized && normalized.length) || ingredientsText),
       enrichmentSource: 'canonical'
     };
+    
+    if (import.meta.env.DEV) {
+      console.log('[ENRICH][DONE]', {
+        name: candidate?.name,
+        listLen: enriched.ingredientsList?.length ?? 0,
+        hasText: !!enriched.ingredientsText,
+        ingredientsSample: enriched.ingredientsList?.slice(0, 3) ?? []
+      });
+    }
+    
+    return enriched;
   }
 
   const base = candidate?.data ?? candidate;
-  const ingredientsList = normalizeIngredients(base);
-  
-  console.log('[ENRICH][DONE]', { 
-    ingredientsCount: ingredientsList.length,
-    ingredientsSample: ingredientsList.slice(0, 3)
-  });
-  
-  return {
+  const normalized = Array.isArray(base) 
+    ? normalizeIngredients(base) 
+    : normalizeIngredients(base);
+  const ingredientsText = 
+    base?.ingredientsText ?? 
+    (normalized.length ? normalized.join(', ') : undefined);
+
+  const enriched = {
     ...candidate,
-    ingredientsList,
+    ingredientsList: normalized.length ? normalized : undefined,
+    ingredientsText,
+    hasIngredients: Boolean((normalized && normalized.length) || ingredientsText),
     enrichmentSource: 'provider'
   };
+  
+  if (import.meta.env.DEV) {
+    console.log('[ENRICH][DONE]', {
+      name: candidate?.name,
+      listLen: enriched.ingredientsList?.length ?? 0,
+      hasText: !!enriched.ingredientsText,
+      ingredientsSample: enriched.ingredientsList?.slice(0, 3) ?? []
+    });
+  }
+  
+  return enriched;
 }

@@ -483,11 +483,29 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     classId: (currentFoodItem as any)?.classId || 'generic_food',
   }), [currentFoodItem]);
 
-  // Read only ingredientsList field for ingredients
+  // Read ingredientsList with fallback to ingredientsText
   const ingredientsList = useMemo(() => {
-    const list = (currentFoodItem as any)?.ingredientsList;
-    return Array.isArray(list) ? list : [];
-  }, [currentFoodItem?.id, (currentFoodItem as any)?.ingredientsList]);
+    const list = (currentFoodItem as any)?.ingredientsList || [];
+    const text = (currentFoodItem as any)?.ingredientsText || '';
+    // If list is empty but text exists, try to split text into list
+    const ingredients = list.length 
+      ? list 
+      : (text ? text.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
+    return Array.isArray(ingredients) ? ingredients : [];
+  }, [currentFoodItem?.id, (currentFoodItem as any)?.ingredientsList, (currentFoodItem as any)?.ingredientsText]);
+
+  // Add ingredient diagnostics on mount
+  useEffect(() => {
+    if (import.meta.env.DEV && currentFoodItem) {
+      const listLen = (currentFoodItem as any)?.ingredientsList?.length ?? 0;
+      const hasText = !!(currentFoodItem as any)?.ingredientsText;
+      console.log('[CONFIRM][ING]', {
+        listLen,
+        hasText,
+        finalIngredientsLen: ingredientsList.length
+      });
+    }
+  }, [currentFoodItem, ingredientsList.length]);
 
   const hasIngredients = ingredientsList.length > 0;
 
