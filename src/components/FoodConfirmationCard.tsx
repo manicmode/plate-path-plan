@@ -40,6 +40,17 @@ import { labelFromFlags } from '@/lib/food/search/getFoodCandidates';
 import { trace, caloriesFromMacros } from '@/debug/traceFood';
 import type { ConfirmItem, PerGram } from '@/types/food';
 
+// Helper functions for generic item detection and per-gram data
+const isGenericItem = (item: any) =>
+  item?.classId === 'generic_food' || item?.providerRef === 'generic';
+
+const getPerGram = (item: any) =>
+  item?.perGram || item?.nutrition?.perGram || item?.per100g || null;
+
+const hasNumbers = (pg: any) =>
+  !!pg && ((pg.kcal ?? pg.energy_kcal ?? pg.energyKcal ?? pg.calories ?? 0)
+      || pg.protein || pg.carbs || pg.fat);
+
 // ---- numeric safety helpers (zeros are valid!) ----
 const toNum = (v: unknown): number => {
   if (typeof v === 'number' && Number.isFinite(v)) return v;
@@ -343,7 +354,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       undefined;
   }, [currentFoodItem]);
 
-  const imageToShow = directImg;
+  const imageToShow =
+    currentFoodItem?.imageUrl ||
+    directImg ||
+    undefined;
   
   // Collect URLs: from enrichment then fallback guesses with corrected OFF paths
   const imageUrls: string[] = useMemo(() => {
@@ -1050,11 +1064,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const gramsForDisplay = Math.round(servingG ?? 100);
   
   // Prefer real serving grams, then servingText, then fallback
+  const pg = getPerGram(currentFoodItem);
   const subtitle = (isBarcodeItem || isTextItem) ? (
     (servingG && servingG !== 100) ? `Per serving (${servingG} g)` :
     servingText ? `Per portion (${servingText})` :
     'Per 100 g'
-  ) : (servingG ? `${servingG} g per portion` : 'Per portion (unknown size)');
+  ) : (servingG ? `${servingG} g per portion` : 
+    (isGenericItem(currentFoodItem) && hasNumbers(pg) ? 'Per 100 g' : 'Per portion (unknown size)'));
   
   // Legacy compatibility  
   const displayName = title;

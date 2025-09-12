@@ -325,6 +325,7 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
   // Enhanced image URL mapping to carry photos through the adapter
   const candidates = [
     raw.selectedImage, raw.imageUrl, raw.image_url, raw.photoUrl, raw.thumbnailUrl,
+    raw.previewUrl, raw.detectFrameUrl, // Add new image fields
     // Open Food Facts image fallbacks
     raw.image_front_url,
     raw?.selected_images?.front?.display?.en,
