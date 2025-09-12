@@ -270,19 +270,16 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
   const confidence = storeAnalysis?.confidence ?? pick<number>(raw.confidence, raw.analysis?.confidence);
   
   // Enhanced image URL mapping to carry photos through the adapter
-  const imageUrl = storeAnalysis?.imageUrl ?? pick<string>(
-    raw.imageUrl,
-    raw.selectedImage,
-    raw.photoUrl,
-    raw.image, 
-    raw.productImageUrl,
-    raw.image_url
-  );
-  
-  // Build imageUrls array for UI components that expect arrays
-  const imageUrls = Array.isArray(raw.imageUrls) && raw.imageUrls.length
-    ? raw.imageUrls
-    : (imageUrl ? [imageUrl] : []);
+  const candidates = [
+    raw.selectedImage, raw.imageUrl, raw.image_url, raw.photoUrl, raw.thumbnailUrl,
+    ...(Array.isArray(raw.imageUrls) ? raw.imageUrls : []),
+    ...(Array.isArray(raw.images) ? raw.images : []),        // many brand/manual items use this
+    ...(Array.isArray(raw.photos) ? raw.photos : []),
+    raw.brandImage, raw.nutrition?.image
+  ].filter(Boolean);
+
+  const imageUrl = storeAnalysis?.imageUrl ?? candidates[0];
+  const imageUrls = [...new Set(candidates)];
 
   const dataSourceLabel = raw.analysis?.dataSourceLabel
     ?? raw.meta?.dataSourceLabel
