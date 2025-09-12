@@ -24,7 +24,7 @@ import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
 import { useManualFlowStatus } from '@/hooks/useManualFlowStatus';
 import { enrichCandidate } from '@/utils/enrichCandidate';
 import { ManualPortionDialog } from './ManualPortionDialog';
-import MagicHandoffOverlay from '@/components/common/MagicHandoffOverlay';
+
 import { DataSourceChip } from '@/components/ui/data-source-chip';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import { sourceBadge } from '@/utils/helpers/sourceBadge';
@@ -803,7 +803,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
   return (
     <>
-      <MagicHandoffOverlay active={handoff} />
+      
       {showPortionDialog && (
         <ManualPortionDialog
           candidate={manualFlow.selectedCandidate}
@@ -811,7 +811,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           onContinue={(finalData) => {
             manualFlow.setState(s => ({ ...s, uiCommitted: true }));
             onHandoffStart?.(); // Trigger parent handoff overlay
-            setHandoff(true); // Show local handoff overlay immediately
+            
             
             console.log('[DIALOG][COMMIT]', { hasIngredients: !!finalData?.ingredientsList?.length });
             
@@ -822,8 +822,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             onClose?.();
             manualFlow.reset();
             
-            // Failsafe: clear handoff after timeout if component doesn't unmount
-            setTimeout(() => setHandoff(false), 2000);
           }}
           onCancel={() => {
             manualFlow.reset();

@@ -45,7 +45,7 @@ import { ReviewItemsScreen, ReviewItem } from '@/components/camera/ReviewItemsSc
 import { SummaryReviewPanel, SummaryItem } from '@/components/camera/SummaryReviewPanel';
 import { TransitionScreen } from '@/components/camera/TransitionScreen';
 import FoodConfirmationCard from '@/components/FoodConfirmationCard';
-import { HandoffOverlay } from '@/components/common/HandoffOverlay';
+import MagicHandoffOverlay from '@/components/common/MagicHandoffOverlay';
 import { BarcodeNotFoundModal } from '@/components/camera/BarcodeNotFoundModal';
 import { SavedFoodsTab } from '@/components/camera/SavedFoodsTab';
 import { UnifiedLoggingTabs } from '@/components/camera/UnifiedLoggingTabs';
@@ -4134,7 +4134,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         )}
       
       {/* Handoff overlay for smooth transitions */}
-      <HandoffOverlay active={handoffOpen} />
+      <MagicHandoffOverlay active={handoffOpen} />
       
       </div>
     );
