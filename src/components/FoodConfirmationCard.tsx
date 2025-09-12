@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo, useId } from 'react';
-import ImageWithFallback from '@/components/ui/ImageWithFallback';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
 import { withSafeCancel } from '@/lib/ui/withSafeCancel';
 import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
@@ -206,6 +205,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [prevItem, setPrevItem] = useState<any | null>(null);
+  const [imgIdx, setImgIdx] = useState(0);
   const [loaded, setLoaded] = useState(false);
   
   // B. Lazy ingredients state
@@ -258,36 +258,36 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
   const { playFoodLogConfirm } = useSound();
 
-  // A11y Dialog description
-  const descId = useId();
-
   const [reminderOpen, setReminderOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
   
-  // Image state and constants
-  const PLACEHOLDER = '/images/food-placeholder.svg';
+  // 🧪 DEBUG INSTRUMENTATION
+  const __IMG_DEBUG = false; // keep instrumentation off in UI
+  
+  // Collect URLs: safe candidates for manual, enriched for photo/barcode
+  const PLACEHOLDER = '/images/food-placeholder.png';
   const isManualImage = inputSource === 'manual';
   
-  // Use ImageWithFallback for OFF images with proper fallback chain
-  const [imgIdx, setImgIdx] = useState(0);
   const imageUrls: string[] = useMemo(() => {
+    // Prefer only safe, local/manual URLs for manual flow
     let candidates: string[] = [];
 
     if (isManualImage) {
-      // Manual flow - prefer safe local URLs first
+      // Start with any precomputed/safe images we already had
       candidates = [
         (currentFoodItem as any)?.imageUrl,
         (currentFoodItem as any)?.thumbnailUrl,
         (currentFoodItem as any)?.photoUrl,
       ].filter(Boolean) as string[];
       
-      // If from OFF, add robust image candidates  
+      // If the selected item came from OFF, build robust URLs
       const provider = (currentFoodItem as any)?._provider;
       const providerRef = (currentFoodItem as any)?.providerRef;
       if (provider === 'off' && providerRef) {
-        candidates.push(...offImageCandidatesNew(providerRef, 'en'));
+        candidates.push(...offImageCandidatesNew(providerRef, 'en')); // or current locale if you have it
       }
     } else if (ENABLE_PHOTO_BARCODE_ENRICH) {
-      // Photo/barcode flow - use enrichment data
+      // keep existing enrichment / barcode candidates
       const fromEnrichment = (currentFoodItem as any)?.image?.urls ?? [];
       const providerRef = (currentFoodItem as any)?.providerRef;
       const ean = typeof providerRef === 'string' && /^\d{8,}$/.test(providerRef) ? providerRef : null;
@@ -299,10 +299,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       ].filter(Boolean) as string[];
     }
 
-    // Always have fallback
-    candidates.push('/images/food-placeholder.svg');
+    // Guaranteed fallback so the <img> never goes blank
+    if (candidates.length === 0) candidates = [PLACEHOLDER];
+    
     return Array.from(new Set(candidates));
-  }, [(currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef, (currentFoodItem as any)?.imageUrl, isManualImage]);
+  }, [(currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef, (currentFoodItem as any)?.imageUrl, (currentFoodItem as any)?.thumbnailUrl, (currentFoodItem as any)?.photoUrl, isManualImage]);
 
   useEffect(() => setImgIdx(0), [imageUrls.join('|')]);
 
@@ -1073,8 +1074,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return (
       <AccessibleDialogContent 
         title="Confirm Food"
-        description="Confirm your food log."
+        aria-describedby="confirm-card-desc"
       >
+        <p id="confirm-card-desc" className="sr-only">Confirm your food log.</p>
         <div style={{ minHeight: 420 }} />
       </AccessibleDialogContent>
     );
@@ -1576,15 +1578,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
           console.log('[CANCEL][DONE]');
         }}
       >
-        <AccessibleDialogContent
-          description="We'll save these items to your log."
-          
+        <AccessibleDialogContent 
           className="food-confirm-card with-stable-panels max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden max-h-[90vh] flex flex-col"
           title="Confirm Food Log"
+          description="We'll save these items to your log."
           showCloseButton={!reminderOpen}
           data-dialog-root="confirm-food-log"
-          onEscapeKeyDown={(e: any) => forceConfirm && e.preventDefault()}
-          onInteractOutside={(e: any) => forceConfirm && e.preventDefault()}
+          onEscapeKeyDown={(e) => forceConfirm && e.preventDefault()}
+          onInteractOutside={(e) => forceConfirm && e.preventDefault()}
         >
           <VisuallyHidden><DialogTitle>Confirm Food Log</DialogTitle></VisuallyHidden>
           <div className="p-6 overflow-y-auto flex-1 min-h-0">
@@ -1746,12 +1747,28 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
               <div style={{position:'relative',height:64,width:64,borderRadius:14,overflow:'hidden',background:'rgba(0,0,0,.25)'}}>
-                <ImageWithFallback
-                  srcs={imageUrls}
-                  alt={displayName}
-                  style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
-                  fallbackIcon={<div style={{color: '#fff8'}}>🍽️</div>}
-                />
+                {resolvedSrc && (
+                  <img
+                    src={resolvedSrc}
+                    alt=""
+                    aria-hidden="true"
+                    style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
+                    onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
+                    onError={() => {
+                      const next = imgIdx + 1;
+                      if (next < imageUrls.length) {
+                        console.log('[IMG][ERROR]', resolvedSrc);
+                        setImgIdx(next);
+                      } else if (resolvedSrc !== PLACEHOLDER) {
+                        console.log('[IMG][ERROR][FALLBACK]', resolvedSrc);
+                        setImgIdx(imageUrls.length > 0 ? imageUrls.length - 1 : 0);
+                      }
+                    }}
+                    referrerPolicy="no-referrer"
+                    loading="eager"
+                  />
+                )}
+                {!resolvedSrc && <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
