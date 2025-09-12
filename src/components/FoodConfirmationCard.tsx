@@ -200,6 +200,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [prevItem, setPrevItem] = useState<any | null>(null);
   const [imgIdx, setImgIdx] = useState(0);
+  const [loaded, setLoaded] = useState(false);
   
   // B. Lazy ingredients state
   const [lazyIngredients, setLazyIngredients] = useState<{
@@ -255,21 +256,25 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [imageError, setImageError] = useState(false);
   
   // Resolve image URL list once
-  const imageUrls: string[] = React.useMemo(() => {
-    const urls = ((currentFoodItem as any)?.image?.urls ?? []).filter(Boolean);
-    if (!urls.length && (currentFoodItem as any)?.providerRef) {
-      urls.push(...offImageCandidates((currentFoodItem as any).providerRef));
-    }
-    return urls;
-  }, [currentFoodItem]);
+  const imageUrls: string[] = useMemo(() => {
+    const fromEnrichment = (currentFoodItem as any)?.image?.urls ?? [];
+    // final fallback if enrichment had none but we still have a barcode
+    const fromBarcode = (currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : [];
+    return Array.from(new Set([...fromEnrichment, ...fromBarcode].filter(Boolean)));
+  }, [(currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef]);
 
   const resolvedSrc = imageUrls[imgIdx] || '';
 
-  React.useEffect(() => { 
+  useEffect(() => { 
     setImgIdx(0); 
+    setLoaded(false);
   }, [imageUrls.join('|')]);
   
-  React.useEffect(() => {
+  useEffect(() => { 
+    setLoaded(false); 
+  }, [resolvedSrc]);
+
+  useEffect(() => {
     console.log('[IMG][CARD][BIND]', { urls: imageUrls, using: resolvedSrc });
   }, [imageUrls, resolvedSrc]);
 
@@ -1695,24 +1700,28 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-              {resolvedSrc ? (
-                <img
-                  src={resolvedSrc}
-                  alt={(currentFoodItem as any)?.title ?? (currentFoodItem as any)?.name ?? 'Product'}
-                  referrerPolicy="no-referrer"
-                  loading="lazy"
-                  className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/10"
-                  onError={() => {
-                    console.warn('[IMG][ERROR]', resolvedSrc);
-                    if (imgIdx < imageUrls.length - 1) setImgIdx(i => i + 1);
-                  }}
-                  onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
-                />
-              ) : (
-                <div className="h-14 w-14 rounded-xl bg-white/5 grid place-items-center">
-                  <span className="text-2xl">🍽️</span>
-                </div>
-              )}
+              <div className="relative h-14 w-14 overflow-hidden rounded-xl bg-white/5">
+                {resolvedSrc ? (
+                  <img
+                    src={resolvedSrc}
+                    alt={(currentFoodItem as any)?.title ?? (currentFoodItem as any)?.name ?? 'Product'}
+                    className="absolute inset-0 h-full w-full object-cover transition-opacity duration-150"
+                    style={{ opacity: loaded ? 1 : 0 }}
+                    referrerPolicy="no-referrer"
+                    loading="eager"
+                    onLoad={() => { setLoaded(true); console.log('[IMG][LOAD]', resolvedSrc); }}
+                    onError={() => {
+                      console.warn('[IMG][ERROR]', resolvedSrc);
+                      if (imgIdx < imageUrls.length - 1) setImgIdx(i => i + 1);
+                    }}
+                  />
+                ) : null}
+                {!loaded && (
+                  <div className="absolute inset-0 grid place-items-center text-white/70">
+                    <span aria-hidden>🍽️</span>
+                  </div>
+                )}
+              </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg">

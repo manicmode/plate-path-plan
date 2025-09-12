@@ -3,6 +3,27 @@ import { normalizeIngredients } from '@/utils/normalizeIngredients';
 import { nvLabelLookup } from '@/lib/nutritionVault';
 import { isEan, offImageForBarcode, offImageCandidates } from '@/lib/imageHelpers';
 
+async function fetchOffImageUrls(barcode: string): Promise<string[]> {
+  try {
+    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    if (!res.ok) return [];
+    const j = await res.json();
+    const p = j?.product ?? {};
+    const urls = [
+      p?.image_front_small_url,
+      p?.image_front_url,
+      p?.image_url,
+      // selected_images (language-specific)
+      p?.selected_images?.front?.display?.en,
+      p?.selected_images?.front?.display?.en_GB,
+      p?.selected_images?.front?.display?.en_US,
+    ].filter(Boolean);
+    return Array.from(new Set(urls));
+  } catch {
+    return [];
+  }
+}
+
 export async function enrichCandidate(candidate: any) {
   console.log('[ENRICH][START]', { 
     isGeneric: candidate?.isGeneric, 
@@ -111,15 +132,25 @@ export async function enrichCandidate(candidate: any) {
           enriched.imageUrlKind = 'provider';
         }
 
-        // Attach OFF image candidates for robust fallback
-        const urls = candidate.providerRef ? offImageCandidates(candidate.providerRef) : [];
-        if (!candidate.image) candidate.image = {};
-        candidate.image.urls = [
-          ...(candidate.image.urls ?? []),
-          ...(urls ?? []),
-        ];
-        candidate.image.kind = candidate.image.kind ?? 'provider';
-        candidate.image.attribution = candidate.image.attribution ?? 'OpenFoodFacts';
+        // Fetch and attach authoritative OFF image URLs
+        if ((enriched.labelSource === 'off' || enriched.enrichmentSource === 'off') && enriched.providerRef) {
+          const official = await fetchOffImageUrls(enriched.providerRef);
+          // keep existing synthesized guesses as *fallbacks*
+          const synthetic = enriched.image?.urls ?? [];
+          const urls = Array.from(new Set([...official, ...synthetic]));
+
+          if (urls.length) {
+            enriched.image = {
+              ...(enriched.image ?? {}),
+              kind: 'provider',
+              attribution: 'OpenFoodFacts',
+              urls,
+              // optional for backward-compat
+              url: enriched.image?.url ?? urls[0],
+            };
+            console.log('[ENRICH][IMG][OFF]', { count: urls.length, first: urls[0] });
+          }
+        }
         
         // Add image diagnostics logging
         console.log('[ENRICH][IMG]', { 
