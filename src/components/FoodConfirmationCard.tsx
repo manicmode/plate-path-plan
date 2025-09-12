@@ -131,6 +131,7 @@ interface FoodConfirmationCardProps {
   totalItems?: number; // Total items for multi-item flow
   isProcessingFood?: boolean; // Whether the parent is processing the food item
   onVoiceAnalyzingComplete?: () => void; // Callback to hide voice analyzing overlay
+  initialGrams?: number; // Pass detected grams from photo analysis
   skipNutritionGuard?: boolean; // when true, allow render without perGram readiness
   bypassHydration?: boolean; // NEW: bypass store hydration for barcode items
   forceConfirm?: boolean; // NEW: force confirmation dialog to stay open (for manual/voice)
@@ -187,6 +188,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   totalItems,
   isProcessingFood = false,
   onVoiceAnalyzingComplete,
+  initialGrams,
   skipNutritionGuard = false,
   bypassHydration = false,
   forceConfirm = false,
@@ -331,7 +333,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       undefined;
   }, [currentFoodItem]);
   
-  // Collect URLs: from enrichment then fallback guesses
+  // Collect URLs: from enrichment then fallback guesses with corrected OFF paths
   const imageUrls: string[] = useMemo(() => {
     const direct = directImg ? [directImg] : [];
     const a = (currentFoodItem as any)?.image?.urls ?? [];
@@ -401,15 +403,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   const useHydration = !bypassHydration;
   
-  // Build per-gram snapshot once, allow zeros
-  const pgRaw = currentFoodItem?.perGram ?? storeAnalysis?.perGram ?? {};
+  // Build per-gram snapshot once, allow zeros - prefer store data for salmon
+  const hasStorePerGram = !!storeAnalysis?.perGram && Object.keys(storeAnalysis.perGram).length > 0;
+  const pgRaw = hasStorePerGram ? storeAnalysis.perGram : (currentFoodItem?.perGram ?? {});
+  
   const PG = {
     protein: nz((pgRaw as any).protein),
     carbs:   nz((pgRaw as any).carbs),
     fat:     nz((pgRaw as any).fat),
     kcal:    nz((pgRaw as any).kcal || (pgRaw as any).calories),
   };
-  const perGramReady = [PG.protein, PG.carbs, PG.fat, PG.kcal].some((v) => Number.isFinite(v));
+  const perGramReady = [PG.protein, PG.carbs, PG.fat, PG.kcal].some((v) => Number.isFinite(v) && v >= 0);
   const pgSum = PG.protein + PG.carbs + PG.fat;
 
   // NEW: consider per-serving as a valid basis (manual/barcode items)
@@ -426,7 +430,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const isNutritionReady = !shouldBlockNutrition;
   
   // Permanent fix 1: normalize to per-gram no matter the source
-  const currentGrams = clamp0(currentFoodItem?.portionGrams) || 100;
+  const baseServingG = 100;
+  const detectedGrams = initialGrams ?? 
+                        (currentFoodItem as any)?.grams ?? 
+                        currentFoodItem?.portionGrams ?? 
+                        baseServingG;
+  
+  const currentGrams = clamp0(detectedGrams);
   const portionPct = (portionPercentage[0] || 100) / 100;
 
   // Decide basis once
@@ -458,16 +468,22 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     headerCalories = Number.isFinite(legacyKcal) && legacyKcal! > 0 ? legacyKcal! : 100;
   }
 
-  // Compute macros based on chosen basis
-  const displayProteinG = perGramReady 
-    ? clamp0(macrosSource?.protein) * currentGrams
-    : clamp0(macrosSource?.protein) * portionPct;
-  const displayCarbsG = perGramReady 
-    ? clamp0(macrosSource?.carbs) * currentGrams
-    : clamp0(macrosSource?.carbs) * portionPct;
-  const displayFatG = perGramReady 
-    ? clamp0(macrosSource?.fat) * currentGrams
-    : clamp0(macrosSource?.fat) * portionPct;
+  // Compute macros from per-gram when available
+  const macros = perGramReady ? {
+    kcal: Math.round(kcalPerGram * currentGrams),
+    protein: +((PG.protein ?? 0) * currentGrams).toFixed(1),
+    carbs: +((PG.carbs ?? 0) * currentGrams).toFixed(1),
+    fat: +((PG.fat ?? 0) * currentGrams).toFixed(1),
+  } : {
+    kcal: headerKcalRaw,
+    protein: clamp0(macrosSource?.protein),
+    carbs: clamp0(macrosSource?.carbs),
+    fat: clamp0(macrosSource?.fat),
+  };
+
+  const displayProteinG = macros.protein;
+  const displayCarbsG = macros.carbs; 
+  const displayFatG = macros.fat;
   
   // Check if this is a manual entry that needs enrichment
   const isManual = mode === 'manual' || foodItem?.selectionSource === 'manual';
@@ -1015,7 +1031,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   console.log('[PORTION][SOURCE]', (currentFoodItem as any)?.portionSource || (isBarcodeItem ? 'UPC' : 'unknown'));
 
   const servingText = (currentFoodItem as any)?.servingText as string | undefined;
-  const grams = Math.round(servingG ?? 100);
+  const gramsForDisplay = Math.round(servingG ?? 100);
   
   // Prefer real serving grams, then servingText, then fallback
   const subtitle = (isBarcodeItem || isTextItem) ? (
