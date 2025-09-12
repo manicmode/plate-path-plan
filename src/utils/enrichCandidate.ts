@@ -1,5 +1,6 @@
 import { fetchCanonicalNutrition } from '@/lib/food/fetchCanonicalNutrition';
 import { normalizeIngredients } from '@/utils/normalizeIngredients';
+import { nvLabelLookup } from '@/lib/nutritionVault';
 
 export async function enrichCandidate(candidate: any) {
   console.log('[ENRICH][START]', { 
@@ -7,59 +8,132 @@ export async function enrichCandidate(candidate: any) {
     canonicalKey: candidate?.canonicalKey 
   });
 
+  let enriched = { ...candidate };
+
+  // 1) Generic canonical fallback (existing canonicalKey logic)
   if (candidate?.isGeneric && candidate?.canonicalKey) {
-    const canonical = await fetchCanonicalNutrition(candidate.canonicalKey);
-    const normalized = Array.isArray(canonical) 
-      ? normalizeIngredients(canonical) 
-      : normalizeIngredients(canonical);
-    const ingredientsText = 
-      canonical?.ingredientsText ?? 
-      (normalized.length ? normalized.join(', ') : undefined);
-    
-    const enriched = {
-      ...canonical,
-      ...candidate,
-      ingredientsList: normalized.length ? normalized : undefined,
-      ingredientsText,
-      hasIngredients: Boolean((normalized && normalized.length) || ingredientsText),
-      ingredientsUnavailable: !Boolean((normalized && normalized.length) || ingredientsText),
-      enrichmentSource: 'canonical'
-    };
-    
-    if (import.meta.env.DEV) {
-      console.log('[ENRICH][DONE]', {
-        name: candidate?.name,
-        listLen: enriched.ingredientsList?.length ?? 0,
-        hasText: !!enriched.ingredientsText,
-        ingredientsSample: enriched.ingredientsList?.slice(0, 3) ?? []
-      });
+    try {
+      const canonical = await fetchCanonicalNutrition(candidate.canonicalKey);
+      const normalized = Array.isArray(canonical) 
+        ? normalizeIngredients(canonical) 
+        : normalizeIngredients(canonical);
+      const ingredientsText = 
+        canonical?.ingredientsText ?? 
+        (normalized.length ? normalized.join(', ') : undefined);
+      
+      enriched = {
+        ...canonical,
+        ...candidate,
+        ingredientsList: normalized.length ? normalized : undefined,
+        ingredientsText,
+        hasIngredients: Boolean((normalized && normalized.length) || ingredientsText),
+        ingredientsUnavailable: !Boolean((normalized && normalized.length) || ingredientsText),
+        enrichmentSource: 'canonical'
+      };
+      
+      if (import.meta.env.DEV) {
+        console.log('[ENRICH][CANONICAL]', {
+          name: candidate?.name,
+          listLen: enriched.ingredientsList?.length ?? 0,
+          hasText: !!enriched.ingredientsText
+        });
+      }
+    } catch (error) {
+      console.warn('[ENRICH][CANONICAL][ERROR]', error);
     }
-    
-    return enriched;
   }
 
-  const base = candidate?.data ?? candidate;
-  const normalized = Array.isArray(base) 
-    ? normalizeIngredients(base) 
-    : normalizeIngredients(base);
-  const ingredientsText = 
-    base?.ingredientsText ?? 
-    (normalized.length ? normalized.join(', ') : undefined);
+  // 2) Generic without canonicalKey - try classId
+  if (candidate?.isGeneric && !candidate?.canonicalKey && candidate?.classId && !enriched.hasIngredients) {
+    try {
+      const canonical = await fetchCanonicalNutrition(candidate.classId);
+      const text = canonical?.ingredientsText || "";
+      const list = (canonical?.ingredientsList && canonical.ingredientsList.length)
+        ? canonical.ingredientsList
+        : normalizeIngredients(text);
+      
+      if (list?.length || text) {
+        enriched.ingredientsText = text;
+        enriched.ingredientsList = list || [];
+        enriched.hasIngredients = true;
+        enriched.enrichmentSource = "canonical";
+        
+        if (import.meta.env.DEV) {
+          console.log('[ENRICH][CANONICAL_CLASSID]', {
+            name: candidate?.name,
+            listLen: list?.length ?? 0
+          });
+        }
+      }
+    } catch (error) {
+      console.warn('[ENRICH][CANONICAL_CLASSID][ERROR]', error);
+    }
+  }
 
-  const enriched = {
-    ...candidate,
-    ingredientsList: normalized.length ? normalized : undefined,
-    ingredientsText,
-    hasIngredients: Boolean((normalized && normalized.length) || ingredientsText),
-    ingredientsUnavailable: !Boolean((normalized && normalized.length) || ingredientsText),
-    enrichmentSource: 'provider'
-  };
-  
+  // 3) Brand/Generic label lookup when still missing ingredients
+  const missingIngredients = !enriched?.ingredientsList?.length && !enriched?.ingredientsText;
+  if (missingIngredients) {
+    try {
+      const { ingredientsText, ingredientsList, source } = await nvLabelLookup({
+        providerRef: candidate.providerRef || candidate.provider_ref,
+        name: candidate.name,
+      });
+
+      if (ingredientsList.length || ingredientsText) {
+        enriched.ingredientsText = ingredientsText;
+        enriched.ingredientsList = ingredientsList.length ? ingredientsList : normalizeIngredients(ingredientsText);
+        enriched.hasIngredients = true;
+        enriched.enrichmentSource = source;
+        
+        if (import.meta.env.DEV) {
+          console.log('[ENRICH][NV_LABEL]', {
+            name: candidate?.name,
+            source,
+            listLen: enriched.ingredientsList?.length ?? 0,
+            first3: enriched.ingredientsList?.slice(0, 3) ?? []
+          });
+        }
+      } else {
+        enriched.ingredientsUnavailable = true;
+        enriched.hasIngredients = false;
+      }
+    } catch (error) {
+      console.warn('[ENRICH][NV_LABEL][ERROR]', error);
+      enriched.ingredientsUnavailable = true;
+      enriched.hasIngredients = false;
+    }
+  }
+
+  // 4) Fallback to existing data if still no ingredients
+  if (!enriched.hasIngredients) {
+    const base = candidate?.data ?? candidate;
+    const normalized = Array.isArray(base) 
+      ? normalizeIngredients(base) 
+      : normalizeIngredients(base);
+    const ingredientsText = 
+      base?.ingredientsText ?? 
+      (normalized.length ? normalized.join(', ') : undefined);
+
+    enriched.ingredientsList = normalized.length ? normalized : undefined;
+    enriched.ingredientsText = ingredientsText;
+    enriched.hasIngredients = Boolean((normalized && normalized.length) || ingredientsText);
+    enriched.ingredientsUnavailable = !Boolean((normalized && normalized.length) || ingredientsText);
+    if (!enriched.enrichmentSource) {
+      enriched.enrichmentSource = 'provider';
+    }
+  }
+
+  // Always return normalized fields
+  enriched.ingredientsText = enriched.ingredientsText || "";
+  enriched.ingredientsList = Array.isArray(enriched.ingredientsList) ? enriched.ingredientsList : [];
+
   if (import.meta.env.DEV) {
     console.log('[ENRICH][DONE]', {
       name: candidate?.name,
       listLen: enriched.ingredientsList?.length ?? 0,
       hasText: !!enriched.ingredientsText,
+      hasIngredients: enriched.hasIngredients,
+      enrichmentSource: enriched.enrichmentSource,
       ingredientsSample: enriched.ingredientsList?.slice(0, 3) ?? []
     });
   }

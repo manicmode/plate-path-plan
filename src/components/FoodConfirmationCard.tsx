@@ -63,9 +63,11 @@ interface FoodItem {
   ingredientsList?: string[]; // Add ingredientsList for normalized ingredients
   source?: string; // Nutrition data source (branded-database, usda, openfoodfacts, ai-estimate, etc.)
   confidence?: number; // Confidence score for the nutrition estimation
+  hasIngredients?: boolean;
   enrichmentSource?: string; // Add enrichment metadata
   enrichmentConfidence?: number; // Add enrichment confidence
   selectionSource?: string; // Source of selection (manual, voice, standard)
+  ingredientsUnavailable?: boolean; // When no ingredient source is available
   // Additional data for flag detection from health report prefill
   allergens?: string[];
   additives?: string[];
@@ -493,6 +495,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       : (text ? text.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
     return Array.isArray(ingredients) ? ingredients : [];
   }, [currentFoodItem?.id, (currentFoodItem as any)?.ingredientsList, (currentFoodItem as any)?.ingredientsText]);
+
+  // Log ingredient availability for debugging
+  useEffect(() => {
+    if (import.meta.env.DEV && isOpen) {
+      const ingredientsText = (currentFoodItem as any)?.ingredientsText || '';
+      console.log('[CONFIRM][ING]', {
+        listLen: ingredientsList.length,
+        hasText: !!ingredientsText,
+        ingredientsUnavailable: currentFoodItem?.ingredientsUnavailable
+      });
+    }
+  }, [ingredientsList.length, (currentFoodItem as any)?.ingredientsText, currentFoodItem?.ingredientsUnavailable, isOpen]);
 
   // Add ingredient diagnostics on mount
   useEffect(() => {
@@ -1679,21 +1693,34 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                       )}
                     </div>
                   ) : (
-                    <div className="text-center py-4">
+                    <div className="text-center py-6">
                       <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                        No ingredients information available
-                      </p>
-                      {isFromBarcode && (
-                        <Button
-                          onClick={() => setShowManualIngredientEntry(true)}
-                          size="sm"
-                          variant="outline"
-                          className="border-orange-300 text-orange-600 hover:bg-orange-50"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Ingredients Manually
-                        </Button>
+                      {currentFoodItem?.ingredientsUnavailable ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                            No label data available
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500">
+                            We couldn't find ingredients for this item from any available source.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                            No ingredients information available yet
+                          </p>
+                          {isFromBarcode && (
+                            <Button
+                              onClick={() => setShowManualIngredientEntry(true)}
+                              size="sm"
+                              variant="outline"
+                              className="border-orange-300 text-orange-600 hover:bg-orange-50"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Ingredients Manually
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}

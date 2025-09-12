@@ -24,6 +24,9 @@ verify_jwt = false
 [functions.nv-search]
 verify_jwt = true
 
+[functions.nv-label]
+verify_jwt = true
+
 [functions.nv-write]
 verify_jwt = true
 

@@ -67,6 +67,34 @@ export async function nvSearch(q: string, maxResults = NV_MAX_RESULTS): Promise<
 /**
  * Write successful enrichment to vault
  */
+/**
+ * Label lookup for ingredients from various sources
+ */
+export async function nvLabelLookup(input: { providerRef?: string; name?: string }) {
+  try {
+    const { data, error } = await supabase.functions.invoke('nv-label', {
+      body: input
+    });
+    
+    if (error) {
+      console.error('[NV][LABEL][CLIENT] Error:', error);
+      return { ingredientsText: "", ingredientsList: [], source: "error" as const };
+    }
+    
+    return {
+      ingredientsText: data?.ingredientsText || "",
+      ingredientsList: Array.isArray(data?.ingredientsList) ? data.ingredientsList : [],
+      source: (data?.source ?? "none") as "off" | "vault" | "none" | "error",
+    };
+  } catch (error) {
+    console.error('[NV][LABEL][CLIENT] Exception:', error);
+    return { ingredientsText: "", ingredientsList: [], source: "error" as const };
+  }
+}
+
+/**
+ * Write successful enrichment to vault
+ */
 export async function nvWrite(payload: NvWritePayload): Promise<{ ok: boolean; id?: string }> {
   try {
     const response = await supabase.functions.invoke('nv-write', {

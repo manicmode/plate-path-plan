@@ -41,6 +41,19 @@ serve(async (req) => {
     // Attempt NV vault query first (with proper schema handling)
     let suggestions: any[] = [];
     try {
+      // Check if table exists first to avoid 500s
+      const { data: tableExists, error: checkError } = await supabase
+        .from('information_schema.tables')
+        .select('table_name')
+        .eq('table_schema', 'nutrition_vault')
+        .eq('table_name', 'items')
+        .maybeSingle();
+
+      if (checkError || !tableExists) {
+        console.log('[NV][SEARCH] Vault table missing, using fallback');
+        throw new Error('Nutrition vault table not available');
+      }
+
       const nv = supabase.schema('nutrition_vault');
 
       // Query vault with ranking
@@ -189,10 +202,12 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('[NV][SEARCH] Error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message || 'Search failed' 
+    // Never 500 upstream — report but return empty for better UX
+    return new Response(JSON.stringify({
+      data: [],
+      meta: { fallback: "error", error: String(error?.message ?? error) }
     }), {
-      status: 500,
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
