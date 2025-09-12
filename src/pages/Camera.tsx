@@ -2824,7 +2824,7 @@ console.log('Global search enabled:', enableGlobalSearch);
             serving: item.portion,
             _provider: 'ensemble-v1',
             id: item.id, // Preserve detect- ID
-            imageUrl: selectedImage || (item as any).imageUrl || undefined // Attach captured photo
+            imageUrl: selectedImage || undefined // Attach photo
           });
         } else {
           // Create a placeholder entry for items that couldn't be mapped
@@ -2842,7 +2842,7 @@ console.log('Global search enabled:', enableGlobalSearch);
             serving: item.portion,
             _provider: 'ensemble-v1-unmapped',
             id: item.id, // Preserve detect- ID
-            imageUrl: selectedImage || (item as any).imageUrl || undefined // Attach captured photo
+            imageUrl: selectedImage || undefined // Attach photo
           });
         }
       }

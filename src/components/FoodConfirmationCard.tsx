@@ -32,57 +32,12 @@ import { inferPortion } from '@/lib/food/portion/inferPortion';
 import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR } from '@/lib/flags';
 import { extractName } from '@/lib/debug/extractName';
 import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
-import { DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
+import { DialogTitle } from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import confetti from 'canvas-confetti';
 import { labelFromFlags } from '@/lib/food/search/getFoodCandidates';
 import { trace, caloriesFromMacros } from '@/debug/traceFood';
-import type { ConfirmItem, PerGram } from '@/types/food';
-
-// Helper functions for generic item detection and per-gram data
-const isGenericItem = (item: any) =>
-  item?.classId === 'generic_food' || item?.providerRef === 'generic';
-
-const getPerGram = (item: any) =>
-  item?.perGram || item?.nutrition?.perGram || item?.per100g || null;
-
-const hasNumbers = (pg: any) =>
-  !!pg && ((pg.kcal ?? pg.energy_kcal ?? pg.energyKcal ?? pg.calories ?? 0)
-      || pg.protein || pg.carbs || pg.fat);
-
-// Nutrition basis selection helper
-function selectNutritionBasis(item: any) {
-  // Prefer perGram if any macro present; else normalized per100; else perServing; else zeros
-  const pg = item?.perGram || {};
-  const p100 = item?.normalizedPer100 || item?.per100 || {};
-  const ps = item?.perServing || {};
-
-  const has = (o: any) => ['protein','carbs','fat','calories','kcal'].some(k => Number(o?.[k]) > 0);
-
-  if (has(pg)) return { mode: 'per_gram', src: pg, baseG: 100 };
-  if (has(p100)) return { mode: 'per_100', src: p100, baseG: 100 };
-  if (has(ps)) return { mode: 'per_serving', src: ps, baseG: Number(ps.servingGrams) || null };
-  return { mode: 'none', src: { protein:0, carbs:0, fat:0, calories:0 }, baseG: 100 };
-}
-
-// ---- numeric safety helpers (zeros are valid!) ----
-const toNum = (v: unknown): number => {
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
-  const n = Number.parseFloat(String(v ?? ''));
-  return Number.isFinite(n) ? n : NaN;
-};
-const isNum = (v: unknown) => Number.isFinite(toNum(v));
-const nz = (v: unknown) => (isNum(v) ? toNum(v) : 0);
-
-function calcMacros(perGram: PerGram, grams: number) {
-  return {
-    kcal: Math.round(perGram.kcal * grams),
-    protein: Math.round(perGram.protein * grams * 10) / 10,
-    carbs: Math.round(perGram.carbs * grams * 10) / 10,
-    fat: Math.round(perGram.fat * grams * 10) / 10,
-  };
-}
 
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -167,8 +122,6 @@ interface FoodConfirmationCardProps {
   totalItems?: number; // Total items for multi-item flow
   isProcessingFood?: boolean; // Whether the parent is processing the food item
   onVoiceAnalyzingComplete?: () => void; // Callback to hide voice analyzing overlay
-  initialGrams?: number; // Pass detected grams from photo analysis
-  imageUrlFromPhoto?: string; // Pass captured photo URL from review
   skipNutritionGuard?: boolean; // when true, allow render without perGram readiness
   bypassHydration?: boolean; // NEW: bypass store hydration for barcode items
   forceConfirm?: boolean; // NEW: force confirmation dialog to stay open (for manual/voice)
@@ -212,7 +165,7 @@ const ensurePer100 = (item: any) => {
 };
 
 const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
-  mode: confirmMode = 'standard',
+  mode = 'standard',
   isOpen,
   onClose,
   onConfirm,
@@ -225,13 +178,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   totalItems,
   isProcessingFood = false,
   onVoiceAnalyzingComplete,
-  initialGrams,
   skipNutritionGuard = false,
   bypassHydration = false,
   forceConfirm = false,
   candidates,
-  originalText,
-  imageUrlFromPhoto
+  originalText
 }) => {
   // ✅ Call hooks unconditionally first
   const ready = Boolean(foodItem);
@@ -242,57 +193,23 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [currentFoodItem, setCurrentFoodItem] = useState<FoodItem | null>(foodItem);
   
-  // Helper to clamp values and avoid NaN
-  const clamp0 = (n: any) => (Number.isFinite(+n) ? +n : 0);
-
-  // Helper for parsing numeric values
-  const num = (v: any) => {
-    const n = typeof v === 'string' ? parseFloat(v) : Number(v);
-    return Number.isFinite(n) ? n : undefined;
-  };
-
-  // Fast rollback guard: scope new logic only to detected items
-  const isDetect = (currentFoodItem?.id ?? '').startsWith('detect-');
-  
-  // Use the new perGram flip ONLY for detect-* items
-  const usePerGram = isDetect && !!currentFoodItem?.perGram && Object.values(currentFoodItem.perGram).some(Number.isFinite);
-  
-  // Everything else uses the old, proven path
-  const basis = usePerGram ? 'per-100g' : 'legacy';
-  
-  // Also compute perGramSum for compatibility
-  const perGramSum = Object.values(currentFoodItem?.perGram || {}).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
-
-  // Sanity check logs (high-signal debugging)
-  console.debug('[CARD:DERIVED]', {
-    id: currentFoodItem?.id, 
-    name: currentFoodItem?.name, 
-    basis,
-    perGram: currentFoodItem?.perGram ?? null,
-    basePer100: (currentFoodItem as any)?.basePer100 ?? null
-  });
-
-  console.debug('[CARD:IMAGE]', { 
-    imageUrl: currentFoodItem?.imageUrl, 
-    count: (currentFoodItem as any)?.imageUrls?.length ?? 0 
-  });
-  
-  // Additional sanity check for detect items
-  if (isDetect) {
-    console.debug('[CARD:DETECT_FIXES]', {
-      id: currentFoodItem?.id,
-      usePerGram,
-      hasPerGram: !!currentFoodItem?.perGram,
-      hasWholeFoodFlag: (currentFoodItem as any)?.__disableLazyIngredients,
-      imageAttached: !!currentFoodItem?.imageUrl
-    });
-  }
-  
+  // Add header calories trace
+  const headerCalories = (currentFoodItem?.calories && currentFoodItem.calories > 0)
+    ? currentFoodItem.calories
+    : caloriesFromMacros({
+        protein: currentFoodItem?.protein,
+        carbs: currentFoodItem?.carbs,
+        fat: currentFoodItem?.fat
+      }) ?? 0;
   if (currentFoodItem) {
     trace('CONFIRM:HEADER:CALS', {
-      basis,
-      usePerGram,
-      id: currentFoodItem?.id
+      raw: currentFoodItem?.calories,
+      fromMacros: caloriesFromMacros({
+        protein: currentFoodItem?.protein,
+        carbs: currentFoodItem?.carbs,
+        fat: currentFoodItem?.fat
+      }),
+      chosen: headerCalories
     });
   }
   const [isChecked, setIsChecked] = useState(false);
@@ -362,7 +279,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // 🧪 DEBUG INSTRUMENTATION
   const __IMG_DEBUG = false; // keep instrumentation off in UI
   
-  // Image handling - show captured photo or fallback images
+  // Pick the best available direct image first
   const directImg = useMemo(() => {
     return currentFoodItem?.imageUrl ||
       (currentFoodItem as any)?.image ||
@@ -370,25 +287,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       (currentFoodItem as any)?.imageUrls?.[0] ||
       undefined;
   }, [currentFoodItem]);
-
-  const imageToShow =
-    currentFoodItem?.imageUrl ||
-    directImg ||
-    undefined;
   
-  // Enhanced image fallback - prioritize captured photos (moved after storeAnalysis declaration)
-  const capturedImg = imageUrlFromPhoto || (currentFoodItem as any)?.photoUrl || (currentFoodItem as any)?.selectedImage || null;
-  
-  // Collect URLs: prioritize captured photo, then current image, then store (if embedded), then enrichment, then fallback
+  // Collect URLs: from enrichment then fallback guesses
   const imageUrls: string[] = useMemo(() => {
-    const captured = capturedImg ? [capturedImg] : [];
-    const current = currentFoodItem?.imageUrl ? [currentFoodItem.imageUrl] : [];
-    const store = ((currentFoodItem as any)?.storeAnalysis?.imageUrl) ? [(currentFoodItem as any).storeAnalysis.imageUrl] : [];
     const direct = directImg ? [directImg] : [];
     const a = (currentFoodItem as any)?.image?.urls ?? [];
     const b = (currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : [];
-    return Array.from(new Set([...captured, ...current, ...store, ...direct, ...a, ...b].filter(Boolean)));
-  }, [capturedImg, currentFoodItem?.imageUrl, directImg, (currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef, (currentFoodItem as any)?.storeAnalysis?.imageUrl]);
+    return Array.from(new Set([...direct, ...a, ...b].filter(Boolean)));
+  }, [directImg, (currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef]);
 
   useEffect(() => setImgIdx(0), [imageUrls.join('|')]);
 
@@ -402,10 +308,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       console.log('[CONFIRM][IMAGE]', { has: false, urls: 0 });
     }
     
-    console.log('[CARD][IMAGE:FALLBACK]', { using: resolvedSrc });
     console.log('[IMG][CARD][BIND]', {
-      capturedImg,
-      currentImg: currentFoodItem?.imageUrl,
       directImg,
       providerRef: (currentFoodItem as any)?.providerRef,
       fromEnrichment: (currentFoodItem as any)?.image?.urls ?? [],
@@ -436,7 +339,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     s => (foodId ? s.byId[foodId] : undefined)
   );
 
-  // Optional helpers (no new hooks below guards)
+  // Optional helpers (no new hooks below guards) 
+  const perGram = storeAnalysis?.perGram || {};
+  const perGramSum = Object.values(perGram).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
 
   // Detect barcode immediately from stable signals present on first render
   const isBarcodeSource = !!(
@@ -454,95 +359,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   );
 
   const useHydration = !bypassHydration;
+  // Check if nutrition is ready from various sources
+  const perGramReady =
+    !!currentFoodItem?.perGram ||
+    (Array.isArray(currentFoodItem?.perGramKeys) && currentFoodItem.perGramKeys.length > 0) ||
+    (typeof currentFoodItem?.pgSum === 'number' && currentFoodItem.pgSum > 0);
   
-  // Build per-gram snapshot once, allow zeros - prefer store data for salmon
-  const hasStorePerGram = !!storeAnalysis?.perGram && Object.keys(storeAnalysis.perGram).length > 0;
-  const pgRaw = hasStorePerGram ? storeAnalysis.perGram : (currentFoodItem?.perGram ?? {});
-  
-  const PG = {
-    protein: nz((pgRaw as any).protein),
-    carbs:   nz((pgRaw as any).carbs),
-    fat:     nz((pgRaw as any).fat),
-    kcal:    nz((pgRaw as any).kcal || (pgRaw as any).calories),
-  };
-  const perGramReady = [PG.protein, PG.carbs, PG.fat, PG.kcal].some((v) => Number.isFinite(v) && v >= 0);
-  const pgSum = PG.protein + PG.carbs + PG.fat;
-
-  // Check if per-gram nutrition is available
-  const hasPg = perGramReady && 
-    ["kcal", "protein", "carbs", "fat"].every(k => typeof PG[k as keyof typeof PG] === "number");
-
-  // NEW: consider per-serving as a valid basis (manual/barcode items)
-  const ps = (currentFoodItem as any)?.nutrition?.perServing ?? (currentFoodItem as any)?.perServing ?? {};
-  const perServingReady =
-    num(ps.calories) !== undefined ||
-    num(ps.protein)  !== undefined ||
-    num(ps.carbs)    !== undefined ||
-    num(ps.fat)      !== undefined;
-
-  // Only block if **neither** basis is available
-  const shouldBlockNutrition = !(perGramReady || perServingReady);
-  
-  const isNutritionReady = !shouldBlockNutrition;
-  
-  // Default to 100g when portion unknown, use initialGrams when provided
-  const baseDefaultG = 100;
-  const baseServingG = initialGrams ?? 
-                       (currentFoodItem as any)?.grams ?? 
-                       currentFoodItem?.portionGrams ?? 
-                       baseDefaultG;
-  
-  const currentGrams = clamp0(baseServingG);
-  const portionPct = (portionPercentage[0] || 100) / 100;
-
-  // Decide basis once
-  const basisChosen: 'per-100g' | 'per-serving' = perGramReady ? 'per-100g' : 'per-serving';
-
-  // Header kcal + macros source
-  const macrosSource = perGramReady ? currentFoodItem?.perGram : ((currentFoodItem as any)?.nutrition?.perServing ?? (currentFoodItem as any)?.perServing);
-
-  // If per-serving and calories missing, derive from macros
-  const kcalFromMacrosFn = (p?: number, c?: number, f?: number) =>
-    (num(p) ?? 0) * 4 + (num(c) ?? 0) * 4 + (num(f) ?? 0) * 9;
-
-  const headerKcalRaw =
-    num(macrosSource?.calories) ??
-    kcalFromMacrosFn(num(macrosSource?.protein), num(macrosSource?.carbs), num(macrosSource?.fat));
-
-  // We standardize on **per-gram** internally:
-  // If kcal per gram missing, derive from macros (4/4/9).
-  const kcalPerGram = isNum(PG.kcal) && PG.kcal > 0
-    ? PG.kcal
-    : nz(PG.protein) * 4 + nz(PG.carbs) * 4 + nz(PG.fat) * 9;
-
-  const gramsShown = nz(currentGrams ?? 100);
-  let headerCalories = Math.round(kcalPerGram * gramsShown);
-
-  // Hard fallback only if everything is missing (shouldn't happen now)
-  if (!Number.isFinite(headerCalories) || headerCalories <= 0) {
-    const legacyKcal = num(macrosSource?.calories);
-    headerCalories = Number.isFinite(legacyKcal) && legacyKcal! > 0 ? legacyKcal! : 100;
-  }
-
-  // Compute macros from per-gram when available
-  const macros = perGramReady ? {
-    kcal: Math.round(kcalPerGram * currentGrams),
-    protein: +((PG.protein ?? 0) * currentGrams).toFixed(1),
-    carbs: +((PG.carbs ?? 0) * currentGrams).toFixed(1),
-    fat: +((PG.fat ?? 0) * currentGrams).toFixed(1),
-  } : {
-    kcal: headerKcalRaw,
-    protein: clamp0(macrosSource?.protein),
-    carbs: clamp0(macrosSource?.carbs),
-    fat: clamp0(macrosSource?.fat),
-  };
-
-  const displayProteinG = macros.protein;
-  const displayCarbsG = macros.carbs; 
-  const displayFatG = macros.fat;
+  const isNutritionReady = perGramReady
+    || ((useHydration && !isBarcodeSource) ? (perGramSum > 0) : true);
   
   // Check if this is a manual entry that needs enrichment
-  const isManual = confirmMode === 'manual' || foodItem?.selectionSource === 'manual';
+  const isManual = mode === 'manual' || foodItem?.selectionSource === 'manual';
   const readyForManual = !!foodItem?.enrichmentSource && Array.isArray(foodItem?.ingredientsList);
 
   // Build and route sentinels on mount
@@ -662,7 +489,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         pgKeys 
       });
     } else if (!isNutritionReady && currentFoodItem && !bypassHydration) {
-      console.log('[NUTRITION][BLOCKED]', { perGramReady, perServingReady, shouldBlockNutrition });
+      const reason = !perGramReady && perGramSum === 0 ? 'NO_PER_GRAM_KEYS' : 'UNKNOWN';
+      console.log('[NUTRITION][BLOCKED]', { reason });
     }
   }, [isNutritionReady, perGramReady, perGramSum, currentFoodItem, bypassHydration]);
 
@@ -738,74 +566,84 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const g1 = (n?: number) => Math.round(safe(n) * scaleMult * 10) / 10; // grams to 1 decimal
   const kcal = (n?: number) => Math.round(safe(n) * scaleMult);         // calories to int
 
-  // Minimal basis: prefer perGram, then perServing. No per100 guesses.
-  type MacroVals = Partial<{ protein: number; carbs: number; fat: number; calories: number; kcal: number; servingGrams: number }>;
-  const hasAny = (o?: MacroVals) => !!o && ['protein','carbs','fat','calories','kcal'].some(k => Number((o as any)[k]) > 0);
-  const pickBasis = (itm: any): { mode: 'per_gram' | 'per_serving' | 'none'; src: MacroVals; baseG: number } => {
-    const pg: MacroVals = itm?.perGram || {};
-    const ps: MacroVals = itm?.perServing || {};
-    if (hasAny(pg)) return { mode: 'per_gram', src: pg, baseG: 100 };
-    if (hasAny(ps)) return { mode: 'per_serving', src: ps, baseG: Number(ps.servingGrams) || 100 };
-    return { mode: 'none', src: { protein:0, carbs:0, fat:0, calories:0, kcal:0 }, baseG: 100 };
-  };
-  const cardItem: any = currentFoodItem ?? foodItem;
-  const { mode: basisMode, src: basisSrc, baseG } = pickBasis(cardItem);
-  // Alias for downstream subtitle logic
-  const nutritionMode = basisMode;
-  const gramsNow: number = actualServingG || baseG;
-  const factor = basisMode === 'per_gram' ? gramsNow : (basisMode === 'per_serving' && baseG ? gramsNow / baseG : 0);
-  const P = Math.max(0, Number(basisSrc.protein ?? 0) * factor);
-  const C = Math.max(0, Number(basisSrc.carbs   ?? 0) * factor);
-  const F = Math.max(0, Number(basisSrc.fat     ?? 0) * factor);
-  const perUnitKcal = Number(basisSrc.calories ?? basisSrc.kcal ?? ((basisSrc.protein ?? 0) * 4 + (basisSrc.carbs ?? 0) * 4 + (basisSrc.fat ?? 0) * 9));
-  const K = Math.max(0, perUnitKcal * (basisMode === 'per_gram' ? gramsNow : (basisMode === 'per_serving' && baseG ? gramsNow / baseG : 0)));
-  const macrosMode2 = basisMode;
-  console.log('[CARD][BASIS]', { basisMode, gramsNow, baseG, hasPg: !!cardItem?.perGram, hasPs: !!cardItem?.perServing });
-  console.log('[CARD][MACROS]', { protein: P, carbs: C, fat: F, kcal: K, servingG: gramsNow });
-  const finalNutrition = {
-    calories: Math.round(K),
-    protein: Math.round(P * 10) / 10,
-    carbs: Math.round(C * 10) / 10,
-    fat: Math.round(F * 10) / 10,
-    fiber: 0,
-    sugar: 0,
-    sodium: 0
+  // Normalize nutrition using ensurePer100 helper
+  const per100 = ensurePer100(currentFoodItem);
+  const normalizedPerGram = per100 ? {
+    calories: per100.calories / 100,
+    protein: per100.proteinG / 100,
+    carbs: per100.carbsG / 100,
+    fat: per100.fatG / 100,
+    fiber: per100.fiberG / 100,
+    sugar: per100.sugarG / 100,
+    sodium: per100.sodium_mg / 100
+  } : null;
+  
+  // Set macros mode based on available data
+  const macrosMode = per100 ? 'normalized' : 'legacy_text_lookup';
+  
+  console.log('[CONFIRM][SCALING]', {
+    basisChosen: per100 ? 'per-100g-normalized' : 'legacy',
+    baseServingG: actualServingG,
+    uiServingLabel: 'calculated_later',
+    sliderG: actualServingG,
+    sourcePaths: {
+      perGram: !!currentFoodItem?.perGram,
+      basePer100: !!(currentFoodItem as any)?.basePer100,
+      perPortion: !!(currentFoodItem as any)?.basePerPortion,
+      labelData: !!(currentFoodItem as any)?.label
+    },
+    inputs: {
+      perServingMacros: (currentFoodItem as any)?.label?.macrosPerServing,
+      servingSizeG: (currentFoodItem as any)?.label?.servingSizeG,
+      basePer100: (currentFoodItem as any)?.basePer100,
+      perGram: currentFoodItem?.perGram
+    },
+    outputs: per100 ? { 
+      kcal: Math.round((per100.calories * actualServingG) / 100), 
+      proteinG: Math.round((per100.proteinG * actualServingG) / 100 * 10) / 10, 
+      carbsG: Math.round((per100.carbsG * actualServingG) / 100 * 10) / 10, 
+      fatG: Math.round((per100.fatG * actualServingG) / 100 * 10) / 10 
+    } : { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
+    macrosMode,
+    dataSource: dataSource || 'unknown'
+  });
+
+  // Calculate final nutrition values using normalized per100 basis
+  const finalNutrition = per100 ? {
+    calories: Math.round((per100.calories * actualServingG) / 100),
+    protein: Math.round((per100.proteinG * actualServingG) / 100 * 10) / 10,
+    carbs: Math.round((per100.carbsG * actualServingG) / 100 * 10) / 10,
+    fat: Math.round((per100.fatG * actualServingG) / 100 * 10) / 10,
+    fiber: Math.round((per100.fiberG * actualServingG) / 100 * 10) / 10,
+    sugar: Math.round((per100.sugarG * actualServingG) / 100 * 10) / 10,
+    sodium: Math.round((per100.sodium_mg * actualServingG) / 100)
+  } : {
+    // Fallback to legacy calculation
+    calories: kcal(getPG('calories')),
+    protein: g1(getPG('protein')),
+    carbs: g1(getPG('carbs')),
+    fat: g1(getPG('fat')),
+    fiber: g1(getPG('fiber')),
+    sugar: g1(getPG('sugar')),
+    sodium: Math.round(getPG('sodium') * scaleMult * 1000)
   };
 
-  // NaN-proof helper (reuse existing clamp0)
-  
   // 1) Helper near the top of the file
   const kcalFromMacros = (p = 0, c = 0, f = 0, alcohol = 0) =>
     Math.round(p * 4 + c * 4 + f * 9 + alcohol * 7);
 
   // 2) Inside the component, right after you compute the values for the tiles
   //    Use the *scaled* numbers you already render in the three macro cards.
-  const p = clamp0(finalNutrition?.protein);
-  const c = clamp0(finalNutrition?.carbs);
-  const f = clamp0(finalNutrition?.fat);
-  const alc = clamp0((finalNutrition as any)?.alcohol);
+  const p = finalNutrition?.protein ?? 0;
+  const c = finalNutrition?.carbs ?? 0;
+  const f = finalNutrition?.fat ?? 0;
+  const alc = (finalNutrition as any)?.alcohol ?? 0;
 
-  // Compute kcal from per-gram if available, otherwise from scaled macros
-  const currentServingG = actualServingG;
-  
-  let kcalFromPg = 0;
-  if (perGramReady && macrosSource) {
-    const pgP = clamp0(macrosSource.protein) * currentServingG;
-    const pgC = clamp0(macrosSource.carbs) * currentServingG;
-    const pgF = clamp0(macrosSource.fat) * currentServingG;
-    
-    kcalFromPg = Number.isFinite(macrosSource.calories)
-      ? Math.round(clamp0(macrosSource.calories) * currentServingG)
-      : Math.round(pgP * 4 + pgC * 4 + pgF * 9);
-  }
-
-  // Prefer item.kcal if present; otherwise derive from per-gram or scaled macros.
+  // Prefer item.kcal if present; otherwise derive from the (already scaled) macros.
   const headerKcal =
     (typeof (currentFoodItem as any)?.kcal === 'number' && (currentFoodItem as any).kcal > 0)
       ? (currentFoodItem as any).kcal
-      : (Number.isFinite((currentFoodItem as any)?.calories) && (currentFoodItem as any).calories > 0)
-        ? (currentFoodItem as any).calories
-        : (kcalFromPg > 0 ? kcalFromPg : Math.round(p * 4 + c * 4 + f * 9));
+      : kcalFromMacros(p, c, f, alc);
   
   const proteinG = finalNutrition.protein;
   const carbsG = finalNutrition.carbs;
@@ -1059,16 +897,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   console.log('[PORTION][SOURCE]', (currentFoodItem as any)?.portionSource || (isBarcodeItem ? 'UPC' : 'unknown'));
 
   const servingText = (currentFoodItem as any)?.servingText as string | undefined;
-  const gramsForDisplay = Math.round(servingG ?? 100);
+  const grams = Math.round(servingG ?? 100);
   
   // Prefer real serving grams, then servingText, then fallback
-  const pg = getPerGram(currentFoodItem);
   const subtitle = (isBarcodeItem || isTextItem) ? (
     (servingG && servingG !== 100) ? `Per serving (${servingG} g)` :
     servingText ? `Per portion (${servingText})` :
     'Per 100 g'
-  ) : (servingG ? `${servingG} g per portion` : 
-    ((nutritionMode !== 'none') && !servingG ? 'Per 100 g' : 'Per portion (unknown size)'));
+  ) : (servingG ? `${servingG} g per portion` : 'Per portion (unknown size)');
   
   // Legacy compatibility  
   const displayName = title;
@@ -1676,16 +1512,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Honor forceConfirm - cannot be overridden by downstream logic
   const dialogOpen = forceConfirm === true || isOpen;
 
-  // Add CONFIRM BIND log - log what we receive (reuse existing variables)
+  // Add CONFIRM BIND log - log what we receive
   const isGeneric = (currentFoodItem as any)?.isGeneric;
   const provider = (currentFoodItem as any)?.provider;
   const chip = (isGeneric === true || provider === 'generic') ? 'generic' : 'brand';
+  const basis = isPerGramBasis ? 'per-gram' : 'per-100g';
+  const servingGrams = actualServingG;
   const ingredientsLength = ingredientsList.length;
   
   console.log('[CONFIRM][BIND]', { 
     chip, 
     basis, 
-    servingG: actualServingG, 
+    servingG: servingGrams, 
     ingredientsLength,
     isGeneric,
     provider,
@@ -1722,9 +1560,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return (
       <Dialog open={dialogOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
         <AccessibleDialogContent 
+          className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
           title="Loading next item"
           description="Please wait while the next food item is being loaded."
-          className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
         >
           <div className="p-6 flex items-center justify-center min-h-[200px]">
             <div className="text-center">
@@ -1762,9 +1600,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         }}
       >
         <AccessibleDialogContent 
+          className="food-confirm-card with-stable-panels max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden max-h-[90vh] flex flex-col"
           title="Confirm Food Log"
           description="We'll save these items to your log."
-          className="food-confirm-card with-stable-panels max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden max-h-[90vh] flex flex-col"
           showCloseButton={!reminderOpen}
           data-dialog-root="confirm-food-log"
           onEscapeKeyDown={(e) => forceConfirm && e.preventDefault()}
@@ -1960,23 +1798,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   // Fallback to existing remote lookup code path
                   if (resolvedSrc) {
                     return (
-                        <img
-                          src={resolvedSrc}
-                          alt=""
-                          aria-hidden="true"
-                          style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
-                          onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
-                          onError={(e) => {
-                            console.warn('[IMG][ERROR]', resolvedSrc);
-                            const fallbacks = imageUrls.filter((u) => u && u !== resolvedSrc);
-                            if (fallbacks.length && imgIdx < imageUrls.length-1) {
-                              setImgIdx(i=>i+1);
-                            }
-                          }}
-                          referrerPolicy="no-referrer"
-                          loading="eager"
-                          decoding="async"
-                        />
+                      <img
+                        src={resolvedSrc}
+                        alt=""
+                        aria-hidden="true"
+                        style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
+                        onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
+                        onError={() => { console.warn('[IMG][ERROR]', resolvedSrc); if (imgIdx < imageUrls.length-1) setImgIdx(i=>i+1); }}
+                        referrerPolicy="no-referrer"
+                        loading="eager"
+                      />
                     );
                   }
 

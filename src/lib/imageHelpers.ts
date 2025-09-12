@@ -16,29 +16,23 @@ export function isEan(code: string): boolean {
 }
 
 /**
- * Generate OpenFoodFacts image URLs from barcode using correct path format
+ * Generate OpenFoodFacts image URLs from barcode
  */
 export function offImageForBarcode(barcode: string): { imageUrl?: string; imageThumbUrl?: string } {
   if (!isEan(barcode)) return {};
   
-  const correctPath = offPathFromBarcode(barcode);
-  if (!correctPath) return {};
+  const cleanBarcode = barcode.replace(/\D/g, '');
   
+  // OFF image URL pattern
   const baseUrl = `https://images.openfoodfacts.org/images/products`;
   
+  // Format barcode with slashes (e.g., 123456789012 -> 123/456/789/012)
+  const formattedBarcode = cleanBarcode.replace(/(\d{3})/g, '$1/').replace(/\/$/, '');
+  
   return {
-    imageUrl: `${baseUrl}/${correctPath}/front_en.jpg`,
-    imageThumbUrl: `${baseUrl}/${correctPath}/front_en.200.jpg`
+    imageUrl: `${baseUrl}/${formattedBarcode}/front_en.jpg`,
+    imageThumbUrl: `${baseUrl}/${formattedBarcode}/front_en.200.jpg`
   };
-}
-
-/**
- * Create OFF image URL from EAN with correct path chunking
- */
-export function offImageUrlFromEan(ean: string, file: string = "front_en.jpg"): string {
-  const path = offPathFromBarcode(ean);
-  if (!path) return '';
-  return `https://images.openfoodfacts.org/images/products/${path}/${file}`;
 }
 
 /**
