@@ -1687,30 +1687,46 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-              <div className="h-14 w-14 rounded-xl overflow-hidden bg-zinc-800 flex items-center justify-center">
-                {displayImage ? (
-                  <img
-                    src={displayImage}
-                    alt={(currentFoodItem as any)?.name ?? 'Food'}
-                    width={56}
-                    height={56}
-                    loading="eager"
-                    decoding="async"
-                    referrerPolicy="no-referrer"
-                    crossOrigin="anonymous"
-                    style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
-                    onError={(e) => {
-                      // fallback to icon and log once
-                      (e.currentTarget as HTMLImageElement).style.display = 'none';
-                      console.warn('[CONFIRM][IMAGE][ERROR]', { url: displayImage });
-                    }}
-                    onLoad={() => console.log('[CONFIRM][IMAGE][OK]', { url: displayImage })}
-                  />
-                ) : null}
-                {!displayImage && (
-                  <FallbackEmoji className="h-6 w-6 opacity-80" />
-                )}
-              </div>
+              {(() => {
+                const imgUrl = 
+                  (currentFoodItem as any)?.image?.url ?? 
+                  (currentFoodItem as any)?.imageUrl ?? 
+                  (currentFoodItem as any)?.url ?? 
+                  displayImage ?? 
+                  undefined;
+
+                const [imgState, setImgState] = React.useState<'loading'|'ok'|'err'>('loading');
+
+                return (
+                  <div className="relative h-14 w-14 rounded-xl overflow-hidden bg-zinc-800">
+                    {imgUrl && (
+                      <img
+                        src={imgUrl}
+                        alt={(currentFoodItem as any)?.name ?? 'Food'}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        decoding="async"
+                        loading="eager"
+                        style={{ opacity: imgState === 'ok' ? 1 : 0, transition: 'opacity 150ms ease-in' }}
+                        onLoad={() => {
+                          setImgState('ok');
+                          console.log('[CONFIRM][IMAGE][OK]', { url: imgUrl });
+                        }}
+                        onError={() => {
+                          setImgState('err');
+                          console.warn('[CONFIRM][IMAGE][ERROR]', { url: imgUrl });
+                        }}
+                      />
+                    )}
+
+                    {/* Fallback while loading / on error */}
+                    {imgState !== 'ok' && (
+                      <div className="absolute inset-0 grid place-items-center">
+                        <FallbackEmoji className="h-6 w-6 opacity-70" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
