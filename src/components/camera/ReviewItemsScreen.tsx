@@ -182,13 +182,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         
         const storeUpdates: Record<string, any> = {};
         
-        // WRITE perGram INTO STORE **USING THE SAME id THE CARD USES**
-        const photoItems = prepared.filter(p => (p as any).source === 'photo');
-        for (const cur of photoItems) {
+        // WRITE perGram INTO STORE **USING THE SAME id THE CARD USES** (detect-*)
+        for (const cur of prepared) {
           const idx = prepared.indexOf(cur);
           const r = results?.[idx];
           if (r && r.nutrients) {
-            // Create perGram from generic result
             const perGram = {
               calories: r.nutrients.calories ? r.nutrients.calories / 100 : 0,
               protein: r.nutrients.protein_g ? r.nutrients.protein_g / 100 : 0,
@@ -202,17 +200,37 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           }
         }
 
+        console.log('[HYDRATE][WRITE]', { ids: Object.keys(storeUpdates), pgKeys: Object.keys((Object.values(storeUpdates)[0]?.perGram) || {}) });
+
         if (Object.keys(storeUpdates).length) {
           useNutritionStore.getState().upsertMany(storeUpdates);
         }
 
         // Then rebuild modal items by **merging** store perGram back BEFORE adapting:
         const store = useNutritionStore.getState();
-        const rebuilt = prepared.map((item, idx) => {
-          const storePG = store.byId[item.id]?.perGram;
-          console.log('[HYDRATE][MERGE]', { id: item.id, hasStorePG: !!storePG });
-          const merged = storePG ? { ...item, nutrition: { ...(item as any).nutrition, perGram: storePG } } : item;
-          return toLegacyFoodItem(merged, idx, true);
+        const merged = prepared.map((item, idx) => {
+          const pg = storeUpdates[item.id]?.perGram;
+          console.log('[HYDRATE][MERGE]', { id: item.id, hasStorePG: !!pg });
+          if (pg && Object.keys(pg).length) {
+            const g = item.grams ?? 100;
+            const kcal = Math.round((pg.calories ?? (pg.protein*4 + pg.carbs*4 + pg.fat*9 || 0)) * g);
+            return {
+              ...item,
+              nutrition: { ...(item as any).nutrition || {}, perGram: pg, basis: 'perGram' },
+              calories: kcal,
+              protein: +(pg.protein * g).toFixed(1),
+              carbs:   +(pg.carbs   * g).toFixed(1),
+              fat:     +(pg.fat     * g).toFixed(1),
+              fiber:   +(pg.fiber   * g).toFixed(1),
+              sugar:   +(pg.sugar   * g).toFixed(1),
+              __hydrated: true,
+            };
+          }
+          return { ...item, __hydrated: true };
+        });
+        
+        const rebuilt = merged.map((item, idx) => {
+          return toLegacyFoodItem(item, idx, true);
         });
         
         setConfirmModalItems(rebuilt);

@@ -122,21 +122,17 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
   const per100 = n.per100g ?? n['per_100g'] ?? raw.meta?.per100g;
   const perServing = n.perServing ?? n['per_serving'] ?? raw.meta?.perPortion;
 
-  // Pull any existing analysis from the store (for final diagnostics)
-  const storeAnalysis = useNutritionStore.getState().get(resolvedId);
+  // Read store analysis
+  const store = useNutritionStore.getState();
+  const storeAnalysis = store.byId?.[resolvedId];
+  const storePerGram = storeAnalysis?.perGram;
   
-  // Phase 1: Read from store first if SST enabled using the unified ID
-  let computedPerGram: LegacyNutrition['perGram'] = {};
-  
-  if (enableSST) {
-    if (storeAnalysis?.perGram && Object.values(storeAnalysis.perGram).some(v => (v ?? 0) > 0)) {
-      computedPerGram = { ...storeAnalysis.perGram };
-      console.log('[SST][read]', { id: resolvedId, name, source: 'store', perGram: computedPerGram });
-    }
-  }
-
-  // Prefer perGram; compute when missing
-  let finalPerGram: LegacyNutrition['perGram'] = raw.nutrition?.perGram || computedPerGram;
+  // Build perGram with priority:
+  // 1. storePerGram
+  // 2. raw.nutrition?.perGram  
+  // 3. From raw.nutrition?.per100 → divide by 100
+  // 4. From raw.nutrition?.perServing + servingSizeG → divide by serving grams
+  let finalPerGram: LegacyNutrition['perGram'] = storePerGram || raw.nutrition?.perGram;
   
   // If missing, derive from per100 or serving + servingSizeG
   if (!Object.keys(finalPerGram).length) {
@@ -258,10 +254,9 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
   // Adapter summary (always once per item)
   try {
     console.log('[ADAPTER]', {
-      src: raw.source || 'unknown',
       id: resolvedId,
-      pgKeys: Object.keys(finalPerGram || {}).length,
-      basis,
+      hasPG: !!finalPerGram && Object.keys(finalPerGram).length > 0,
+      basis: finalPerGram && Object.keys(finalPerGram).length > 0 ? 'perGram' : 'legacy'
     });
   } catch {}
 
