@@ -586,15 +586,23 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return fromFlags || 'Item';
   }, [currentFoodItem]);
   
-  // Badge logging for debugging
-  console.log('[CONFIRM][BADGE]', { 
-    isGeneric: (currentFoodItem as any)?.isGeneric, 
-    providerRef: (currentFoodItem as any)?.providerRef, 
-    brandName: (currentFoodItem as any)?.brandName || (currentFoodItem as any)?.brand, 
-    enrichmentSource: (currentFoodItem as any)?.enrichmentSource,
-    provider: (currentFoodItem as any)?.provider,
-    finalBadge: badge
-  });
+  // helpers for brand/generic chip
+  const item = currentFoodItem;
+  const enrichmentSource = (item?.enrichmentSource ?? undefined) as
+    | 'off'
+    | 'label'
+    | 'provider'
+    | 'legacy_text_lookup'
+    | string
+    | undefined;
+
+  const hasBrandEvidence = Boolean((item as any)?.barcode || (item as any)?.providerRef || (item as any)?.brandName);
+  const isBrand = hasBrandEvidence || enrichmentSource === 'off' || enrichmentSource === 'label';
+  const chipVariant: 'brand' | 'generic' = isBrand ? 'brand' : 'generic';
+  const chipLabel = isBrand ? 'Brand' : 'Generic';
+  const badgeVariant: 'default' | 'secondary' = isBrand ? 'default' : 'secondary';
+
+  console.log('[CONFIRM][BADGE]', { hasBrandEvidence, enrichmentSource, chipVariant, brandName: (item as any)?.brandName, barcode: (item as any)?.barcode, providerRef: (item as any)?.providerRef });
 
   // Normalize props to avoid layout branch flips
   const normalizedItem = useMemo(() => ({
@@ -1580,13 +1588,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
                     {displayName}
                   </h3>
-                  {(currentFoodItem?.source || (currentFoodItem as any)?.enrichmentSource) && (
-                    <DataSourceChip 
-                      source={(currentFoodItem?.source as any) || (currentFoodItem as any)?.enrichmentSource}
-                      confidence={currentFoodItem?.confidence || (currentFoodItem as any)?.enrichmentConfidence}
-                      className="ml-2"
-                    />
-                  )}
+                  {/* Brand/Generic truth chip (NOT provider source) */}
+                  <Badge variant={badgeVariant} className="ml-2">{chipLabel}</Badge>
                 </div>
                  <p className="text-sm text-gray-600 dark:text-gray-400">
                    {Number.isFinite(adjustedFood.calories) ? adjustedFood.calories : 0} calories

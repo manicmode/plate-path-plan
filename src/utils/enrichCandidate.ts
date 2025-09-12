@@ -141,6 +141,16 @@ export async function enrichCandidate(candidate: any) {
   enriched.ingredientsText = enriched.ingredientsText || "";
   enriched.ingredientsList = Array.isArray(enriched.ingredientsList) ? enriched.ingredientsList : [];
 
+  // Flip to branded when evidence is present
+  const brandEvidence =
+    Boolean(enriched.brandName || (enriched as any).barcode || enriched.providerRef) ||
+    enriched.enrichmentSource === 'off' ||
+    enriched.enrichmentSource === 'label';
+
+  if (brandEvidence) {
+    enriched.isGeneric = false;
+  }
+
   console.log('[ENRICH][DONE]', { 
     hasIngredients: !!enriched?.ingredientsList?.length || !!enriched?.ingredientsText, 
     baseServingG: enriched?.servingGrams, 
