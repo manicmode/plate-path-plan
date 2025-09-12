@@ -38,6 +38,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import confetti from 'canvas-confetti';
 import { labelFromFlags } from '@/lib/food/search/getFoodCandidates';
+import { ENABLE_PHOTO_BARCODE_ENRICH } from '@/config/confirmFlags';
 
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -187,6 +188,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // ✅ Call hooks unconditionally first
   const ready = Boolean(foodItem);
 
+  // Add safety flag logic
+  const inputSource = foodItem?.source ?? 'manual';
+  const allowEnrich = inputSource === 'manual' || ENABLE_PHOTO_BARCODE_ENRICH;
+
   // All hooks called unconditionally first
   const [portionPercentage, setPortionPercentage] = useState([100]);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -321,7 +326,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     (currentFoodItem as any)?.source === 'speech'
   );
 
-  const useHydration = !bypassHydration;
+  const useHydration = allowEnrich && !bypassHydration;
   // Check if nutrition is ready from various sources
   const perGramReady =
     !!currentFoodItem?.perGram ||
