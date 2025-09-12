@@ -117,24 +117,12 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
   }, [isOpen, initialItems, prefilledItems]);
 
-  // Build modal items for nutrition hydration - seed grams + photo early
+  // Build modal items for nutrition hydration
   const modalItems = useMemo(() => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     return selectedItems.map((item, index) => {
       const id = (item as any).foodId ?? item.id ?? generateFoodId(item);
-      
-      // Seed grams and photo image early
-      const grams = (item as any).grams ?? (item as any).portionGrams ?? (item as any).baseGrams ?? 
-                   ((item as any).source === 'barcode' ? (item as any)?.label?.servingSizeG : undefined) ?? 100;
-
-      const imageUrl = (item as any).imageUrl || 
-                      ((item as any).source === 'photo' ? 
-                        ((item as any).photoUrl || (item as any).selectedImage || (item as any).directImg) : 
-                        ((item as any).imageThumbUrl || (item as any).directImg));
-
-      const prepared = { ...item, grams, baseGrams: grams, imageUrl };
-      
-      return toLegacyFoodItem(prepared, index, ENABLE_SST_CONFIRM_READ);
+      return toLegacyFoodItem({ ...item, id }, index, ENABLE_SST_CONFIRM_READ);
     });
   }, [items.filter(item => item.selected && item.name.trim()).map(i => `${i.id}-${i.name}-${i.grams}`).join('|')]);
 
@@ -149,23 +137,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     
     console.log('[HYDRATE][BEGIN]', { itemsCount: items.length });
     
-    // Create modalItems synchronously to establish firstCardId immediately  
+    // Create modalItems synchronously to establish firstCardId immediately
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     const initialModalItems = selectedItems.map((item, index) => {
       const canonicalId = item.id; // Use existing item.id as canonical
-      
-      // Seed grams and photo image early for confirm card
-      const grams = (item as any).grams ?? (item as any).portionGrams ?? (item as any).baseGrams ?? 
-                   ((item as any).source === 'barcode' ? (item as any)?.label?.servingSizeG : undefined) ?? 100;
-
-      const imageUrl = (item as any).imageUrl || 
-                      ((item as any).source === 'photo' ? 
-                        ((item as any).photoUrl || (item as any).selectedImage || (item as any).directImg) : 
-                        ((item as any).imageThumbUrl || (item as any).directImg));
-
-      const prepared = { ...item, grams, baseGrams: grams, imageUrl, id: canonicalId };
-      
-      return toLegacyFoodItem(prepared, index, true);
+      return toLegacyFoodItem({ ...item, id: canonicalId }, index, true);
     });
     
     // Set modal items BEFORE async hydration
