@@ -488,12 +488,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const sugarG = effective.sugar ?? 0;
 
   // Diagnostic logging for slider behavior
-  console.log('[CONFIRM][SLIDER]', {
+  console.log('[CONFIRM][SERVING_CHANGE]', {
+    g: actualServingG,
     basis: (basisPerGram && Object.keys(basisPerGram).length) ? 'per-gram'
          : (base && Object.keys(base).length) ? 'per-100g'
          : 'per-portion',
     sliderValue: portionPercentage[0],
-    baseServingG, actualServingG,
+    baseServingG,
     kcalComputed: headerKcal
   });
 
@@ -789,9 +790,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   });
 
   // Temporary diagnostic: Bind values
-  console.log('[CONFIRM][BIND]', {
+  console.log('[CONFIRM][OPEN]', {
     title,
-    preferItem,
+    hasIngredients: !!((currentFoodItem as any)?.ingredientsList?.length || (currentFoodItem as any)?.ingredientsText),
     kcal: headerKcal,
     protein: proteinG,
     source: (currentFoodItem as any)?.source,

@@ -554,7 +554,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       const enriched = await enrichCandidate(candidate); // existing util
       console.log('[ENRICH][DONE]', { 
         hasIngredients: !!enriched?.ingredientsList?.length,
-        count: enriched?.ingredientsList?.length || 0
+        baseServingG: enriched?.servingGrams || 100,
+        classId: candidate?.classId
       });
       manualFlow.setState(s => ({
         ...s,
@@ -604,11 +605,11 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     // Route directly to confirmation for manual single-select (no review modal)
     if (selectedCandidate) {
       console.info('[CONFIRM][OPEN]', { source: 'manual', labelKind: labelFromFlags(selectedCandidate.flags) });
-      console.log('[MANUAL][SELECT]', { 
-        candidateName: selectedCandidate.name, 
-        isGeneric: selectedCandidate.name?.includes('(generic)'), 
-        classId: selectedCandidate.classId 
-      });
+    console.log('[MANUAL][SELECT]', { 
+      name: selectedCandidate.name, 
+      isGeneric: selectedCandidate.name?.includes('(generic)'), 
+      classId: selectedCandidate.classId 
+    });
       
       // Calculate portion scaling
       const portionScale = amountEaten[0] / 100;
