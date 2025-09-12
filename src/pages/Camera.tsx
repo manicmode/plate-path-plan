@@ -2696,10 +2696,10 @@ console.log('Global search enabled:', enableGlobalSearch);
 
   // Auto-clear overlay when confirm card opens with an item
   useEffect(() => {
-    if (showConfirmation && selectedFoodItem) {
+    if (showConfirmation && recognizedFoods[0]) {
       handoffEnd();
     }
-  }, [showConfirmation, selectedFoodItem, handoffEnd]);
+  }, [showConfirmation, recognizedFoods, handoffEnd]);
 
   // Safety timeout for handoff overlay
   useEffect(() => {
