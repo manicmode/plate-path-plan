@@ -161,6 +161,12 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const abortControllerRef = useRef<AbortController | null>(null);
   const cacheRef = useRef<Map<string, { ts: number; items: LocalCandidate[] }>>(new Map());
   
+  // Missing refs that were causing build errors
+  const wasOpenRef = useRef(false);
+  const searchLockedRef = useRef(false);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const edgeAbortRef = useRef<AbortController | null>(null);
+  
   // Cache TTL (15 minutes)
   const CACHE_TTL_MS = 15 * 60 * 1000;
   
@@ -381,6 +387,12 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
+      }
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+      if (edgeAbortRef.current) {
+        edgeAbortRef.current.abort();
       }
     };
   }, []);
@@ -634,7 +646,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       clearTimeout(searchTimeoutRef.current);
     }
 
-    searchGenRef.current++;
+    requestIdRef.current++;
     setState('loading');
     
     try {
@@ -716,7 +728,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     
     // Reset search locks
     searchLockedRef.current = false;
-    searchGenRef.current++;
+    requestIdRef.current++;
     
     // Cancel pending search timeouts
     if (searchTimeoutRef.current) {
