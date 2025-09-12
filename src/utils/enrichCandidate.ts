@@ -13,7 +13,15 @@ async function fetchOffImageUrls(barcode: string): Promise<string[]> {
       const res = await fetch(`/api/off-proxy/${barcode}`);
       if (!res.ok) return [];
       const data = await res.json();
-      return data?.product?.images || [];
+      // Return structured OFF image candidates with fallback
+      const basePath = barcode.replace(/(\d{3})/g, '$1/').replace(/\/$/, '');
+      return data?.product?.images || [
+        `https://images.openfoodfacts.org/images/products/${basePath}/front_en.400.jpg`,
+        `https://images.openfoodfacts.org/images/products/${basePath}/front.400.jpg`,
+        `https://images.openfoodfacts.org/images/products/${basePath}/front_en.200.jpg`,
+        `https://images.openfoodfacts.org/images/products/${basePath}/front.200.jpg`,
+        '/images/food-placeholder.svg'
+      ];
     } else {
       // Legacy direct fetch (may have CORS issues)
       console.log('[ENRICH][OFF_DIRECT] Direct fetch for barcode:', barcode);

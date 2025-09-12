@@ -1,5 +1,5 @@
-import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useId } from 'react';
+import ImageWithFallback from '@/components/ui/ImageWithFallback';
 import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
 import { withSafeCancel } from '@/lib/ui/withSafeCancel';
 import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
@@ -257,6 +257,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const { checkIngredients, flaggedIngredients, isLoading: isCheckingIngredients } = useIngredientAlert();
   const { triggerCoachResponseForIngredients } = useSmartCoachIntegration();
   const { playFoodLogConfirm } = useSound();
+
+  // A11y Dialog description
+  const descId = useId();
 
   const [reminderOpen, setReminderOpen] = useState(false);
   
@@ -1070,9 +1073,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return (
       <AccessibleDialogContent 
         title="Confirm Food"
-        aria-describedby="confirm-card-desc"
+        description="Confirm your food log."
       >
-        <p id="confirm-card-desc" className="sr-only">Confirm your food log.</p>
         <div style={{ minHeight: 420 }} />
       </AccessibleDialogContent>
     );
@@ -1574,14 +1576,15 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
           console.log('[CANCEL][DONE]');
         }}
       >
-        <AccessibleDialogContent 
+        <AccessibleDialogContent
+          description="We'll save these items to your log."
+          
           className="food-confirm-card with-stable-panels max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden max-h-[90vh] flex flex-col"
           title="Confirm Food Log"
-          description="We'll save these items to your log."
           showCloseButton={!reminderOpen}
           data-dialog-root="confirm-food-log"
-          onEscapeKeyDown={(e) => forceConfirm && e.preventDefault()}
-          onInteractOutside={(e) => forceConfirm && e.preventDefault()}
+          onEscapeKeyDown={(e: any) => forceConfirm && e.preventDefault()}
+          onInteractOutside={(e: any) => forceConfirm && e.preventDefault()}
         >
           <VisuallyHidden><DialogTitle>Confirm Food Log</DialogTitle></VisuallyHidden>
           <div className="p-6 overflow-y-auto flex-1 min-h-0">
@@ -1743,16 +1746,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
               <div style={{position:'relative',height:64,width:64,borderRadius:14,overflow:'hidden',background:'rgba(0,0,0,.25)'}}>
-                {resolvedSrc && (
                 <ImageWithFallback
-                  src={resolvedSrc}
-                  candidateUrls={imageUrls}
+                  srcs={imageUrls}
                   alt=""
-                  className="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 1;"
+                  style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
                   fallbackIcon={<div style={{color: '#fff8'}}>🍽️</div>}
                 />
-                )}
-                {!resolvedSrc && <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">

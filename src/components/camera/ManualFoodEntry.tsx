@@ -156,16 +156,14 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const [handoff, setHandoff] = useState(false);
   const [hasPartialResults, setHasPartialResults] = useState(false);
   
-  // Enhanced refs for debounced search
-  const requestIdRef = useRef(0);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const cacheRef = useRef<Map<string, { ts: number; items: LocalCandidate[] }>>(new Map());
-  
-  // Missing refs that were causing build errors
+  // All required refs - declared exactly once to fix build errors
   const wasOpenRef = useRef(false);
   const searchLockedRef = useRef(false);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestIdRef = useRef(0);
   const edgeAbortRef = useRef<AbortController | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const cacheRef = useRef<Map<string, { ts: number; items: LocalCandidate[] }>>(new Map());
   
   // Cache TTL (15 minutes)
   const CACHE_TTL_MS = 15 * 60 * 1000;
@@ -382,7 +380,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     };
   }, [getCachedResults, setCachedResults, runCheapSearch]);
 
-  // Cleanup abort controller on unmount
+  // Cleanup all refs on unmount
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
@@ -830,12 +828,13 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         <DialogContent 
           showCloseButton={false}
           className="max-w-md mx-auto bg-slate-900/70 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl/20 p-0 overflow-hidden max-h-[90vh] overflow-y-auto"
+          aria-describedby="manual-food-desc"
         >
         <VisuallyHidden>
           <DialogTitle>Add Food Manually</DialogTitle>
         </VisuallyHidden>
         <VisuallyHidden>
-          <DialogDescription>
+          <DialogDescription id="manual-food-desc">
             Search and add food items with custom portions
           </DialogDescription>
         </VisuallyHidden>

@@ -1,23 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { UtensilsCrossed } from 'lucide-react';
 
-interface ImageWithFallbackProps {
+type ImageWithFallbackProps = React.ImgHTMLAttributes<HTMLImageElement> & {
   src?: string;
   candidateUrls?: string[];
+  srcs?: string[];
   alt: string;
   className?: string;
   fallbackIcon?: React.ReactNode;
-}
+};
 
 export function ImageWithFallback({ 
   src, 
   candidateUrls = [], 
+  srcs = [],
   alt, 
   className = "",
-  fallbackIcon 
+  fallbackIcon,
+  ...rest 
 }: ImageWithFallbackProps) {
-  // Combine src and candidateUrls, removing duplicates
-  const allUrls = [src, ...candidateUrls].filter(Boolean) as string[];
+  // Combine all possible sources, removing duplicates
+  const allUrls = [src, ...candidateUrls, ...srcs].filter(Boolean) as string[];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hasError, setHasError] = useState(false);
 
@@ -25,7 +28,7 @@ export function ImageWithFallback({
   useEffect(() => {
     setCurrentIndex(0);
     setHasError(false);
-  }, [src, candidateUrls]);
+  }, [src, candidateUrls, srcs]);
 
   const handleError = () => {
     console.log('[IMG][FALLBACK]', { 
@@ -54,6 +57,7 @@ export function ImageWithFallback({
   
   return (
     <img
+      {...rest}
       src={currentUrl}
       alt={alt}
       className={className}
@@ -64,3 +68,5 @@ export function ImageWithFallback({
     />
   );
 }
+
+export default ImageWithFallback;
