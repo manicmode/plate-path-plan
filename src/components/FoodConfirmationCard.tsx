@@ -622,12 +622,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     | undefined;
 
   const hasBrandEvidence = Boolean((item as any)?.barcode || (item as any)?.providerRef || (item as any)?.brandName);
-  const isBrand = hasBrandEvidence || enrichmentSource === 'off' || enrichmentSource === 'label';
   const isGenericCandidate = (item as any)?.provider === 'generic' || (item as any)?.isGeneric;
   
-  const chipVariant: 'brand' | 'generic' | 'hidden' = isBrand ? 'brand' : (isGenericCandidate ? 'generic' : 'hidden');
+  // Priority: Generic takes precedence if explicitly marked, then check for brand evidence
+  const chipVariant: 'brand' | 'generic' | 'hidden' = 
+    isGenericCandidate ? 'generic' :
+    (hasBrandEvidence || enrichmentSource === 'off' || enrichmentSource === 'label') ? 'brand' : 'hidden';
   const chipLabel = chipVariant === 'brand' ? 'Brand' : (chipVariant === 'generic' ? 'Generic' : '');
-  const badgeVariant: 'default' | 'secondary' = isBrand ? 'default' : 'secondary';
+  const badgeVariant: 'default' | 'secondary' = chipVariant === 'brand' ? 'default' : 'secondary';
 
   console.log('[CONFIRM][BADGE]', { hasBrandEvidence, enrichmentSource, chipVariant, brandName: (item as any)?.brandName, barcode: (item as any)?.barcode, providerRef: (item as any)?.providerRef });
 
