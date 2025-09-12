@@ -559,24 +559,24 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
   const isTextItem = (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech';
   
-  // Compute display badge from the FINAL item, not the original candidate  
-  const badge = useMemo(() => {
-    const enrichmentSource = (currentFoodItem as any)?.enrichmentSource;
-    const brandEvidence = Boolean(
-      (currentFoodItem as any)?.barcode || 
-      (currentFoodItem as any)?.providerRef || 
-      (currentFoodItem as any)?.brandName ||
-      (currentFoodItem as any)?.brand
-    );
-    const labelEvidence = enrichmentSource === 'off' || enrichmentSource === 'label';
-    
-    const isBrand = brandEvidence || labelEvidence;
-    const isGeneric = (currentFoodItem as any)?.isGeneric || (currentFoodItem as any)?.provider === 'generic';
-    
-    const showChip = isBrand ? 'Brand' : (isGeneric ? 'Generic' : 'Generic');
-    
-    return showChip;
-  }, [currentFoodItem]);
+  // --- Chip truth (put this WITH the other top-of-render consts, after hooks) ---
+  const enrichmentSource = currentFoodItem?.enrichmentSource as
+    | 'off'
+    | 'label' 
+    | 'provider'
+    | 'legacy_text_lookup'
+    | string
+    | undefined;
+
+  const hasBrandEvidence =
+    Boolean(currentFoodItem?.barcode || (currentFoodItem as any)?.providerRef || (currentFoodItem as any)?.brandName);
+
+  // Brand if we have barcode/providerRef/brand OR we attached an OFF/label fetch
+  const isBrand = hasBrandEvidence || enrichmentSource === 'off' || enrichmentSource === 'label';
+
+  // Keep it super simple for TS/JSX:
+  const chipVariant: 'brand' | 'generic' = isBrand ? 'brand' : 'generic';
+  const chipLabel = chipVariant === 'brand' ? 'Brand' : 'Generic';
   
   // Badge logging for debugging
   console.log('[CONFIRM][BADGE]', { 
@@ -1388,9 +1388,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   )}
                 </div>
               </div>
-            ) : (
-            /* Manual Entry Enrichment Loading */
-            (isManual && !readyForManual) ? (
+            ) : (isManual && !readyForManual) ? (
               <div className="space-y-4">
                 <div className="animate-pulse space-y-3">
                   <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
@@ -1565,13 +1563,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
                     {displayName}
                   </h3>
-                  {(currentFoodItem?.source || (currentFoodItem as any)?.enrichmentSource) && (
-                    <DataSourceChip 
-                      source={(currentFoodItem?.source as any) || (currentFoodItem as any)?.enrichmentSource}
-                      confidence={currentFoodItem?.confidence || (currentFoodItem as any)?.enrichmentConfidence}
-                      className="ml-2"
-                    />
-                  )}
+                   <Badge variant={chipVariant}>
+                     {chipLabel}
+                   </Badge>
                 </div>
                  <p className="text-sm text-gray-600 dark:text-gray-400">
                    {Number.isFinite(adjustedFood.calories) ? adjustedFood.calories : 0} calories
@@ -2023,7 +2017,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   </Button>
                  </>
                 )}
-            </div>
             </>
             )}
           </div>
