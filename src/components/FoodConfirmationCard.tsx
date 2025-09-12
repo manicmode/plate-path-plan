@@ -1748,7 +1748,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               <div style={{position:'relative',height:64,width:64,borderRadius:14,overflow:'hidden',background:'rgba(0,0,0,.25)'}}>
                 <ImageWithFallback
                   srcs={imageUrls}
-                  alt=""
+                  alt={displayName}
                   style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
                   fallbackIcon={<div style={{color: '#fff8'}}>🍽️</div>}
                 />

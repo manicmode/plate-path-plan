@@ -1,55 +1,33 @@
 import { readdirSync, statSync } from 'fs';
-import { execSync } from 'child_process';
 import { join } from 'path';
+import { spawnSync } from 'child_process';
 
-const functionsRoot = 'supabase/functions';
-
-// Check if functions directory exists
+const root = 'supabase/functions';
+let dirs = [];
 try {
-  statSync(functionsRoot);
+  dirs = readdirSync(root).filter(d => {
+    try { return statSync(join(root, d)).isDirectory(); } catch { return false; }
+  });
 } catch {
-  console.log('No functions directory found; skipping deployment.');
+  console.log('[deploy-existing-functions] No functions folder; skipping.');
   process.exit(0);
 }
 
-// Get all directories in functions folder
-const dirs = readdirSync(functionsRoot).filter(d => {
-  try {
-    return statSync(join(functionsRoot, d)).isDirectory();
-  } catch {
-    return false;
-  }
+const valid = dirs.filter(d => {
+  try { return statSync(join(root, d, 'index.ts')).isFile(); } catch { return false; }
 });
 
-// Filter directories that have an index.ts file
-const validFunctions = dirs.filter(dir => {
-  try {
-    return statSync(join(functionsRoot, dir, 'index.ts')).isFile();
-  } catch {
-    return false;
-  }
-});
-
-if (validFunctions.length === 0) {
-  console.log('No functions with index.ts found; skipping deployment.');
+if (valid.length === 0) {
+  console.log('[deploy-existing-functions] No valid functions to deploy.');
   process.exit(0);
 }
 
-console.log(`Found ${validFunctions.length} deployable functions:`, validFunctions);
-
-// Deploy each function
-for (const functionName of validFunctions) {
-  try {
-    console.log(`Deploying function: ${functionName}`);
-    execSync(`supabase functions deploy ${functionName}`, { 
-      stdio: 'inherit',
-      cwd: process.cwd()
-    });
-    console.log(`✅ Successfully deployed: ${functionName}`);
-  } catch (error) {
-    console.error(`❌ Failed to deploy ${functionName}:`, error.message);
-    process.exit(1);
-  }
+for (const name of valid) {
+  console.log(`→ Deploying ${name} ...`);
+  const res = spawnSync('npx', [
+    'supabase','functions','deploy', name,
+    '--no-verify-jwt',
+    '--env-file','supabase/.env'
+  ], { stdio: 'inherit' });
+  if (res.status !== 0) process.exit(res.status);
 }
-
-console.log(`🎉 Successfully deployed ${validFunctions.length} functions!`);
