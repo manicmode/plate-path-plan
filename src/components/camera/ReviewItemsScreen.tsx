@@ -117,24 +117,12 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     }
   }, [isOpen, initialItems, prefilledItems]);
 
-  // Build modal items for nutrition hydration - seed grams + photo early
+  // Build modal items for nutrition hydration
   const modalItems = useMemo(() => {
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     return selectedItems.map((item, index) => {
       const id = (item as any).foodId ?? item.id ?? generateFoodId(item);
-      
-      // Seed grams and photo image early
-      const grams = (item as any).grams ?? (item as any).portionGrams ?? (item as any).baseGrams ?? 
-                   ((item as any).source === 'barcode' ? (item as any)?.label?.servingSizeG : undefined) ?? 100;
-
-      const imageUrl = (item as any).imageUrl || 
-                      ((item as any).source === 'photo' ? 
-                        ((item as any).photoUrl || (item as any).selectedImage || (item as any).directImg) : 
-                        ((item as any).imageThumbUrl || (item as any).directImg));
-
-      const prepared = { ...item, grams, baseGrams: grams, imageUrl };
-      
-      return toLegacyFoodItem(prepared, index, ENABLE_SST_CONFIRM_READ);
+      return toLegacyFoodItem({ ...item, id }, index, ENABLE_SST_CONFIRM_READ);
     });
   }, [items.filter(item => item.selected && item.name.trim()).map(i => `${i.id}-${i.name}-${i.grams}`).join('|')]);
 
@@ -149,18 +137,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     
     console.log('[HYDRATE][BEGIN]', { itemsCount: items.length });
     
-    // Create modalItems synchronously to establish firstCardId immediately  
+    // Create modalItems synchronously to establish firstCardId immediately
     const selectedItems = items.filter(item => item.selected && item.name.trim());
-    const prepared = selectedItems.map(item => (item as any).source === 'manual'
-      ? item
-      : {
-          ...item,
-          imageUrl: (item as any).photoUrl || (item as any).selectedImage || (item as any).imageUrl || (item as any).imageThumbUrl || (item as any).directImg || '',
-          grams: (item as any).grams || (item as any).portionGrams || (item as any).baseGrams || (item as any).label?.servingSizeG || 100,
-        });
-
-    const initialModalItems = prepared.map((item, index) => {
-      return toLegacyFoodItem(item, index, true);
+    const initialModalItems = selectedItems.map((item, index) => {
+      const canonicalId = item.id; // Use existing item.id as canonical
+      return toLegacyFoodItem({ ...item, id: canonicalId }, index, true);
     });
     
     // Set modal items BEFORE async hydration
@@ -170,63 +151,41 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     // Run async hydration
     (async () => {
       try {
-        // BEFORE any resolveGenericFoodBatch / store writes:
-        const nonManual = prepared.filter(it => (it as any).source !== 'manual');
-        
-        // If there are no non-manual items, set modal state and RETURN
-        if (nonManual.length === 0) {
-          setConfirmModalItems(initialModalItems.map(m => ({ ...m, __hydrated: true })));
-          return;
-        }
-        
-        const names = nonManual.map(m => m.name);
+        const names = initialModalItems.map(m => m.name);
         const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
         const results = await resolveGenericFoodBatch(names);
         
-        console.log('[HYDRATE][WRITE]', { ids: nonManual.map(i => i.id) });
+        console.log('[HYDRATE][WRITE]', { foundCount: results?.filter(Boolean).length });
         
         const storeUpdates: Record<string, any> = {};
+        const enrichedItems = initialModalItems.map((m, i) => {
+          const r = results?.[i];
+          if (!r) return { ...m, __hydrated: false };
+          
+          const canonicalId = m.id; // Use same ID from modal item
+          const enrichedInput = { ...m, nutrients: r.nutrients, serving: r.serving };
+          const merged = toLegacyFoodItem(enrichedInput, i, true);
+          
+          // Write to store using canonical ID - preserve ingredients from merged data
+          storeUpdates[canonicalId] = {
+            perGram: merged.nutrition?.perGram || {},
+            healthScore: 0,
+            flags: [],
+            ingredients: merged.analysis?.ingredients || [], // Use ingredients from analysis field
+            __hydrated: true,
+            updatedAt: Date.now(),
+          };
+          
+          return { ...merged, id: canonicalId, __hydrated: true };
+        });
         
-        // WRITE perGram INTO STORE **USING THE SAME id THE CARD USES** (detect-*)
-        for (const cur of nonManual) {
-          const idx = nonManual.indexOf(cur);
-          const r = results?.[idx];
-          if (r && r.nutrients) {
-            const perGram = {
-              calories: r.nutrients.calories ? r.nutrients.calories / 100 : 0,
-              protein: r.nutrients.protein_g ? r.nutrients.protein_g / 100 : 0,
-              carbs: r.nutrients.carbs_g ? r.nutrients.carbs_g / 100 : 0,
-              fat: r.nutrients.fat_g ? r.nutrients.fat_g / 100 : 0,
-              fiber: r.nutrients.fiber_g ? r.nutrients.fiber_g / 100 : 0,
-              sugar: ((r.nutrients as any).sugar_g || (r.nutrients as any).sugars_g || 0) / 100,
-              sodium: r.nutrients.sodium_mg ? r.nutrients.sodium_mg / 100000 : 0, // mg to g
-            };
-            storeUpdates[cur.id] = { perGram, updatedAt: Date.now() };
-          }
-        }
-
-        console.log('[HYDRATE][WRITE]', { ids: Object.keys(storeUpdates), pgKeys: Object.keys((Object.values(storeUpdates)[0]?.perGram) || {}) });
-
         if (Object.keys(storeUpdates).length) {
           useNutritionStore.getState().upsertMany(storeUpdates);
+          console.log('[HYDRATE][WROTE]', { ids: Object.keys(storeUpdates) });
         }
-
-        // When merging hydrated perGram back into modal items:
-        const merged = prepared.map((item, idx) => {
-          if ((item as any).source === 'manual') return { ...item, __hydrated: true }; // <-- leave manual untouched
-          const pg = storeUpdates[item.id]?.perGram;
-          return pg ? { ...item,
-            nutrition: { ...(item as any).nutrition||{}, perGram: pg, basis: 'perGram' },
-            __hydrated: true,
-          } : { ...item, __hydrated: true };
-        });
         
-        const rebuilt = merged.map((item, idx) => {
-          return toLegacyFoodItem(item, idx, true);
-        });
-        
-        setConfirmModalItems(rebuilt);
-        console.log('[HYDRATE][END]', { hydratedCount: rebuilt.filter((i: any) => i.__hydrated).length });
+        setConfirmModalItems(enrichedItems);
+        console.log('[HYDRATE][END]', { hydratedCount: enrichedItems.filter(i => i.__hydrated).length });
         
       } catch (e) {
         console.error('[HYDRATE][ERROR]', e);
