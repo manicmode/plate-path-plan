@@ -1520,7 +1520,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         }}
       >
         <AccessibleDialogContent 
-          className="food-confirm-card with-stable-panels max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+          className="food-confirm-card with-stable-panels max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden max-h-[90vh] flex flex-col"
           title="Confirm Food Log"
           description="We'll save these items to your log."
           showCloseButton={!reminderOpen}
@@ -1529,7 +1529,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
           onInteractOutside={(e) => forceConfirm && e.preventDefault()}
         >
           <VisuallyHidden><DialogTitle>Confirm Food Log</DialogTitle></VisuallyHidden>
-          <div className="p-6">
+          <div className="p-6 overflow-y-auto flex-1 min-h-0">
             {/* Manual Entry Enrichment Loading */}
             {(isManual && !readyForManual) ? (
               <div className="space-y-4">
