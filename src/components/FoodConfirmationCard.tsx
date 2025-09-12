@@ -379,24 +379,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Enhanced image fallback - prioritize captured photos (moved after storeAnalysis declaration)
   const capturedImg = imageUrlFromPhoto || (currentFoodItem as any)?.photoUrl || (currentFoodItem as any)?.selectedImage || null;
   
-  const imageToShowFinal = 
-    capturedImg ||
-    currentFoodItem?.imageUrl ||
-    directImg ||
-    storeImg ||
-    undefined;
-  
-  // Collect URLs: prioritize captured photo, then current image, then store, then enrichment, then fallback
+  // Collect URLs: prioritize captured photo, then current image, then store (if embedded), then enrichment, then fallback
   const imageUrls: string[] = useMemo(() => {
     const captured = capturedImg ? [capturedImg] : [];
     const current = currentFoodItem?.imageUrl ? [currentFoodItem.imageUrl] : [];
-    const storeImg = storeAnalysis?.imageUrl || null; // Get store image here
-    const store = storeImg ? [storeImg] : [];
+    const store = ((currentFoodItem as any)?.storeAnalysis?.imageUrl) ? [(currentFoodItem as any).storeAnalysis.imageUrl] : [];
     const direct = directImg ? [directImg] : [];
     const a = (currentFoodItem as any)?.image?.urls ?? [];
     const b = (currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : [];
     return Array.from(new Set([...captured, ...current, ...store, ...direct, ...a, ...b].filter(Boolean)));
-  }, [capturedImg, currentFoodItem?.imageUrl, directImg, (currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef, storeAnalysis?.imageUrl]);
+  }, [capturedImg, currentFoodItem?.imageUrl, directImg, (currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef, (currentFoodItem as any)?.storeAnalysis?.imageUrl]);
 
   useEffect(() => setImgIdx(0), [imageUrls.join('|')]);
 
@@ -414,7 +406,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     console.log('[IMG][CARD][BIND]', {
       capturedImg,
       currentImg: currentFoodItem?.imageUrl,
-      storeImg,
       directImg,
       providerRef: (currentFoodItem as any)?.providerRef,
       fromEnrichment: (currentFoodItem as any)?.image?.urls ?? [],
@@ -747,66 +738,38 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const g1 = (n?: number) => Math.round(safe(n) * scaleMult * 10) / 10; // grams to 1 decimal
   const kcal = (n?: number) => Math.round(safe(n) * scaleMult);         // calories to int
 
-  // Use new nutrition basis selection
-  const nutritionBasis = selectNutritionBasis(currentFoodItem);
-  const { mode: nutritionMode, src, baseG } = nutritionBasis;
-  
-  // Set baseServingG2 to 100 when servingG is falsy for per_gram/per_100 modes
-  const baseServingG2 = (nutritionMode === 'per_gram' || nutritionMode === 'per_100') && !servingG ? 100 : actualServingG;
-  
-  // Calculate macros based on selected basis
-  const macrosMode2 = nutritionMode;
-  const scaledKcal = nutritionMode !== 'none' ? 
-    Math.round((src.calories ?? src.kcal ?? (src.protein*4 + src.carbs*4 + src.fat*9)) * baseServingG2 / (baseG || 100)) : 0;
-  
-  console.log('[CARD][BASIS]', { mode, baseServingG, hasPg: !!currentFoodItem?.perGram, hasP100: !!currentFoodItem?.per100 || !!currentFoodItem?.normalizedPer100 });
-  console.log('[CARD][MACROS]', { protein: src.protein, carbs: src.carbs, fat: src.fat, kcal: scaledKcal, servingG: baseServingG });
-  
-  console.log('[CONFIRM][SCALING]', {
-    basisChosen: mode,
-    baseServingG,
-    uiServingLabel: 'calculated_later',
-    sliderG: baseServingG,
-    sourcePaths: {
-      perGram: !!currentFoodItem?.perGram,
-      basePer100: !!(currentFoodItem as any)?.basePer100,
-      perPortion: !!(currentFoodItem as any)?.basePerPortion,
-      labelData: !!(currentFoodItem as any)?.label
-    },
-    inputs: {
-      perServingMacros: (currentFoodItem as any)?.label?.macrosPerServing,
-      servingSizeG: (currentFoodItem as any)?.label?.servingSizeG,
-      basePer100: (currentFoodItem as any)?.basePer100,
-      perGram: currentFoodItem?.perGram
-    },
-    outputs: mode !== 'none' ? { 
-      kcal: scaledKcal, 
-      proteinG: Math.round((src.protein * baseServingG) / (baseG || 100) * 10) / 10, 
-      carbsG: Math.round((src.carbs * baseServingG) / (baseG || 100) * 10) / 10,
-      fatG: Math.round((per100.fatG * actualServingG) / 100 * 10) / 10 
-    } : { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
-    macrosMode,
-    dataSource: dataSource || 'unknown'
-  });
-
-  // Calculate final nutrition values using normalized per100 basis
-  const finalNutrition = per100 ? {
-    calories: Math.round((per100.calories * actualServingG) / 100),
-    protein: Math.round((per100.proteinG * actualServingG) / 100 * 10) / 10,
-    carbs: Math.round((per100.carbsG * actualServingG) / 100 * 10) / 10,
-    fat: Math.round((per100.fatG * actualServingG) / 100 * 10) / 10,
-    fiber: Math.round((per100.fiberG * actualServingG) / 100 * 10) / 10,
-    sugar: Math.round((per100.sugarG * actualServingG) / 100 * 10) / 10,
-    sodium: Math.round((per100.sodium_mg * actualServingG) / 100)
-  } : {
-    // Fallback to legacy calculation
-    calories: kcal(getPG('calories')),
-    protein: g1(getPG('protein')),
-    carbs: g1(getPG('carbs')),
-    fat: g1(getPG('fat')),
-    fiber: g1(getPG('fiber')),
-    sugar: g1(getPG('sugar')),
-    sodium: Math.round(getPG('sodium') * scaleMult * 1000)
+  // Minimal basis: prefer perGram, then perServing. No per100 guesses.
+  type MacroVals = Partial<{ protein: number; carbs: number; fat: number; calories: number; kcal: number; servingGrams: number }>;
+  const hasAny = (o?: MacroVals) => !!o && ['protein','carbs','fat','calories','kcal'].some(k => Number((o as any)[k]) > 0);
+  const pickBasis = (itm: any): { mode: 'per_gram' | 'per_serving' | 'none'; src: MacroVals; baseG: number } => {
+    const pg: MacroVals = itm?.perGram || {};
+    const ps: MacroVals = itm?.perServing || {};
+    if (hasAny(pg)) return { mode: 'per_gram', src: pg, baseG: 100 };
+    if (hasAny(ps)) return { mode: 'per_serving', src: ps, baseG: Number(ps.servingGrams) || 100 };
+    return { mode: 'none', src: { protein:0, carbs:0, fat:0, calories:0, kcal:0 }, baseG: 100 };
+  };
+  const cardItem: any = currentFoodItem ?? foodItem;
+  const { mode: basisMode, src: basisSrc, baseG } = pickBasis(cardItem);
+  // Alias for downstream subtitle logic
+  const nutritionMode = basisMode;
+  const gramsNow: number = actualServingG || baseG;
+  const factor = basisMode === 'per_gram' ? gramsNow : (basisMode === 'per_serving' && baseG ? gramsNow / baseG : 0);
+  const P = Math.max(0, Number(basisSrc.protein ?? 0) * factor);
+  const C = Math.max(0, Number(basisSrc.carbs   ?? 0) * factor);
+  const F = Math.max(0, Number(basisSrc.fat     ?? 0) * factor);
+  const perUnitKcal = Number(basisSrc.calories ?? basisSrc.kcal ?? ((basisSrc.protein ?? 0) * 4 + (basisSrc.carbs ?? 0) * 4 + (basisSrc.fat ?? 0) * 9));
+  const K = Math.max(0, perUnitKcal * (basisMode === 'per_gram' ? gramsNow : (basisMode === 'per_serving' && baseG ? gramsNow / baseG : 0)));
+  const macrosMode2 = basisMode;
+  console.log('[CARD][BASIS]', { basisMode, gramsNow, baseG, hasPg: !!cardItem?.perGram, hasPs: !!cardItem?.perServing });
+  console.log('[CARD][MACROS]', { protein: P, carbs: C, fat: F, kcal: K, servingG: gramsNow });
+  const finalNutrition = {
+    calories: Math.round(K),
+    protein: Math.round(P * 10) / 10,
+    carbs: Math.round(C * 10) / 10,
+    fat: Math.round(F * 10) / 10,
+    fiber: 0,
+    sugar: 0,
+    sodium: 0
   };
 
   // NaN-proof helper (reuse existing clamp0)
@@ -1105,7 +1068,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     servingText ? `Per portion (${servingText})` :
     'Per 100 g'
   ) : (servingG ? `${servingG} g per portion` : 
-    ((nutritionMode === 'per_gram' || nutritionMode === 'per_100') && !servingG ? 'Per 100 g' : 'Per portion (unknown size)'));
+    ((nutritionMode !== 'none') && !servingG ? 'Per 100 g' : 'Per portion (unknown size)'));
   
   // Legacy compatibility  
   const displayName = title;

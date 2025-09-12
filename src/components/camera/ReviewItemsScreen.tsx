@@ -48,6 +48,14 @@ export interface ReviewItem {
   canonicalName?: string; // For mapping
   portionSource?: 'count' | 'area' | 'base' | 'heuristic';
   portionRange?: [number, number];
+  // Optional fields for confirm seeding
+  portionGrams?: number;
+  baseGrams?: number;
+  imageUrl?: string;
+  photoUrl?: string;
+  selectedImage?: string;
+  perGram?: Partial<{ protein: number; carbs: number; fat: number; calories: number; kcal: number }>;
+  perServing?: Partial<{ protein: number; carbs: number; fat: number; calories: number; kcal: number; servingGrams: number }>;
 }
 
 interface ReviewItemsScreenProps {
