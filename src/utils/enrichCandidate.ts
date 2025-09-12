@@ -3,23 +3,37 @@ import { normalizeIngredients } from '@/utils/normalizeIngredients';
 import { nvLabelLookup } from '@/lib/nutritionVault';
 import { isEan, offImageForBarcode, offImageCandidates } from '@/lib/imageHelpers';
 
+import { IMAGE_PROXY_OFF } from '@/lib/flags';
+
 async function fetchOffImageUrls(barcode: string): Promise<string[]> {
   try {
-    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
-    if (!res.ok) return [];
-    const j = await res.json();
-    const p = j?.product ?? {};
-    const urls = [
-      p?.image_front_small_url,
-      p?.image_front_url,
-      p?.image_url,
-      // selected_images (language-specific)
-      p?.selected_images?.front?.display?.en,
-      p?.selected_images?.front?.display?.en_GB,
-      p?.selected_images?.front?.display?.en_US,
-    ].filter(Boolean);
-    return Array.from(new Set(urls));
-  } catch {
+    // Use proxy when flag is enabled to avoid CORS issues
+    if (IMAGE_PROXY_OFF) {
+      console.log('[ENRICH][OFF_PROXY] Using proxy for barcode:', barcode);
+      const res = await fetch(`/api/off-proxy/${barcode}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data?.product?.images || [];
+    } else {
+      // Legacy direct fetch (may have CORS issues)
+      console.log('[ENRICH][OFF_DIRECT] Direct fetch for barcode:', barcode);
+      const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+      if (!res.ok) return [];
+      const j = await res.json();
+      const p = j?.product ?? {};
+      const urls = [
+        p?.image_front_small_url,
+        p?.image_front_url,
+        p?.image_url,
+        // selected_images (language-specific)
+        p?.selected_images?.front?.display?.en,
+        p?.selected_images?.front?.display?.en_GB,
+        p?.selected_images?.front?.display?.en_US,
+      ].filter(Boolean);
+      return Array.from(new Set(urls));
+    }
+  } catch (error) {
+    console.warn('[ENRICH][OFF_FETCH_ERROR]', error);
     return [];
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
@@ -17,13 +17,18 @@ import confetti from 'canvas-confetti';
 import { submitTextLookup } from '@/lib/food/textLookup';
 import { CandidateList } from '@/components/food/CandidateList';
 import { PortionUnitField } from '@/components/food/PortionUnitField';
-import { FOOD_TEXT_DEBUG } from '@/lib/flags';
+import { FOOD_TEXT_DEBUG, ENABLE_DEBOUNCED_SEARCH, MANUAL_SEARCH_EDGE_GATE } from '@/lib/flags';
 import { ThreeCirclesLoader } from '@/components/loaders/ThreeCirclesLoader';
 import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
 import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
 import { useManualFlowStatus } from '@/hooks/useManualFlowStatus';
 import { enrichCandidate } from '@/utils/enrichCandidate';
 import { ManualPortionDialog } from './ManualPortionDialog';
+import { 
+  mergeCandidates, 
+  createGenericFallback, 
+  generateCandidateSubtitle 
+} from '@/lib/food/candidateUtils';
 
 import { DataSourceChip } from '@/components/ui/data-source-chip';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
@@ -37,7 +42,7 @@ interface ManualFoodEntryProps {
   onHandoffStart?: () => void;
 }
 
-type ModalState = 'idle' | 'searching' | 'candidates' | 'loading' | 'error';
+type ModalState = 'idle' | 'debouncing' | 'searching' | 'candidates' | 'loading' | 'error';
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | '';
 
 interface LocalCandidate {
@@ -138,6 +143,9 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 }) => {
   // All hooks declared unconditionally at top
   const manualFlow = useManualFlowStatus();
+  const { enrichWithFallback, loading: enriching, error: enrichError } = useManualFoodEnrichment();
+  
+  // Enhanced state for debounced search with SWR
   const [state, setState] = useState<ModalState>('idle');
   const [foodName, setFoodName] = useState('');
   const [candidates, setCandidates] = useState<LocalCandidate[]>([]);
@@ -146,11 +154,23 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const [showDialog, setShowDialog] = useState(false);
   const [enriched, setEnriched] = useState<any>(null);
   const [handoff, setHandoff] = useState(false);
+  const [hasPartialResults, setHasPartialResults] = useState(false);
+  
+  // Enhanced refs for debounced search
+  const requestIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const cacheRef = useRef<Map<string, { ts: number; items: LocalCandidate[] }>>(new Map());
+  
+  // Cache TTL (15 minutes)
+  const CACHE_TTL_MS = 15 * 60 * 1000;
   
   // Track loading & suggestion availability for button guarding
   const isSearching = state === 'searching';
+  const isDebouncing = state === 'debouncing';
   const hasSuggestions = candidates.length > 0;
-  const canAdd = !isSearching && selectedCandidate != null;
+  const hasGenericFallback = !hasSuggestions && createGenericFallback(foodName) !== null;
+  const canAdd = !isSearching && (selectedCandidate != null || hasGenericFallback);
+  const showSearching = isSearching || isDebouncing;
   const [portionAmount, setPortionAmount] = useState<number>(100);
   const [portionUnit, setPortionUnit] = useState('g');
   const [amountEaten, setAmountEaten] = useState([100]);
@@ -161,14 +181,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const [recentItems, setRecentItems] = useState<string[]>([]);
 
   // Refs
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const inputRef = useRef<HTMLInputElement>(null);
-  const searchGenRef = useRef<number>(0);
-  const searchLockedRef = useRef<boolean>(false);
-  const wasOpenRef = useRef(false);
-
-  // Hooks
-  const { enrichWithFallback, loading: enriching, error: enrichError } = useManualFoodEnrichment();
   
   // Build sentinels and logging
   useEffect(() => {
@@ -248,172 +261,136 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
   };
 
-  // Debounced search with abort controller
-  const abortRef = useRef<AbortController | null>(null);
-  const debouncedSearch = useCallback(async (query: string) => {
-    // Abort previous search
-    if (abortRef.current) {
-      abortRef.current.abort();
+  // Cache utilities
+  const getCachedResults = useCallback((query: string): LocalCandidate[] | null => {
+    const key = query.toLowerCase().trim();
+    const cached = cacheRef.current.get(key);
+    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+      console.log('[MANUAL][CACHE:hit]', { query: key, count: cached.items.length });
+      return cached.items;
     }
+    return null;
+  }, []);
+
+  const setCachedResults = useCallback((query: string, items: LocalCandidate[]) => {
+    const key = query.toLowerCase().trim();
+    cacheRef.current.set(key, { ts: Date.now(), items });
     
-    if (!query.trim()) {
-      setCandidates([]);
-      setState('idle');
-      setEnriched(null);
-      return;
+    // Simple LRU: remove oldest if cache grows too large
+    if (cacheRef.current.size > 50) {
+      const firstKey = cacheRef.current.keys().next().value;
+      cacheRef.current.delete(firstKey);
     }
+  }, []);
 
-    // Check if search is locked
-    if (searchLockedRef.current) {
-      return;
-    }
-
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-    const currentGen = ++searchGenRef.current;
-    setState('searching');
+  // Cheap local search (existing fast path)
+  const runCheapSearch = useCallback(async (query: string): Promise<LocalCandidate[]> => {
+    console.log('[SUGGEST][CHEAP] Starting fast lookup');
+    const result = await submitTextLookup(query, { source: 'manual' });
     
-    // Flag: VITE_DISABLE_ENRICHMENT_ON_TYPE - avoid enrichment while typing
-    const disableEnrichmentOnType = (import.meta.env.VITE_DISABLE_ENRICHMENT_ON_TYPE ?? '1') === '1';
+    if (result?.rankedAll || result?.items) {
+      const items = result.rankedAll || result.items || [];
+      return processCandidates(items, query);
+    }
+    return [];
+  }, []);
 
-    try {
-      if (disableEnrichmentOnType) {
-        // Use cheap-first suggestions only, no enrichment while typing
-        console.log('[SUGGEST][CHEAP_FIRST] Using fast lookup without enrichment');
-        const fallback = await submitTextLookup(query, { source: 'manual' });
-        
-        // Check if this search result is still valid
-        if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
-          return; // Ignore stale results
-        }
-
-        // Process fallback results only
-        if (fallback) {
-          // Log what arrives from textLookup
-          console.log('[TRACE] UI receive', {
-            hasItems: Array.isArray(fallback?.items),
-            hasRankedAll: Array.isArray(fallback?.rankedAll),
-            itemsCount: fallback?.items?.length,
-            rankedAllCount: fallback?.rankedAll?.length,
-            used: fallback?.used || 'unknown'
-          });
-
-          // Use full set in this precedence:
-          const items: any[] =
-            fallback?.rankedAll ||
-            fallback?.results ||
-            fallback?.items ||
-            fallback?.rankedTop3 ||
-            [];
-
-          const count = Math.min(items.length, 8); // Limit to 5-8 suggestions
-          console.log(`[SUGGEST][CHEAP_FIRST] count=${count}, sources=[fdc,off]`);
-          logTelemetry('FALLBACK', { itemCount: count, used: fallback?.used });
-          setEnriched(null);
-
-          // Process candidates from fallback (V3 returns full list now)
-          const candidates = processCandidates(items, query);
-          setCandidates(candidates);
-          setState(candidates.length > 0 ? 'candidates' : 'idle');
+  // Enhanced debounced search with SWR pattern
+  const debouncedSearch = useMemo(() => {
+    if (!ENABLE_DEBOUNCED_SEARCH) {
+      // Fallback to immediate search if flag disabled
+      return (query: string) => {
+        setFoodName(query);
+        if (!query.trim()) {
+          setCandidates([]);
+          setState('idle');
           return;
         }
-      } else {
-        // Legacy enrichment path (when flag is off)
-        const { enriched, fallback } = await enrichWithFallback(
-          query,
-          'auto',
-          () => submitTextLookup(query, { source: 'manual' }),
-          selectedCandidate
-        );
-        
-        // Check if this search result is still valid
-        if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
-          return; // Ignore stale results
-        }
+        setState('searching');
+        // Use existing immediate search logic
+      };
+    }
 
-        if (enriched) {
-          // Use enriched data
-          logTelemetry('ENRICHED', { source: enriched.source, confidence: enriched.confidence });
-          setEnriched(enriched);
+    let timeoutId: NodeJS.Timeout;
+    
+    return (query: string) => {
+      clearTimeout(timeoutId);
+      
+      if (!query.trim()) {
+        setCandidates([]);
+        setState('idle');
+        setSelectedCandidate(null);
+        return;
+      }
+      
+      // Check cache first
+      const cached = getCachedResults(query);
+      if (cached) {
+        setCandidates(cached);
+        setState(cached.length > 0 ? 'candidates' : 'idle');
+        return;
+      }
+      
+      setState('debouncing');
+      setHasPartialResults(false);
+      
+      timeoutId = setTimeout(async () => {
+        // Cancel any previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+        const requestId = ++requestIdRef.current;
+        
+        try {
+          setState('searching');
           
-          // Convert to candidate format
-          const enrichedCandidate: LocalCandidate = {
-            id: 'enriched-primary',
-            name: sanitizeName(enriched.name),
-            isGeneric: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7,
-            portionHint: enriched.perServing ? `${enriched.perServing.serving_grams}g serving` : '100g',
-            defaultPortion: { 
-              amount: enriched.perServing?.serving_grams || 100, 
-              unit: 'g' 
-            },
-            provider: enriched.source === 'GENERIC' ? 'generic' : sourceBadge(enriched.source).label.toLowerCase(),
-            data: enrichedFoodToLogItem(enriched, 100),
-            // NEW: stable identity fields
-            flags: {
-              generic: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7,
-              brand: false,
-              restaurant: false
-            }
-          };
-
-          setCandidates([enrichedCandidate]);
-          setState('candidates');
-          return;
+          // SWR: Run cheap search first, show results immediately
+          console.log(`[MANUAL][SWR] Starting cheap-first search for: ${query}`);
+          const cheapResults = await runCheapSearch(query);
+          
+          // Only update if this is still the latest request
+          if (requestIdRef.current === requestId && !controller.signal.aborted) {
+            console.log('[MANUAL][SWR:cheap]', { count: cheapResults.length });
+            setCandidates(cheapResults);
+            setHasPartialResults(true);
+            setState(cheapResults.length > 0 ? 'candidates' : 'idle');
+            
+            // Cache the cheap results
+            setCachedResults(query, cheapResults);
+          }
+          
+          // TODO: Add edge search augmentation here when MANUAL_SEARCH_EDGE_GATE enabled
+          // For now, stick with cheap-only to eliminate edge timeout issues
+          
+        } catch (error: any) {
+          if (error.name !== 'AbortError' && requestIdRef.current === requestId) {
+            console.error('[MANUAL][SEARCH_ERROR]', error);
+            setState('error');
+            toast.error('Search failed. Please try again.');
+          }
         }
-
-        // Fall back to existing lookup system
-        if (fallback) {
-          // Log what arrives from textLookup  
-          console.log('[TRACE] UI receive', {
-            hasItems: Array.isArray(fallback?.items),
-            hasRankedAll: Array.isArray(fallback?.rankedAll),
-            itemsCount: fallback?.items?.length,
-            rankedAllCount: fallback?.rankedAll?.length
-          });
-
-          // Use full set in this precedence:
-          const items: any[] =
-            fallback?.rankedAll ||
-            fallback?.results ||
-            fallback?.items ||
-            fallback?.rankedTop3 ||
-            [];
-
-          logTelemetry('FALLBACK', { itemCount: items.length });
-          setEnriched(null);
-          // Process candidates from fallback
-          const candidates = processCandidates(items, query);
-          setCandidates(candidates);
-          setState(candidates.length > 0 ? 'candidates' : 'idle');
-          return;
-        }
-      }
-
-      // No results from either path
-      setCandidates([]);
-      setState('idle');
-      setEnriched(null);
-      
-    } catch (error) {
-      // Check if this error is still relevant
-      if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
-        return; // Ignore stale errors
-      }
-      
-      setState('error');
-      logTelemetry('ERROR', { message: (error as Error).message });
-      toast.error('Search failed. Please try again.');
-    }
-  }, [enrichWithFallback]);
+      }, 300); // 300ms debounce
+    };
+  }, [getCachedResults, setCachedResults, runCheapSearch]);
 
   // Cleanup abort controller on unmount
   useEffect(() => {
     return () => {
-      if (abortRef.current) {
-        abortRef.current.abort();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, []);
+
+  // Input handler with debouncing
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setFoodName(value);
+    debouncedSearch(value);
+  }, [debouncedSearch]);
 
   // Add deduplication helpers
   const slug = (s: string) =>

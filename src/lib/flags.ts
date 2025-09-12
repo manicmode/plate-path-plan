@@ -61,3 +61,16 @@ export const NV_MIN_PREFIX =
 
 export const NV_MIN_HITS = 
   Number(import.meta.env.VITE_NV_MIN_HITS ?? '1');
+
+// Manual entry performance flags (for rollback)
+export const ENABLE_DEBOUNCED_SEARCH = 
+  (import.meta.env.VITE_ENABLE_DEBOUNCED_SEARCH ?? '1') === '1'; // default ON
+
+export const EDGE_MULTI_QUERY = 
+  (import.meta.env.VITE_EDGE_MULTI_QUERY ?? '1') === '1'; // default ON
+
+export const IMAGE_PROXY_OFF = 
+  (import.meta.env.VITE_IMAGE_PROXY_OFF ?? '1') === '1'; // default ON
+
+export const MANUAL_SEARCH_EDGE_GATE = 
+  (import.meta.env.VITE_MANUAL_SEARCH_EDGE_GATE ?? '1') === '1'; // default ON

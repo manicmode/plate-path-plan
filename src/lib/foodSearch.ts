@@ -91,9 +91,9 @@ export function mapOFFItem(item: any): CanonicalSearchResult {
  */
 export async function searchFoodByName(
   query: string, 
-  options: { signal?: AbortSignal; timeoutMs?: number; maxResults?: number; finalItemsLength?: number; bypassGuard?: boolean } = {}
+  options: { signal?: AbortSignal; timeoutMs?: number; maxResults?: number; finalItemsLength?: number; bypassGuard?: boolean; mode?: 'single' | 'batch' } = {}
 ): Promise<CanonicalSearchResult[]> {
-  const { signal, timeoutMs = 900, maxResults = 50, finalItemsLength = 0, bypassGuard = false } = options;
+  const { signal, timeoutMs = 2500, maxResults = 50, finalItemsLength = 0, bypassGuard = false, mode = 'single' } = options;
   
   if (!isFeatureEnabled('fallback_text_enabled')) {
     console.log('🚫 [FoodSearch] Text fallback disabled');
@@ -163,7 +163,8 @@ export async function searchFoodByName(
         body: { 
           query: normalized,  // Use normalized query instead of trimmedQuery
           maxResults: actualMaxResults,
-          sources
+          sources,
+          mode: mode // Pass mode to edge function
         }
       });
       
