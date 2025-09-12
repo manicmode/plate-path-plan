@@ -133,7 +133,8 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
     const mapCandidateToFoodItem = (candidate: any, portion: any, index: number) => {
       const servingGrams = portion?.grams || inferPortion(candidate.name, candidate.name)?.grams || 100;
       const isGeneric = !!candidate.canonicalKey?.startsWith('generic_') || candidate.kind === 'generic';
-      const provider = candidate.provider || candidate.kind || (isGeneric ? 'generic' : 'brand');
+      // Brand detection: items from OpenFoodFacts with actual ingredients are branded  
+      const provider = candidate.provider || candidate.kind || (!isGeneric ? 'brand' : 'generic');
       const providerRef = candidate.providerRef || candidate.brand || candidate.upc || null;
       
       const mapped = {

@@ -1183,8 +1183,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const dialogOpen = forceConfirm === true || isOpen;
 
   // Add CONFIRM BIND log - log what we receive
-  const isGeneric = (currentFoodItem as any)?.isGeneric || (currentFoodItem as any)?.provider === 'generic';
-  const chip = isGeneric ? 'generic' : 'brand';
+  const isGeneric = (currentFoodItem as any)?.isGeneric;
+  const provider = (currentFoodItem as any)?.provider;
+  const chip = (isGeneric === true || provider === 'generic') ? 'generic' : 'brand';
   const basis = isPerGramBasis ? 'per-gram' : 'per-100g';
   const servingGrams = actualServingG;
   const ingredientsLength = ingredientsList.length;
@@ -1193,7 +1194,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     chip, 
     basis, 
     servingG: servingGrams, 
-    ingredientsLength 
+    ingredientsLength,
+    isGeneric,
+    provider,
+    sourceFlags: (currentFoodItem as any)?.selectionFlags || currentFoodItem?.flags
   });
 
   // Show loading state during transition in multi-item flow

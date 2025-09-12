@@ -9,6 +9,11 @@ export async function enrichCandidate(candidate: any) {
   });
 
   let enriched = { ...candidate };
+  
+  // CRITICAL: Preserve brand/generic classification from the original candidate
+  enriched.isGeneric = candidate.isGeneric;
+  enriched.provider = candidate.provider;
+  enriched.providerRef = candidate.providerRef;
 
   // 1) Generic canonical fallback (existing canonicalKey logic)
   if (candidate?.isGeneric && candidate?.canonicalKey) {
@@ -131,7 +136,9 @@ export async function enrichCandidate(candidate: any) {
     hasIngredients: !!enriched?.ingredientsList?.length || !!enriched?.ingredientsText, 
     baseServingG: enriched?.servingGrams, 
     classId: enriched?.classId, 
-    canonicalKey: enriched?.canonicalKey 
+    canonicalKey: enriched?.canonicalKey,
+    isGeneric: enriched?.isGeneric,
+    provider: enriched?.provider
   });
   
   if (import.meta.env.DEV) {
