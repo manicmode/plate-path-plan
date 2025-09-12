@@ -273,11 +273,19 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     let candidates: string[] = [];
 
     if (isManualImage) {
+      // Start with any precomputed/safe images we already had
       candidates = [
         (currentFoodItem as any)?.imageUrl,
         (currentFoodItem as any)?.thumbnailUrl,
         (currentFoodItem as any)?.photoUrl,
       ].filter(Boolean) as string[];
+      
+      // If the selected item came from OFF, build robust URLs
+      const provider = (currentFoodItem as any)?._provider;
+      const providerRef = (currentFoodItem as any)?.providerRef;
+      if (provider === 'off' && providerRef) {
+        candidates.push(...offImageCandidatesNew(providerRef, 'en')); // or current locale if you have it
+      }
     } else if (ENABLE_PHOTO_BARCODE_ENRICH) {
       // keep existing enrichment / barcode candidates
       const fromEnrichment = (currentFoodItem as any)?.image?.urls ?? [];
@@ -302,7 +310,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const resolvedSrc = imageUrls[Math.min(imgIdx, imageUrls.length - 1)] || PLACEHOLDER;
   useEffect(() => {
     const fromEnrichment = isManualImage ? [] : ((currentFoodItem as any)?.image?.urls ?? []);
-    const fromBarcodeGuess = isManualImage ? [] : ((currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : []);
+    const fromBarcodeGuess = isManualImage ? [] : ((currentFoodItem as any)?.providerRef ? offImageCandidatesNew((currentFoodItem as any).providerRef) : []);
     
     console.log('[IMG][CARD][BIND]', {
       providerRef: (currentFoodItem as any)?.providerRef,
