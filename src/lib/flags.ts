@@ -67,7 +67,7 @@ export const ENABLE_DEBOUNCED_SEARCH =
   (import.meta.env.VITE_ENABLE_DEBOUNCED_SEARCH ?? '1') === '1'; // default ON
 
 export const EDGE_MULTI_QUERY = 
-  (import.meta.env.VITE_EDGE_MULTI_QUERY ?? '1') === '1'; // default ON
+  (import.meta.env.VITE_EDGE_MULTI_QUERY ?? '0') === '1'; // default OFF
 
 export const IMAGE_PROXY_OFF = 
   (import.meta.env.VITE_IMAGE_PROXY_OFF ?? '1') === '1'; // default ON

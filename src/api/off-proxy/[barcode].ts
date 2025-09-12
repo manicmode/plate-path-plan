@@ -1,171 +1,135 @@
-// API route for proxying OpenFoodFacts requests to avoid CORS issues
-// Works with both Next.js and Vite dev server
+// OFF proxy to avoid CORS issues when fetching from OpenFoodFacts
+import { chunkBarcode, offImageCandidates } from '@/lib/offImages';
 
+// Types for cross-platform compatibility
 interface Request {
   url: string;
   method: string;
-  headers: Record<string, string>;
 }
 
 interface Response {
+  json(): any;
   status: number;
-  headers: Record<string, string>;
-  json: () => Promise<any>;
-  text: () => Promise<string>;
+  ok: boolean;
 }
 
-// Universal handler that works in both environments
+// Universal handler that works with both Next.js and Vite
 async function handleOffProxyRequest(req: Request): Promise<any> {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  };
-
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return {
+    return new Response(null, {
       status: 200,
-      headers: corsHeaders,
-      body: null
-    };
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Accept',
+      },
+    });
   }
 
   try {
     // Extract barcode from URL
     const url = new URL(req.url);
-    const segments = url.pathname.split('/');
-    const barcode = segments[segments.length - 1];
-    
-    if (!barcode || barcode === '[barcode]') {
-      return {
+    const pathSegments = url.pathname.split('/');
+    const barcode = pathSegments[pathSegments.length - 1];
+
+    if (!barcode || !/^\d+$/.test(barcode)) {
+      return new Response(JSON.stringify({ error: 'Invalid barcode' }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Missing barcode parameter' })
-      };
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
     }
 
-    console.log('[OFF-PROXY] Fetching data for barcode:', barcode);
-    
-    // Fetch from OpenFoodFacts with proper headers
+    console.log('[OFF_PROXY] Fetching barcode:', barcode);
+
+    // Fetch from OpenFoodFacts with proper User-Agent
     const offResponse = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`, {
-      headers: { 
-        'User-Agent': 'plate-path-plan/1.0 (https://lovable.dev)',
-        'Accept': 'application/json'
+      headers: {
+        'User-Agent': 'NutritionApp/1.0 (contact@example.com)',
       },
     });
-    
+
     if (!offResponse.ok) {
-      console.log('[OFF-PROXY] OFF API error:', offResponse.status);
-      return {
-        status: 200,
-        headers: { 
-          ...corsHeaders, 
+      console.warn('[OFF_PROXY] OFF API error:', offResponse.status);
+      return new Response(JSON.stringify({ 
+        error: 'OFF API error', 
+        status: offResponse.status,
+        product: null,
+        images: offImageCandidates(barcode)
+      }), {
+        status: offResponse.status,
+        headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=300'
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, max-age=300',
         },
-        body: JSON.stringify({ 
-          ok: false, 
-          product: { images: [] },
-          error: `OFF API returned ${offResponse.status}`
-        })
-      };
+      });
     }
 
     const data = await offResponse.json();
-    
-    // Generate image candidate URLs
-    const generateImageCandidates = (barcode: string): string[] => {
-      const padded = barcode.padStart(13, '0');
-      const path = padded.replace(/(\d{3})(?=\d)/g, '$1/');
-      const baseUrl = `https://images.openfoodfacts.org/images/products/${path}`;
-      
-      return [
-        `${baseUrl}/front_en.400.jpg`,
-        `${baseUrl}/front.400.jpg`, 
-        `${baseUrl}/front_en.200.jpg`,
-        `${baseUrl}/front.200.jpg`,
-        // Include original URLs as fallbacks
-        data?.product?.image_front_small_url,
-        data?.product?.image_front_url,
-        data?.product?.image_url,
-        data?.product?.selected_images?.front?.display?.en,
-      ].filter(Boolean);
-    };
+    const product = data?.product;
 
-    const imageCandidates = generateImageCandidates(barcode);
-    
-    console.log('[OFF-PROXY] Generated', imageCandidates.length, 'image candidates');
-    
-    return {
+    // Generate image candidates
+    const imageCandidates = offImageCandidates(barcode);
+
+    // Add official image URLs from OFF response if available
+    const officialImages = [];
+    if (product?.image_front_small_url) officialImages.push(product.image_front_small_url);
+    if (product?.image_front_url) officialImages.push(product.image_front_url);
+    if (product?.image_url) officialImages.push(product.image_url);
+
+    // Combine official and generated candidates
+    const allImages = [...officialImages, ...imageCandidates];
+
+    return new Response(JSON.stringify({
+      product: data?.product || null,
+      images: allImages,
+      nutrition: product ? {
+        energy: product.nutriments?.['energy-kcal_100g'],
+        protein: product.nutriments?.['proteins_100g'],
+        carbs: product.nutriments?.['carbohydrates_100g'],
+        fat: product.nutriments?.['fat_100g'],
+        fiber: product.nutriments?.['fiber_100g'],
+        sugar: product.nutriments?.['sugars_100g'],
+        sodium: product.nutriments?.['sodium_100g'],
+      } : null
+    }), {
       status: 200,
-      headers: { 
-        ...corsHeaders, 
+      headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400'
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=3600',
       },
-      body: JSON.stringify({ 
-        ok: true, 
-        product: {
-          ...data?.product,
-          images: imageCandidates
-        }
-      })
-    };
-    
+    });
+
   } catch (error) {
-    console.error('[OFF-PROXY] Error:', error);
-    
-    return {
+    console.error('[OFF_PROXY] Error:', error);
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }), {
       status: 500,
-      headers: { 
-        ...corsHeaders, 
+      headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=60'
+        'Access-Control-Allow-Origin': '*',
       },
-      body: JSON.stringify({ 
-        ok: false, 
-        product: { images: [] },
-        error: error.message 
-      })
-    };
+    });
   }
 }
 
-// Export for different environments
-export async function GET(request: Request) {
-  const result = await handleOffProxyRequest(request);
-  return new Response(result.body, {
-    status: result.status,
-    headers: result.headers
-  });
-}
+// Export for Next.js/Vite compatibility
+export const GET = handleOffProxyRequest;
+export const OPTIONS = handleOffProxyRequest;
 
-export async function OPTIONS(request: Request) {
-  const result = await handleOffProxyRequest(request);
-  return new Response(result.body, {
-    status: result.status,
-    headers: result.headers
-  });
-}
-
-// Default export for compatibility
+// Default export for older compatibility
 export default async function handler(req: any, res: any) {
-  const result = await handleOffProxyRequest({
-    url: `${req.url}`,
-    method: req.method,
-    headers: req.headers
-  });
+  const request = { url: req.url, method: req.method };
+  const response = await handleOffProxyRequest(request);
   
-  Object.entries(result.headers).forEach(([key, value]) => {
-    res.setHeader(key, value);
-  });
-  
-  res.status(result.status);
-  
-  if (result.body) {
-    res.send(result.body);
-  } else {
-    res.end();
-  }
+  // Convert Response to res object for older handlers
+  const data = await response.json();
+  res.status(response.status).json(data);
 }
