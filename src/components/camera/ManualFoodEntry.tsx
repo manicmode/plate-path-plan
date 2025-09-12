@@ -590,25 +590,18 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         console.info('[MANUAL][GUARD]', { disabled: true, isSearching: true, reason: 'searching' });
         return;
       }
-    if (!selectedCandidate) {
-      console.info('[MANUAL][GUARD]', { disabled: true, isSearching: false, reason: 'no selection' });
-      console.log('[MANUAL][ADD_BUTTON]', { enabled: false, reason: 'no candidate selected' });
-      toast.warning('Pick an item from the list first.');
-      return;
-    }
+      if (!selectedCandidate) {
+        console.info('[MANUAL][GUARD]', { disabled: true, isSearching: false, reason: 'no selection' });
+        toast.error('Pick an item first.');
+        return;
+      }
     }
 
     console.info('[MANUAL][GUARD]', { disabled: false, isSearching: false, reason: 'ok' });
-    console.log('[MANUAL][ADD_BUTTON]', { enabled: true, reason: 'candidate selected' });
 
     // Route directly to confirmation for manual single-select (no review modal)
     if (selectedCandidate) {
       console.info('[CONFIRM][OPEN]', { source: 'manual', labelKind: labelFromFlags(selectedCandidate.flags) });
-      console.log('[MANUAL][SELECT]', { 
-        candidateName: selectedCandidate.name, 
-        isGeneric: selectedCandidate.name?.includes('(generic)'), 
-        classId: selectedCandidate.classId 
-      });
       
       // Calculate portion scaling
       const portionScale = amountEaten[0] / 100;
@@ -639,17 +632,87 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       return;
     }
 
-    // BLOCKED: Legacy fallback path removed to prevent echo cards
-    console.log('[MANUAL][FREE_TEXT_PAYLOAD]', { 
-      titleUsed: foodName, 
-      query: foodName, 
-      defaultServingG: portionAmount,
-      blocked: true 
-    });
+    // Legacy fallback for when no candidate is selected (should not happen)
+    searchLockedRef.current = true;
     
-    // This should never happen since canAdd guards against !selectedCandidate
-    toast.warning('Please select an item from the search results first.');
-    return;
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchGenRef.current++;
+    setState('loading');
+    
+    try {
+      const portionScale = amountEaten[0] / 100;
+      const portionOverrideGrams = portionAmount;
+
+      logTelemetry('SUBMIT', {
+        portion: portionAmount,
+        unit: portionUnit,
+        slider: amountEaten[0]
+      });
+
+      const { items } = await submitTextLookup(foodName.trim(), {
+        source: 'manual',
+        portionOverrideGrams
+      });
+
+      if (!items || items.length === 0) {
+        setState('error');
+        searchLockedRef.current = false;
+        toast.error('No nutrition data found. Try a different name or spelling.');
+        return;
+      }
+
+      const scaledItems = items.map((item: any) => ({
+        ...item,
+        servingGrams: Math.round((item.servingGrams || portionAmount) * portionScale),
+        calories: Math.round(item.calories * portionScale),
+        protein_g: Math.round(item.protein_g * portionScale * 10) / 10,
+        carbs_g: Math.round(item.carbs_g * portionScale * 10) / 10,
+        fat_g: Math.round(item.fat_g * portionScale * 10) / 10,
+        fiber_g: Math.round((item.fiber_g || 2) * portionScale * 10) / 10,
+        sugar_g: Math.round((item.sugar_g || 3) * portionScale * 10) / 10,
+        source: 'manual',
+        mealType,
+        notes: notes.trim() || undefined
+      }));
+
+      confetti({
+        particleCount: 12,
+        spread: 45,
+        origin: { y: 0.7 },
+        colors: ['#10b981', '#34d399', '#6ee7b7']
+      });
+
+      toast.success(
+        <div className="flex items-center gap-2">
+          <Check className="h-4 w-4 text-emerald-500" />
+          <span>Added <strong>{foodName}</strong> • {scaledItems[0].calories} cal</span>
+        </div>
+      );
+
+      if (onResults) {
+        const enrichedItem = enriched;
+        console.log("[CONFIRM][ENRICHED]", {
+          name: enrichedItem?.name,
+          source: enrichedItem?.source,
+          confidence: enrichedItem?.confidence,
+          ingLen: enrichedItem?.ingredients?.length ?? 0,
+          perServingG: enrichedItem?.perServing?.serving_grams,
+        });
+        
+        onResults(scaledItems);
+      }
+
+      handleClose();
+
+    } catch (error) {
+      setState('error');
+      searchLockedRef.current = false;
+      logTelemetry('ERROR', { message: (error as Error).message });
+      toast.error('Failed to add food. Please try again.');
+    }
   };
 
   // Handle modal close
@@ -732,15 +795,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             
             manualFlow.setState(s => ({ ...s, uiCommitted: true }));
             
-            // Ensure ingredients pass through properly
-            const payload = {
-              ...finalData,
-              ingredientsList: finalData.ingredientsList || [],
-              ingredientsText: finalData.ingredientsText || (finalData.ingredientsList?.join(', ') || ''),
-            };
-            
-            // Hand off to parent
-            onResults?.([payload]);
+            // Hand off to parent (keep as-is)
+            onResults?.([finalData]);
             
             // CRITICAL: Close manual entry and reset for next open
             onClose?.();
@@ -888,10 +944,9 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                     onSelect={handleCandidateSelect}
                   />
                   {manualFlow.selectedCandidate && !manualFlow.enrichmentReady && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg z-10">
-                      <div className="bg-white/90 rounded-lg p-4 flex items-center gap-3">
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        <span className="text-sm font-medium">Preparing portion options…</span>
+                    <div className="absolute inset-0 bg-black/40 grid place-items-center rounded-lg">
+                      <div className="bg-white/95 rounded-md px-3 py-2 text-sm">
+                        Loading nutrition details…
                       </div>
                     </div>
                   )}
