@@ -88,13 +88,7 @@ export async function enrichCandidate(candidate: any) {
         enriched.ingredientsText = ingredientsText;
         enriched.ingredientsList = ingredientsList.length ? ingredientsList : normalizeIngredients(ingredientsText);
         enriched.hasIngredients = true;
-        enriched.enrichmentSource = source === 'off' ? 'label' : source;
-        
-        // When we successfully attach a label (OFF or barcode/providerRef match), flip isGeneric
-        if (enriched.brandName || enriched.barcode || enriched.providerRef || source === 'off') {
-          enriched.isGeneric = false;
-          enriched.enrichmentSource = 'label';
-        }
+        enriched.enrichmentSource = source;
         
         // Ingredients pipeline logging
         console.log('[ING][SET]', {
@@ -143,27 +137,9 @@ export async function enrichCandidate(candidate: any) {
     }
   }
 
-  // For candidates with classId but no canonicalKey, try the canonical fetch path once  
-  if (candidate?.classId && !candidate?.canonicalKey && !enriched.hasIngredients) {
-    try {
-      const canonical = await fetchCanonicalNutrition(candidate.classId);
-      if (canonical) {
-        enriched.enrichmentSource = 'provider';
-      }
-    } catch (error) {
-      console.warn('[ENRICH][CANONICAL_CLASSID_FALLBACK][ERROR]', error);
-    }
-  }
-
   // Always return normalized fields
   enriched.ingredientsText = enriched.ingredientsText || "";
   enriched.ingredientsList = Array.isArray(enriched.ingredientsList) ? enriched.ingredientsList : [];
-
-  // If no ingredients available after all attempts, set flags
-  if (!enriched.hasIngredients) {
-    enriched.ingredientsUnavailable = true;
-    enriched.hasIngredients = false;
-  }
 
   console.log('[ENRICH][DONE]', { 
     hasIngredients: !!enriched?.ingredientsList?.length || !!enriched?.ingredientsText, 

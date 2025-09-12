@@ -559,23 +559,27 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
   const isTextItem = (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech';
   
-  // Compute display badge from the FINAL item, not the original candidate  
+  // Compute display badge from the FINAL item, not the original candidate
   const badge = useMemo(() => {
+    const sourceFlags = (currentFoodItem as any)?.selectionFlags || currentFoodItem?.flags;
+    const isGeneric = (currentFoodItem as any)?.isGeneric;
+    const provider = (currentFoodItem as any)?.provider;
+    const barcode = (currentFoodItem as any)?.providerRef || (currentFoodItem as any)?.barcode;
+    const brandName = (currentFoodItem as any)?.brandName || (currentFoodItem as any)?.brand;
     const enrichmentSource = (currentFoodItem as any)?.enrichmentSource;
-    const brandEvidence = Boolean(
-      (currentFoodItem as any)?.barcode || 
-      (currentFoodItem as any)?.providerRef || 
-      (currentFoodItem as any)?.brandName ||
-      (currentFoodItem as any)?.brand
-    );
-    const labelEvidence = enrichmentSource === 'off' || enrichmentSource === 'label';
     
-    const isBrand = brandEvidence || labelEvidence;
-    const isGeneric = (currentFoodItem as any)?.isGeneric || (currentFoodItem as any)?.provider === 'generic';
+    // Badge truth: item is branded if it has real brand evidence
+    const isBrand = !!(barcode || brandName || enrichmentSource === 'off' || enrichmentSource === 'label');
     
-    const showChip = isBrand ? 'Brand' : (isGeneric ? 'Generic' : 'Generic');
+    if (isBrand) return 'Brand';
+    if (isGeneric === true || provider === 'generic') return 'Generic';
     
-    return showChip;
+    // Use flags as fallback, but ensure brand takes priority over generic
+    const fromFlags = labelFromFlags(sourceFlags);
+    if (fromFlags === 'Brand') return 'Brand';
+    
+    // Default to 'Item' for ambiguous cases
+    return fromFlags || 'Item';
   }, [currentFoodItem]);
   
   // Badge logging for debugging
@@ -1290,62 +1294,77 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Honor forceConfirm - cannot be overridden by downstream logic
   const dialogOpen = forceConfirm === true || isOpen;
 
-  // Add CONFIRM BIND log - log what we receive and scaled nutrition
-  const enrichmentSource = (currentFoodItem as any)?.enrichmentSource;
-  const brandEvidence = Boolean(
-    (currentFoodItem as any)?.barcode || 
-    (currentFoodItem as any)?.providerRef || 
-    (currentFoodItem as any)?.brandName ||
-    (currentFoodItem as any)?.brand
-  );
-  const labelEvidence = enrichmentSource === 'off' || enrichmentSource === 'label';
-  const isBrand = brandEvidence || labelEvidence;
-  const showChip = isBrand ? 'brand' : 'generic';
+  // Add CONFIRM BIND log - log what we receive
+  const isGeneric = (currentFoodItem as any)?.isGeneric;
+  const provider = (currentFoodItem as any)?.provider;
+  const chip = (isGeneric === true || provider === 'generic') ? 'generic' : 'brand';
+  const basis = isPerGramBasis ? 'per-gram' : 'per-100g';
+  const servingGrams = actualServingG;
+  const ingredientsLength = ingredientsList.length;
   
   console.log('[CONFIRM][BIND]', { 
-    name: currentFoodItem?.name,
-    chip: showChip, 
-    servingG: actualServingG, 
-    source: (currentFoodItem as any)?.enrichmentSource || currentFoodItem?.source
+    chip, 
+    basis, 
+    servingG: servingGrams, 
+    ingredientsLength,
+    isGeneric,
+    provider,
+    sourceFlags: (currentFoodItem as any)?.selectionFlags || currentFoodItem?.flags
   });
   
-  // Also add slider change logging with comprehensive nutrition scaling info
+  // Also add slider change logging
   useEffect(() => {
-    const per100 = ensurePer100(currentFoodItem);
-    const perGramData = per100 ? {
-      calories: per100.calories / 100,
-      proteinG: per100.proteinG / 100, 
-      carbsG: per100.carbsG / 100,
-      fatG: per100.fatG / 100
-    } : null;
-    
     console.log('[CONFIRM][SCALING]', {
-      basisChosen: per100 ? 'per-100g' : 'unknown',
+      basisChosen: isPerGramBasis ? 'per-gram' : 'per-100g',
       baseServingG: actualServingG,
       uiServingLabel: servingLabel,
       sliderG: actualServingG,
       sourcePaths: {
-        perGram: !!currentFoodItem?.perGram,
-        basePer100: !!currentFoodItem?.basePer100,
-        perPortion: !!(currentFoodItem as any)?.portionGrams
+        perGram: !!basisPerGram,
+        basePer100: !!(currentFoodItem as any)?.basePer100,
+        perPortion: !!(currentFoodItem as any)?.basePerPortion
       },
       inputs: {
         perServingMacros: (currentFoodItem as any)?.label?.macrosPerServing,
         servingSizeG: (currentFoodItem as any)?.label?.servingSizeG,
-        basePer100: currentFoodItem?.basePer100,
-        perGram: currentFoodItem?.perGram
+        basePer100: (currentFoodItem as any)?.basePer100,
+        perGram: basisPerGram
       },
-      outputs: { 
-        kcal: adjustedFood.calories, 
-        proteinG: adjustedFood.protein, 
-        carbsG: adjustedFood.carbs, 
-        fatG: adjustedFood.fat 
-      }
+      outputs: { kcal: headerKcal, proteinG, carbsG, fatG },
+      scaleMult,
+      dataSource: dataSource || 'unknown',
+      trigger: 'slider_change'
     });
-  }, [portionPercentage, currentFoodItem, actualServingG, servingLabel, adjustedFood]);
+  }, [portionPercentage[0], isPerGramBasis, actualServingG, servingLabel, basisPerGram, headerKcal, proteinG, carbsG, fatG, scaleMult, dataSource]);
 
-  // Render in-dialog placeholder if missing data to prevent flash
-  const showPlaceholder = !currentFoodItem && dialogOpen;
+  // Show loading state during transition in multi-item flow
+  if (!currentFoodItem && dialogOpen) {
+    return (
+      <Dialog open={dialogOpen} onOpenChange={totalItems && totalItems > 1 ? undefined : onClose}>
+        <AccessibleDialogContent 
+          className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden"
+          title="Loading next item"
+          description="Please wait while the next food item is being loaded."
+        >
+          <div className="p-6 flex items-center justify-center min-h-[200px]">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 dark:bg-emerald-900/20 rounded-full mb-4">
+                <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400">
+                Loading next item...
+              </p>
+              {totalItems > 1 && (
+                <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                  Item {((currentIndex ?? 0) + 1)} of {totalItems}
+                </p>
+              )}
+            </div>
+          </div>
+        </AccessibleDialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <>
@@ -1373,24 +1392,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         >
           <VisuallyHidden><DialogTitle>Confirm Food Log</DialogTitle></VisuallyHidden>
           <div className="p-6">
-            {/* Placeholder to prevent flash when currentFoodItem is missing */}
-            {showPlaceholder ? (
-              <div style={{ minHeight: 280 }} className="flex items-center justify-center">
-                <div className="text-center space-y-3">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 dark:bg-emerald-900/20 rounded-full">
-                    <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                  <p className="text-gray-600 dark:text-gray-400">Loading next item...</p>
-                  {totalItems > 1 && (
-                    <p className="text-sm text-gray-500 dark:text-gray-500">
-                      Item {((currentIndex ?? 0) + 1)} of {totalItems}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ) : (
-            /* Manual Entry Enrichment Loading */
-            (isManual && !readyForManual) ? (
+            {/* Manual Entry Enrichment Loading */}
+            {(isManual && !readyForManual) ? (
               <div className="space-y-4">
                 <div className="animate-pulse space-y-3">
                   <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
@@ -2022,7 +2025,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                     )}
                   </Button>
                  </>
-                )}
+               )}
             </div>
             </>
             )}
