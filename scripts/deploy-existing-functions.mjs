@@ -1,84 +1,53 @@
 #!/usr/bin/env node
-
-import { readdir, stat } from 'fs/promises';
+import { execSync } from 'child_process';
+import { existsSync, readdirSync } from 'fs';
 import { join } from 'path';
-import { spawn } from 'child_process';
 
 const FUNCTIONS_DIR = 'supabase/functions';
 
-async function deployFunction(functionName) {
-  return new Promise((resolve) => {
-    console.log(`📦 Deploying function: ${functionName}`);
-    
-    const child = spawn('npx', ['supabase', 'functions', 'deploy', functionName], {
-      stdio: 'inherit',
-      shell: true
-    });
-
-    child.on('close', (code) => {
-      if (code === 0) {
-        console.log(`✅ Successfully deployed: ${functionName}`);
-      } else {
-        console.log(`❌ Failed to deploy: ${functionName} (exit code: ${code})`);
-      }
-      resolve();
-    });
-
-    child.on('error', (error) => {
-      console.log(`❌ Error deploying: ${functionName} - ${error.message}`);
-      resolve();
-    });
-  });
+function hasEntrypoint(name) {
+  return existsSync(join(FUNCTIONS_DIR, name, 'index.ts'));
 }
 
-async function getFunctionDirectories() {
-  try {
-    const entries = await readdir(FUNCTIONS_DIR);
-    const functionDirs = [];
+function shouldSkip(name) {
+  // never try to deploy examples/samples/templates
+  return /example|sample|template|README/i.test(name);
+}
 
-    for (const entry of entries) {
-      const fullPath = join(FUNCTIONS_DIR, entry);
-      const stats = await stat(fullPath);
-      
-      if (stats.isDirectory()) {
-        const indexPath = join(fullPath, 'index.ts');
-        try {
-          await stat(indexPath);
-          functionDirs.push(entry);
-        } catch {
-          console.log(`⚠️  Skipping ${entry}: no index.ts found`);
-        }
-      }
+function main() {
+  if (!existsSync(FUNCTIONS_DIR)) {
+    console.error(`❌ Functions directory not found: ${FUNCTIONS_DIR}`);
+    process.exit(1);
+  }
+
+  const dirs = readdirSync(FUNCTIONS_DIR, { withFileTypes: true })
+    .filter(d => d.isDirectory())
+    .map(d => d.name);
+
+  const candidates = dirs
+    .filter(name => !shouldSkip(name))
+    .filter(hasEntrypoint);
+
+  const skipped = dirs.filter(name => shouldSkip(name) || !hasEntrypoint(name));
+
+  console.log(`📦 Found ${dirs.length} function folders`);
+  console.log(`✅ Will deploy (${candidates.length}): ${candidates.join(', ') || '—'}`);
+  if (skipped.length) {
+    console.log(`⏭️  Skipping (${skipped.length}): ${skipped.join(', ')}`);
+  }
+
+  for (const name of candidates) {
+    try {
+      console.log(`⏳ Deploying ${name}...`);
+      execSync(`npx supabase functions deploy ${name}`, { stdio: 'inherit' });
+      console.log(`✅ ${name} deployed`);
+    } catch (error) {
+      console.error(`❌ ${name} failed: ${error?.message || error}`);
+      // continue with the rest
     }
-
-    return functionDirs;
-  } catch (error) {
-    console.error(`Error reading functions directory: ${error.message}`);
-    return [];
   }
+
+  console.log('🎉 Done');
 }
 
-async function main() {
-  console.log('🚀 Starting Supabase function deployment...');
-  
-  const functionDirs = await getFunctionDirectories();
-  
-  if (functionDirs.length === 0) {
-    console.log('No functions found to deploy');
-    return;
-  }
-
-  console.log(`Found ${functionDirs.length} functions to deploy:`, functionDirs);
-
-  // Deploy functions sequentially to avoid overwhelming the system
-  for (const functionName of functionDirs) {
-    await deployFunction(functionName);
-  }
-
-  console.log('🏁 Deployment process completed');
-}
-
-main().catch((error) => {
-  console.error('Deployment script failed:', error);
-  process.exit(1);
-});
+main();
