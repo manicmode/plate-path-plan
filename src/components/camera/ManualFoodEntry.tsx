@@ -24,7 +24,7 @@ import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
 import { useManualFlowStatus } from '@/hooks/useManualFlowStatus';
 import { enrichCandidate } from '@/utils/enrichCandidate';
 import { ManualPortionDialog } from './ManualPortionDialog';
-import { HandoffOverlay } from '@/components/common/HandoffOverlay';
+import MagicHandoffOverlay from '@/components/common/MagicHandoffOverlay';
 import { DataSourceChip } from '@/components/ui/data-source-chip';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import { sourceBadge } from '@/utils/helpers/sourceBadge';
@@ -803,7 +803,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
   return (
     <>
-      <HandoffOverlay active={handoff} />
+      <MagicHandoffOverlay active={handoff} />
       {showPortionDialog && (
         <ManualPortionDialog
           candidate={manualFlow.selectedCandidate}
