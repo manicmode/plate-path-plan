@@ -1687,19 +1687,30 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-              {hasImage ? (
-                <img
-                  src={displayImage}
-                  alt={(currentFoodItem as any)?.title ?? (currentFoodItem as any)?.name}
-                  className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/10"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="h-14 w-14 rounded-xl bg-white/5 grid place-items-center">
-                  <FallbackEmoji className="h-8 w-8" />
-                </div>
-              )}
+              <div className="h-14 w-14 rounded-xl overflow-hidden bg-zinc-800 flex items-center justify-center">
+                {displayImage ? (
+                  <img
+                    src={displayImage}
+                    alt={(currentFoodItem as any)?.name ?? 'Food'}
+                    width={56}
+                    height={56}
+                    loading="eager"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
+                    style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      // fallback to icon and log once
+                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                      console.warn('[CONFIRM][IMAGE][ERROR]', { url: displayImage });
+                    }}
+                    onLoad={() => console.log('[CONFIRM][IMAGE][OK]', { url: displayImage })}
+                  />
+                ) : null}
+                {!displayImage && (
+                  <FallbackEmoji className="h-6 w-6 opacity-80" />
+                )}
+              </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
