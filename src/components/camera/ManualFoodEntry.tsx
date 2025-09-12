@@ -24,6 +24,7 @@ import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
 import { useManualFlowStatus } from '@/hooks/useManualFlowStatus';
 import { enrichCandidate } from '@/utils/enrichCandidate';
 import { ManualPortionDialog } from './ManualPortionDialog';
+import { HandoffOverlay } from '@/components/common/HandoffOverlay';
 import { DataSourceChip } from '@/components/ui/data-source-chip';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import { sourceBadge } from '@/utils/helpers/sourceBadge';
@@ -142,6 +143,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [enriched, setEnriched] = useState<any>(null);
+  const [handoff, setHandoff] = useState(false);
   
   // Track loading & suggestion availability for button guarding
   const isSearching = state === 'searching';
@@ -496,6 +498,19 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       setFoodName('');
       setCandidates([]);
       setSelectedCandidate(null);
+      setHandoff(false); // Clear handoff overlay on close
+    }
+  }, [isOpen]);
+
+  // Handoff cleanup effect
+  useEffect(() => {
+    return () => setHandoff(false); // Cleanup on unmount
+  }, []);
+
+  // Disable handoff if modal closes unexpectedly
+  useEffect(() => {
+    if (!isOpen) {
+      setHandoff(false);
     }
   }, [isOpen]);
 
@@ -786,11 +801,14 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
   return (
     <>
+      <HandoffOverlay show={handoff} />
       {showPortionDialog && (
         <ManualPortionDialog
           candidate={manualFlow.selectedCandidate}
           enrichedData={manualFlow.portionDraft}
           onContinue={(finalData) => {
+            setHandoff(true); // Show handoff overlay immediately
+            
             console.log('[DIALOG][COMMIT]', { hasIngredients: !!finalData?.ingredientsList?.length });
             
             manualFlow.setState(s => ({ ...s, uiCommitted: true }));
@@ -801,6 +819,9 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             // CRITICAL: Close manual entry and reset for next open
             onClose?.();
             manualFlow.reset();
+            
+            // Failsafe: clear handoff after timeout if component doesn't unmount
+            setTimeout(() => setHandoff(false), 2000);
           }}
           onCancel={() => {
             manualFlow.reset();
