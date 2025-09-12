@@ -37,7 +37,6 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import confetti from 'canvas-confetti';
 import { labelFromFlags } from '@/lib/food/search/getFoodCandidates';
-import { trace, caloriesFromMacros } from '@/debug/traceFood';
 
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -192,26 +191,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [isConfirming, setIsConfirming] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [currentFoodItem, setCurrentFoodItem] = useState<FoodItem | null>(foodItem);
-  
-  // Add header calories trace
-  const headerCalories = (currentFoodItem?.calories && currentFoodItem.calories > 0)
-    ? currentFoodItem.calories
-    : caloriesFromMacros({
-        protein: currentFoodItem?.protein,
-        carbs: currentFoodItem?.carbs,
-        fat: currentFoodItem?.fat
-      }) ?? 0;
-  if (currentFoodItem) {
-    trace('CONFIRM:HEADER:CALS', {
-      raw: currentFoodItem?.calories,
-      fromMacros: caloriesFromMacros({
-        protein: currentFoodItem?.protein,
-        carbs: currentFoodItem?.carbs,
-        fat: currentFoodItem?.fat
-      }),
-      chosen: headerCalories
-    });
-  }
   const [isChecked, setIsChecked] = useState(false);
   const [showManualIngredientEntry, setShowManualIngredientEntry] = useState(false);
   const [manualIngredients, setManualIngredients] = useState('');
@@ -279,43 +258,24 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // 🧪 DEBUG INSTRUMENTATION
   const __IMG_DEBUG = false; // keep instrumentation off in UI
   
-  // Pick the best available direct image first
-  const directImg = useMemo(() => {
-    return currentFoodItem?.imageUrl ||
-      (currentFoodItem as any)?.image ||
-      (currentFoodItem as any)?.images?.[0] ||
-      (currentFoodItem as any)?.imageUrls?.[0] ||
-      undefined;
-  }, [currentFoodItem]);
-  
   // Collect URLs: from enrichment then fallback guesses
   const imageUrls: string[] = useMemo(() => {
-    const direct = directImg ? [directImg] : [];
     const a = (currentFoodItem as any)?.image?.urls ?? [];
     const b = (currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : [];
-    return Array.from(new Set([...direct, ...a, ...b].filter(Boolean)));
-  }, [directImg, (currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef]);
+    return Array.from(new Set([...a, ...b].filter(Boolean)));
+  }, [(currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef]);
 
   useEffect(() => setImgIdx(0), [imageUrls.join('|')]);
 
   const resolvedSrc = imageUrls[imgIdx] || '';
-  
-  // Log image binding with direct image priority
   useEffect(() => {
-    if (directImg) {
-      console.log('[CONFIRM][IMAGE]', { has: true, urls: 1, using: 'direct', url: directImg });
-    } else {
-      console.log('[CONFIRM][IMAGE]', { has: false, urls: 0 });
-    }
-    
     console.log('[IMG][CARD][BIND]', {
-      directImg,
       providerRef: (currentFoodItem as any)?.providerRef,
       fromEnrichment: (currentFoodItem as any)?.image?.urls ?? [],
       fromBarcodeGuess: (currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : [],
       using: resolvedSrc,
     });
-  }, [directImg, resolvedSrc, imageUrls, (currentFoodItem as any)?.providerRef]);
+  }, [resolvedSrc, imageUrls, (currentFoodItem as any)?.providerRef]);
 
 
   // Derive a stable ID from props (not from transient state)
@@ -740,33 +700,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     
     // Skip if we already have ingredients or marked unavailable
     if (hasItemIngredients || hasLazyIngredients || isUnavailable) return;
-    
-    // Apply whole food detection and clamping for detected items
-    function isWholeFoodName(n?: string) {
-      if (!n) return false;
-      n = n.toLowerCase().trim();
-      return ['salmon','atlantic salmon','asparagus','broccoli','spinach','avocado',
-              'egg','banana','apple','rice','chicken breast','steak','tuna','oats']
-             .some(k => n === k || n.startsWith(k));
-    }
-    
-    if (currentFoodItem?.id?.startsWith('detect-') && isWholeFoodName(currentFoodItem?.name)) {
-      console.log('[LAZY][ING] skipped: whole-food');
-      setLazyIngredients({
-        ingredientsList: [ (currentFoodItem.name || 'food').toLowerCase() ],
-        ingredientsText: (currentFoodItem.name || 'food').toLowerCase(),
-        hasIngredients: true,
-        ingredientsUnavailable: false,
-        isLoading: false
-      });
-      return;
-    }
-    
-    // Skip lazy ingredient fetch for items with disable flag
-    if ((currentFoodItem as any).__disableLazyIngredients) {
-      console.log('[LAZY][ING] skipped: disabled flag');
-      return;
-    }
     
     console.log('[LAZY][ING] Starting fetch for:', itemKey);
     
@@ -1768,51 +1701,19 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
               <div style={{position:'relative',height:64,width:64,borderRadius:14,overflow:'hidden',background:'rgba(0,0,0,.25)'}}>
-                {(() => {
-                  // Pick the best available local URL first
-                  const directImg =
-                    currentFoodItem?.imageUrl ||
-                    (currentFoodItem as any)?.image ||
-                    (currentFoodItem as any)?.images?.[0] ||
-                    (currentFoodItem as any)?.imageUrls?.[0] ||
-                    undefined;
-
-                  if (directImg) {
-                    // Tell the image binder we're done; no network lookup needed
-                    console.log('[CONFIRM][IMAGE]', { has: true, urls: 1, using: 'direct', url: directImg });
-
-                    return (
-                      <img
-                        src={directImg}
-                        alt=""
-                        aria-hidden="true"
-                        style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
-                        onLoad={() => console.log('[IMG][LOAD][DIRECT]', directImg)}
-                        onError={() => console.warn('[IMG][ERROR][DIRECT]', directImg)}
-                        referrerPolicy="no-referrer"
-                        loading="lazy"
-                      />
-                    );
-                  }
-
-                  // Fallback to existing remote lookup code path
-                  if (resolvedSrc) {
-                    return (
-                      <img
-                        src={resolvedSrc}
-                        alt=""
-                        aria-hidden="true"
-                        style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
-                        onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
-                        onError={() => { console.warn('[IMG][ERROR]', resolvedSrc); if (imgIdx < imageUrls.length-1) setImgIdx(i=>i+1); }}
-                        referrerPolicy="no-referrer"
-                        loading="eager"
-                      />
-                    );
-                  }
-
-                  return <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>;
-                })()}
+                {resolvedSrc && (
+                  <img
+                    src={resolvedSrc}
+                    alt=""
+                    aria-hidden="true"
+                    style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
+                    onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
+                    onError={() => { console.warn('[IMG][ERROR]', resolvedSrc); if (imgIdx < imageUrls.length-1) setImgIdx(i=>i+1); }}
+                    referrerPolicy="no-referrer"
+                    loading="eager"
+                  />
+                )}
+                {!resolvedSrc && <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
@@ -1825,7 +1726,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   )}
                 </div>
                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {Number.isFinite(headerCalories) ? headerCalories : 0} calories
+                    {Number.isFinite(headerKcal) ? headerKcal : 0} calories
                   </p>
                  {((currentFoodItem as any)?.enrichmentSource === "ESTIMATED" || 
                    ((currentFoodItem as any)?.enrichmentConfidence && (currentFoodItem as any).enrichmentConfidence < 0.7)) && (

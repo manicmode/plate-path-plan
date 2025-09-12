@@ -8,11 +8,9 @@ export const useXPSystem = () => {
   // Try to get level check function, but don't require it
   let triggerLevelCheck: (() => Promise<void>) | undefined;
   try {
-    // Dynamic import to avoid hard dependency
-    // const { useLevelUp } = await import('@/contexts/LevelUpContext');
-    // const levelUpContext = useLevelUp();
-    // triggerLevelCheck = levelUpContext.triggerLevelCheck;
-    triggerLevelCheck = undefined; // Disabled for now to avoid require() usage
+    const { useLevelUp } = require('@/contexts/LevelUpContext');
+    const levelUpContext = useLevelUp();
+    triggerLevelCheck = levelUpContext.triggerLevelCheck;
   } catch {
     // LevelUpProvider not available, continue without level checking
     triggerLevelCheck = undefined;

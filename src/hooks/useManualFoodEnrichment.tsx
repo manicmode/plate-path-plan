@@ -6,50 +6,6 @@ import { enrichFromGeneric } from '@/lib/food/generic';
 import { normalizeIngredients } from '@/utils/normalizeIngredients';
 import { fetchCanonicalNutrition } from '@/lib/food/fetchCanonicalNutrition';
 
-// Whole food fallback nutrition data per 100g
-const WHOLE_FOOD_PER100: Record<string, {p:number;c:number;f:number;k:number}> = {
-  salmon:     { p: 20.0, c: 0.0, f: 13.0, k: 208 },
-  "atlantic salmon": { p: 20.4, c: 0.0, f: 13.4, k: 208 },
-  asparagus:  { p: 2.2,  c: 3.9, f: 0.1,  k: 20  },
-  broccoli:   { p: 2.8,  c: 7.0, f: 0.4,  k: 35  },
-  spinach:    { p: 2.9,  c: 3.6, f: 0.4,  k: 23  },
-  avocado:    { p: 2.0,  c: 9.0, f: 15.0, k: 160 },
-  egg:        { p: 12.6, c: 1.1, f: 10.6, k: 155 },
-  banana:     { p: 1.1,  c: 23.0,f: 0.3,  k: 89  },
-  apple:      { p: 0.3,  c: 14.0,f: 0.2,  k: 52  },
-  rice:       { p: 2.7,  c: 28.0,f: 0.3,  k: 130 },
-  "chicken breast": { p: 23.0, c: 0.0, f: 3.6, k: 165 },
-  steak:      { p: 26.0, c: 0.0, f: 15.0, k: 250 },
-  tuna:       { p: 30.0, c: 0.0, f: 1.0,  k: 132 },
-  oats:       { p: 10.8, c: 66.3,f: 6.9,  k: 389 }
-};
-
-function fillMacrosFromPer100(name: string, grams: number) {
-  const key = name.toLowerCase().trim();
-  const hit = Object.keys(WHOLE_FOOD_PER100).find(k => key === k || key.startsWith(k));
-  if (!hit) return null;
-  const ref = WHOLE_FOOD_PER100[hit];
-  const scale = (grams || 100) / 100;
-  return {
-    macros: {
-      protein: +(ref.p * scale).toFixed(2),
-      carbs:   +(ref.c * scale).toFixed(2),
-      fat:     +(ref.f * scale).toFixed(2),
-    },
-    calories: Math.round(ref.k * scale),
-    macrosMode: 'PER_100G' as const,
-  };
-}
-
-function isWholeFoodName(name?: string) {
-  if (!name) return false;
-  const n = name.toLowerCase().trim();
-  return [
-    'salmon','atlantic salmon','asparagus','broccoli','spinach',
-    'avocado','egg','banana','apple','rice','chicken breast','steak','tuna','oats'
-  ].some(k => n === k || n.startsWith(k));
-}
-
 interface Nutrients {
   calories: number;
   protein: number;
@@ -93,31 +49,11 @@ export function useManualFoodEnrichment() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const enrich = useCallback(async (query: string, locale: string = 'auto', selectedCandidate?: any, item?: any): Promise<EnrichedFood | null> => {
+  const enrich = useCallback(async (query: string, locale: string = 'auto', selectedCandidate?: any): Promise<EnrichedFood | null> => {
     if (!query?.trim()) {
       setError('Query is required');
       return null;
     }
-
-    // Check if this is a detected item needing nutrition hydration
-    const isDetect = (item?.id || '').startsWith('detect-');
-    const missingMacros =
-      !item?.macros ||
-      ((item.macros.protein ?? 0) === 0 &&
-       (item.macros.carbs ?? 0) === 0 &&
-       (item.macros.fat ?? 0) === 0);
-    const missingKcal = !item?.calories || item.calories === 0;
-    
-    // 🔓 force hydration for detect items with missing nutrition
-    const shouldHydrate = isDetect && (missingMacros || missingKcal);
-    
-    console.log('[ENRICH][DETECT_CHECK]', { 
-      isDetect, 
-      missingMacros, 
-      missingKcal, 
-      itemId: item?.id,
-      shouldHydrate: isDetect && (missingMacros || missingKcal)
-    });
 
     // PATCH: Handle generic candidates locally - preserve selection identity
     if (selectedCandidate?.flags?.generic === true) {
@@ -252,55 +188,6 @@ export function useManualFoodEnrichment() {
         return data;
       }
 
-      // Apply fallback nutrition for detected items if still empty
-      if ((missingMacros || missingKcal) && isDetect) {
-        const grams = item?.gramsPerServing ?? item?.servingGrams ?? 100;
-        
-        // Apply whole food overrides for detected items
-        if (isWholeFoodName(item?.name)) {
-          // single-ingredient truth  
-          (item as any).ingredients = [ (item!.name!).toLowerCase() ];
-          // prevent the lazy ingredient adapter from replacing with 58-line labels
-          (item as any).__disableLazyIngredients = true;
-        }
-        
-        const filled = fillMacrosFromPer100(item?.name || '', grams);
-        if (filled) {
-          console.log('[ENRICH][FALLBACK]', { name: item?.name, grams, filled });
-          
-          // help per-gram path in the card
-          (item as any).per100g = { 
-            protein: filled.macros.protein, 
-            carbs: filled.macros.carbs, 
-            fat: filled.macros.fat, 
-            kcal: Math.round(filled.macros.protein * 4 + filled.macros.carbs * 4 + filled.macros.fat * 9) 
-          };
-          
-          return {
-            name: item?.name || query,
-            aliases: [],
-            locale: locale || 'en',
-            ingredients: [{ name: (item?.name || query).toLowerCase() }],
-            ingredientsList: [(item?.name || query).toLowerCase()],
-            per100g: {
-              calories: Math.round(filled.macros.protein * 4 + filled.macros.carbs * 4 + filled.macros.fat * 9),
-              protein: filled.macros.protein,
-              carbs: filled.macros.carbs,
-              fat: filled.macros.fat,
-            },
-            perServing: {
-              serving_grams: grams,
-              calories: filled.calories,
-              protein: filled.macros.protein * (grams / 100),
-              carbs: filled.macros.carbs * (grams / 100),
-              fat: filled.macros.fat * (grams / 100),
-            },
-            source: "ESTIMATED",
-            confidence: 0.7
-          };
-        }
-      }
-
       return null;
 
     } catch (err: any) {
@@ -316,10 +203,9 @@ export function useManualFoodEnrichment() {
     query: string, 
     locale: string = 'auto',
     fallbackFn?: () => Promise<any>,
-    selectedCandidate?: any,
-    item?: any
+    selectedCandidate?: any
   ): Promise<{ enriched: EnrichedFood | null; fallback: any }> => {
-    const enriched = await enrich(query, locale, selectedCandidate, item);
+    const enriched = await enrich(query, locale, selectedCandidate);
     
     // If enrichment failed and we have a fallback, use it
     if (!enriched && fallbackFn) {

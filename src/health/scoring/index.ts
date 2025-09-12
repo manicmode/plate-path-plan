@@ -3,7 +3,7 @@
  * Main entry point for all health score calculations
  */
 
-import { scoreFoodV2, type ScoreContext, type Nutrients, getExpectedScoreRange } from './scoreV2';
+import { scoreFoodV2, type ScoreContext, type Nutrients } from './scoreV2';
 
 export type { ScoreContext, Nutrients } from './scoreV2';
 export { getExpectedScoreRange } from './scoreV2';
@@ -79,7 +79,7 @@ export function validateScore(foodName: string, actualScore: number): { valid: b
     return { valid: true, expected: { min: 0, max: 10 } }; // Skip validation for V1
   }
   
-  // Note: getExpectedScoreRange is already imported at the top
+  const { getExpectedScoreRange } = require('./scoreV2');
   const expected = getExpectedScoreRange(foodName);
   
   // Convert to 0-10 scale for comparison

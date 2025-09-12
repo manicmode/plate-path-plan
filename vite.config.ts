@@ -19,8 +19,4 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  test: {
-    include: ['src/__tests__/**/*.test.ts', 'src/__tests__/**/*.test.tsx'],
-    environment: 'jsdom'
-  }
 }));

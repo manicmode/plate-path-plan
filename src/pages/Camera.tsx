@@ -35,7 +35,6 @@ import { cameraPool } from '@/lib/camera/cameraPool';
 import { installCameraDev } from '@/lib/camera/cameraDev';
 import '@/lib/camera/cameraVerify';
 import { withSafeCancel } from '@/lib/ui/withSafeCancel';
-import { trace, caloriesFromMacros } from '@/debug/traceFood';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
@@ -362,9 +361,6 @@ const CameraPage = () => {
     };
     const normalizedItems = items.map(ensureIngredients);
     
-    // Add photo normalization trace
-    trace('PHOTO:NORM:PRE', Array.isArray(normalizedItems) ? normalizedItems[0] : normalizedItems);
-    
     // Preserve isGeneric and provider from items - don't default to true
     normalizedItems.forEach(item => {
       // Preserve existing isGeneric property
@@ -409,14 +405,6 @@ const CameraPage = () => {
           await ensureNutritionHydrated(item, controller.signal);
           
           if (controller.signal.aborted) return;
-          
-          // Add photo confirm trace
-          trace('PHOTO:CONFIRM:ITEM', item);
-          trace('PHOTO:CONFIRM:CALS', {
-            raw: item?.calories,
-            fromMacros: caloriesFromMacros(item?.macros),
-            gramsPerServing: item?.servingGrams || item?.gramsPerServing
-          });
           
           setRecognizedFoods([item]);
           setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : 'photo');
@@ -1970,9 +1958,6 @@ console.log('Global search enabled:', enableGlobalSearch);
             servingGrams: mapped?.servingGrams,
           });
           
-          // Add barcode confirm trace
-          trace('BARCODE:CONFIRM:ITEM', recognizedFood);
-          
         // when opening Confirm from barcode, also make sure no camera modals stay/come up:
         setShowConfirmation(true);
         setShowLogBarcodeScanner(false);
@@ -2822,9 +2807,7 @@ console.log('Global search enabled:', enableGlobalSearch);
             sodium: Math.round((grams / 100) * 300),
             confidence: 85,
             serving: item.portion,
-            _provider: 'ensemble-v1',
-            id: item.id, // Preserve detect- ID
-            imageUrl: selectedImage || undefined // Attach photo
+            _provider: 'ensemble-v1'
           });
         } else {
           // Create a placeholder entry for items that couldn't be mapped
@@ -2840,9 +2823,7 @@ console.log('Global search enabled:', enableGlobalSearch);
             sodium: Math.round(grams * 3),
             confidence: 50, // Low confidence for unmapped items
             serving: item.portion,
-            _provider: 'ensemble-v1-unmapped',
-            id: item.id, // Preserve detect- ID
-            imageUrl: selectedImage || undefined // Attach photo
+            _provider: 'ensemble-v1-unmapped'
           });
         }
       }
@@ -3051,18 +3032,6 @@ console.log('Global search enabled:', enableGlobalSearch);
     };
 
     console.log(`Processing item ${index + 1} of ${items.length}:`, foodItem);
-    
-    // Add photo confirm trace for multi-item flow
-    trace('PHOTO:CONFIRM:ITEM', foodItem);
-    trace('PHOTO:CONFIRM:CALS', {
-      raw: foodItem?.calories,
-      fromMacros: caloriesFromMacros({ 
-        protein: foodItem?.protein,
-        carbs: foodItem?.carbs,
-        fat: foodItem?.fat 
-      }),
-      gramsPerServing: (foodItem as any)?.servingGrams || (foodItem as any)?.gramsPerServing
-    });
     
     // Set food data first, then show confirmation to prevent empty flash
     setRecognizedFoods([foodItem]);
