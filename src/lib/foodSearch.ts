@@ -88,9 +88,9 @@ export function mapOFFItem(item: any): CanonicalSearchResult {
  */
 export async function searchFoodByName(
   query: string, 
-  options: { timeout?: number; maxResults?: number; finalItemsLength?: number; bypassGuard?: boolean } = {}
+  options: { signal?: AbortSignal; timeoutMs?: number; maxResults?: number; finalItemsLength?: number; bypassGuard?: boolean } = {}
 ): Promise<CanonicalSearchResult[]> {
-  const { timeout = 6000, maxResults = 50, finalItemsLength = 0, bypassGuard = false } = options;
+  const { signal, timeoutMs = 900, maxResults = 50, finalItemsLength = 0, bypassGuard = false } = options;
   
   if (!isFeatureEnabled('fallback_text_enabled')) {
     console.log('🚫 [FoodSearch] Text fallback disabled');
@@ -132,9 +132,15 @@ export async function searchFoodByName(
     console.log('📡 [FoodSearch] Calling food-search edge function...');
     const t0 = performance.now();
     
-    // Create timeout controller for 10s timeout
-    const timeoutController = new AbortController();
-    const timeoutId = setTimeout(() => timeoutController.abort(), 10000);
+    // Create timeout controller with custom timeout
+    const ctrl = new AbortController();
+    const link = signal;
+    if (link) link.addEventListener('abort', () => ctrl.abort(), { once: true });
+
+    const t = setTimeout(() => {
+      ctrl.abort();
+      console.log('[FoodSearch][timeout]', { q: query, timeoutMs });
+    }, timeoutMs);
     
     // Flag: VITE_CHEAP_FIRST_SUGGESTIONS - use cheap sources for suggestions
     const cheapFirstEnabled = (import.meta.env.VITE_CHEAP_FIRST_SUGGESTIONS ?? '1') === '1';
@@ -143,70 +149,57 @@ export async function searchFoodByName(
     
     console.log(`[SUGGEST][CHEAP_FIRST] count=${actualMaxResults}, sources=[${sources.join(',')}]`);
 
-    const { data, error } = await supabase.functions.invoke('food-search', {
-      body: { 
-        query: normalized,  // Use normalized query instead of trimmedQuery
-        maxResults: actualMaxResults,
-        sources
-      }
-    });
-    
-    const dt = Math.round(performance.now() - t0);
-    clearTimeout(timeoutId);
-    
-    if (error) {
-      console.error('❌ [FoodSearch] Edge function error:', error);
+    try {
+      const { data, error } = await supabase.functions.invoke('food-search', {
+        body: { 
+          query: normalized,  // Use normalized query instead of trimmedQuery
+          maxResults: actualMaxResults,
+          sources
+        }
+      });
       
-      // Create custom error with HTTP status code for better UX
-      const customError = new Error(error.message || 'Search function failed') as Error & { code?: string };
-      
-      // Map common error patterns to status codes
-      if (error.message?.includes('404') || error.message?.includes('not found')) {
-        customError.code = '404';
-      } else if (error.message?.includes('401') || error.message?.includes('unauthorized')) {
-        customError.code = '401';
-      } else if (error.message?.includes('500') || error.message?.includes('internal')) {
-        customError.code = '500';
-      }
-      
-      throw customError;
+      const dt = Math.round(performance.now() - t0);
+      return processSearchResults(data, error, dt, normalized, vaultHits, trimmedQuery, maxResults);
+    } catch (e) {
+      console.log('[FoodSearch][aborted-or-failed]', { q: query, err: String(e) });
+      return [];                   // never throw upstream
+    } finally {
+      clearTimeout(t);
     }
-    
-    if (!data?.results) {
-      console.log('⚠️ [FoodSearch] No results returned');
-      return [];
-    }
-    
-    const results = data.results as CanonicalSearchResult[];
-    console.log(`✅ [FoodSearch] Found ${results.length} results`);
-    
-    // Merge vault hits with cheap results if we have vault hits
-    let mergedResults = results;
-    if (vaultHits.length > 0) {
-      const vaultAsCanonical = vaultHits.map(transformVaultToCanonical);
-      mergedResults = deduplicateResults([...vaultAsCanonical, ...results]);
-    }
-    
-    // Apply enhanced ranking with word matching and category boosts
-    const ranked = reorderForQuery(mergedResults, trimmedQuery);
-    
-    // Log pipeline summary
-    console.log(`[SUGGEST][PIPE] vault=${vaultHits.length} cheap=${results.length} final=${ranked.length}`);
-    
-    // Temporary proof logs (remove after verification)
-    console.warn('[FOOD-SEARCH][rankedTop3]', ranked.slice(0,3).map(x => ({name:x.name, barcode:x.barcode, cats:x.categories_tags})));
-    
-    return ranked.slice(0, maxResults);
-      
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.log('⏰ [FoodSearch] Search timeout');
-      throw new Error('Search timed out - please try a shorter query');
-    }
-    
-    console.error('💥 [FoodSearch] Search failed:', error);
-    throw error;
+    console.error('[FoodSearch] Outer catch:', error);
+    return [];
   }
+}
+
+function processSearchResults(data: any, error: any, dt: number, normalized: string, vaultHits: any[], trimmedQuery: string, maxResults: number): CanonicalSearchResult[] {
+  if (error) {
+    console.error('❌ [FoodSearch] Edge function error:', error);
+    return [];
+  }
+  
+  if (!data?.results) {
+    console.log('⚠️ [FoodSearch] No results returned');
+    return [];
+  }
+  
+  const searchResults = data.results as CanonicalSearchResult[];
+  console.log(`✅ [FoodSearch] Found ${searchResults.length} results`);
+  
+  // Merge vault hits with cheap results if we have vault hits
+  let mergedResults = searchResults;
+  if (vaultHits.length > 0) {
+    const vaultAsCanonical = vaultHits.map(transformVaultToCanonical);
+    mergedResults = deduplicateResults([...vaultAsCanonical, ...searchResults]);
+  }
+  
+  // Apply enhanced ranking with word matching and category boosts
+  const ranked = reorderForQuery(mergedResults, trimmedQuery);
+  
+  // Log pipeline summary
+  console.log(`[SUGGEST][PIPE] vault=${vaultHits.length} cheap=${searchResults.length} final=${ranked.length}`);
+  
+  return ranked.slice(0, maxResults);
 }
 
 function escapeRe(s: string) {

@@ -7,6 +7,7 @@ interface DataSourceChipProps {
   source: string; // Accept any string to handle wider variety of sources
   confidence?: number;
   className?: string;
+  brandOverride?: boolean; // optional hygiene override
 }
 
 // Normalize source string to handle case variations and aliases

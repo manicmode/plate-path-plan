@@ -13,32 +13,27 @@ interface Props {
 
 export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCancel }: Props) {
   // ✅ Always call hooks first
-  const [portionGrams, setPortionGrams] = useState(() => 
-    Math.max(1, Math.round(enrichedData?.servingGrams ?? candidate?.servingGrams ?? 100))
-  );
+  const [portionGrams, setPortionGrams] = useState(() => enrichedData?.servingGrams || 100);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
   const stepperIntervalRef = useRef<NodeJS.Timeout>();
-  const defaultGrams = enrichedData?.servingGrams || candidate?.servingGrams || 100;
-
+  
+  const ready = Boolean(candidate && enrichedData);
+  
   // Close safely if data is missing, but after hooks are set up
   useEffect(() => {
-    if (!candidate || !enrichedData) {
-      console.error('[DIALOG][ERROR] Missing data, closing dialog', { 
-        candidate: !!candidate, 
-        enrichedData: !!enrichedData 
-      });
-      onCancel?.();
+    if (!ready) {
+      const id = requestAnimationFrame(() => onCancel?.());
+      return () => cancelAnimationFrame(id);
     }
-  }, [candidate, enrichedData, onCancel]);
-
-  // Render nothing if we lack data, but AFTER hooks were called
-  if (!candidate || !enrichedData) {
-    return null;
-  }
+  }, [ready, onCancel]);
+  
+  const defaultGrams = enrichedData?.servingGrams || 100;
 
   // Log when dialog actually mounts
   console.log('[PORTION][OPEN]', { name: candidate?.name, defaultG: defaultGrams });
+
+  // Render nothing if we lack data, but AFTER hooks were called
+  if (!ready) return null;
 
   // Helper functions
   const setGrams = (newGrams: number) => {
@@ -81,16 +76,21 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
       keys: Object.keys(enrichedData || {})
     });
     
-    onContinue({
-      ...enrichedData,
-      // Ensure ingredients pass through:
-      ingredientsList: enrichedData?.ingredientsList ?? [],
-      ingredientsText:
-        enrichedData?.ingredientsText ??
-        (Array.isArray(enrichedData?.ingredientsList)
-          ? enrichedData.ingredientsList.join(', ')
-          : ''),
-      hasIngredients:
+      onContinue({
+        ...enrichedData,
+        // Forward image fields
+        imageUrl: enrichedData?.imageUrl,
+        imageThumbUrl: enrichedData?.imageThumbUrl,
+        imageAttribution: enrichedData?.imageAttribution,
+        imageUrlKind: enrichedData?.imageUrlKind,
+        // Ensure ingredients pass through:
+        ingredientsList: enrichedData?.ingredientsList ?? [],
+        ingredientsText:
+          enrichedData?.ingredientsText ??
+          (Array.isArray(enrichedData?.ingredientsList)
+            ? enrichedData.ingredientsList.join(', ')
+            : ''),
+        hasIngredients:
         !!(enrichedData?.ingredientsText ||
            (enrichedData?.ingredientsList && enrichedData.ingredientsList.length)),
       servingGrams: portionGrams,

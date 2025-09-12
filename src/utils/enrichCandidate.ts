@@ -1,6 +1,28 @@
 import { fetchCanonicalNutrition } from '@/lib/food/fetchCanonicalNutrition';
 import { normalizeIngredients } from '@/utils/normalizeIngredients';
 import { nvLabelLookup } from '@/lib/nutritionVault';
+import { isEan, offImageForBarcode, offImageCandidates } from '@/lib/imageHelpers';
+
+async function fetchOffImageUrls(barcode: string): Promise<string[]> {
+  try {
+    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    if (!res.ok) return [];
+    const j = await res.json();
+    const p = j?.product ?? {};
+    const urls = [
+      p?.image_front_small_url,
+      p?.image_front_url,
+      p?.image_url,
+      // selected_images (language-specific)
+      p?.selected_images?.front?.display?.en,
+      p?.selected_images?.front?.display?.en_GB,
+      p?.selected_images?.front?.display?.en_US,
+    ].filter(Boolean);
+    return Array.from(new Set(urls));
+  } catch {
+    return [];
+  }
+}
 
 export async function enrichCandidate(candidate: any) {
   console.log('[ENRICH][START]', { 
@@ -88,13 +110,54 @@ export async function enrichCandidate(candidate: any) {
         enriched.ingredientsText = ingredientsText;
         enriched.ingredientsList = ingredientsList.length ? ingredientsList : normalizeIngredients(ingredientsText);
         enriched.hasIngredients = true;
-        enriched.enrichmentSource = source === 'off' ? 'label' : source;
-        
-        // When we successfully attach a label (OFF or barcode/providerRef match), flip isGeneric
-        if (enriched.brandName || enriched.barcode || enriched.providerRef || source === 'off') {
-          enriched.isGeneric = false;
-          enriched.enrichmentSource = 'label';
+        enriched.enrichmentSource = source;
+
+        // Map image fields after label success
+        const label = { ingredientsText, ingredientsList, source } as any;
+        const img =
+          label.imageUrl ? { 
+            imageUrl: label.imageUrl, 
+            imageThumbUrl: label.imageThumbUrl, 
+            imageAttribution: label.imageAttribution ?? 'openfoodfacts', 
+            imageUrlKind: 'provider' 
+          }
+          : (candidate.providerRef && isEan(candidate.providerRef))
+            ? { ...offImageForBarcode(candidate.providerRef), imageAttribution: 'openfoodfacts', imageUrlKind: 'provider' }
+            : undefined;
+
+        if (img?.imageUrl) {
+          enriched.imageUrl = img.imageUrl;
+          enriched.imageThumbUrl = img.imageThumbUrl ?? img.imageUrl;
+          enriched.imageAttribution = img.imageAttribution;
+          enriched.imageUrlKind = 'provider';
         }
+
+        // Fetch and attach authoritative OFF image URLs when we have a barcode and label/off source
+        if (enriched.providerRef && (enriched.enrichmentSource === 'off' || enriched.enrichmentSource === 'label' || source === 'off')) {
+          const official = await fetchOffImageUrls(enriched.providerRef);
+          // keep existing synthesized guesses as *fallbacks*
+          const synthetic = enriched.image?.urls ?? [];
+          const urls = Array.from(new Set([...official, ...synthetic]));
+
+          if (urls.length) {
+            enriched.image = {
+              ...(enriched.image ?? {}),
+              kind: 'provider',
+              attribution: 'OpenFoodFacts',
+              urls,
+              // optional for backward-compat
+              url: enriched.image?.url ?? urls[0],
+            };
+            console.log('[ENRICH][IMG][OFF]', { count: urls.length, first: urls[0] });
+          }
+        }
+        
+        // Add image diagnostics logging
+        console.log('[ENRICH][IMG]', { 
+          has: !!enriched.imageUrl, 
+          kind: enriched.imageUrlKind, 
+          src: enriched.imageAttribution 
+        });
         
         // Ingredients pipeline logging
         console.log('[ING][SET]', {
@@ -143,26 +206,18 @@ export async function enrichCandidate(candidate: any) {
     }
   }
 
-  // For candidates with classId but no canonicalKey, try the canonical fetch path once  
-  if (candidate?.classId && !candidate?.canonicalKey && !enriched.hasIngredients) {
-    try {
-      const canonical = await fetchCanonicalNutrition(candidate.classId);
-      if (canonical) {
-        enriched.enrichmentSource = 'provider';
-      }
-    } catch (error) {
-      console.warn('[ENRICH][CANONICAL_CLASSID_FALLBACK][ERROR]', error);
-    }
-  }
-
   // Always return normalized fields
   enriched.ingredientsText = enriched.ingredientsText || "";
   enriched.ingredientsList = Array.isArray(enriched.ingredientsList) ? enriched.ingredientsList : [];
 
-  // If no ingredients available after all attempts, set flags
-  if (!enriched.hasIngredients) {
-    enriched.ingredientsUnavailable = true;
-    enriched.hasIngredients = false;
+  // Flip to branded when evidence is present
+  const brandEvidence =
+    Boolean(enriched.brandName || (enriched as any).barcode || enriched.providerRef) ||
+    enriched.enrichmentSource === 'off' ||
+    enriched.enrichmentSource === 'label';
+
+  if (brandEvidence) {
+    enriched.isGeneric = false;
   }
 
   console.log('[ENRICH][DONE]', { 

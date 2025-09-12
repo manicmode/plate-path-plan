@@ -349,6 +349,11 @@ const CameraPage = () => {
       const text = it?.ingredientsText ?? (list.length ? list.join(', ') : '');
       return {
         ...it,
+        // Preserve image fields
+        imageUrl: it?.imageUrl,
+        imageThumbUrl: it?.imageThumbUrl,
+        imageAttribution: it?.imageAttribution,
+        imageUrlKind: it?.imageUrlKind,
         ingredientsList: list,
         ingredientsText: text,
         hasIngredients: Boolean(text || (list && list.length)),
@@ -3922,11 +3927,12 @@ console.log('Global search enabled:', enableGlobalSearch);
         });
         return null;
       })()}
-      <FoodConfirmationCard
-        mode={inputSource === 'manual' || inputSource === 'voice' ? 'manual' : 'standard'}
-        isOpen={showConfirmation}
-        isProcessingFood={isProcessingFood}
-        forceConfirm={forceConfirm}
+      {showConfirmation && recognizedFoods[0] && (
+        <FoodConfirmationCard
+          mode={inputSource === 'manual' || inputSource === 'voice' ? 'manual' : 'standard'}
+          isOpen={showConfirmation}
+          isProcessingFood={isProcessingFood}
+          forceConfirm={forceConfirm}
         onClose={() => {
           setShowConfirmation(false);
           setForceConfirm(false); // Reset forceConfirm flag
@@ -3964,6 +3970,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         skipNutritionGuard={inputSource === 'barcode'}
         bypassHydration={bypassHydration}
       />
+      )}
 
       {/* Summary Review Panel - Only for food detection, never for barcodes */}
       {inputSource !== 'barcode' && (
