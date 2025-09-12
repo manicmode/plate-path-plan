@@ -271,6 +271,16 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
     });
   }
 
+  // Adapter summary (always once per item)
+  try {
+    console.log('[ADAPTER]', {
+      src: raw.source || 'unknown',
+      id: resolvedId,
+      pgKeys: Object.keys(perGram || {}).length,
+      basis,
+    });
+  } catch {}
+
   // Use store data if available and SST enabled
   const healthScore = storeAnalysis?.healthScore ?? pick<number>(
     raw.analysis?.healthScore, 

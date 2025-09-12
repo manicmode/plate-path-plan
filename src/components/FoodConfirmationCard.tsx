@@ -673,6 +673,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const fiberG = finalNutrition.fiber;
   const sugarG = finalNutrition.sugar;
 
+  // Diagnostics for macros mode and grams
+  try {
+    const computedMacrosMode = hasPerGram(currentFoodItem) ? 'perGram' : (per100 ? 'per100' : (((currentFoodItem as any)?.label?.servingSizeG ? 'perServing' : 'NONE')));
+    console.log('[CARD]', { id: (currentFoodItem as any)?.id || currentFoodItem?.name, macrosMode: computedMacrosMode, grams: actualServingG });
+  } catch {}
+
   const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
   const isTextItem = (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech';
   

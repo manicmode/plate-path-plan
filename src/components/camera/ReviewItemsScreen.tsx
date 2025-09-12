@@ -190,6 +190,11 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           const enrichedInput = { ...m, nutrients: r.nutrients, serving: r.serving };
           const merged = toLegacyFoodItem(enrichedInput, i, true);
           
+          // Per-item diagnostics
+          try {
+            console.log('[HYDRATE][WRITE]', { id: canonicalId, pgKeys: Object.keys(merged.nutrition?.perGram || {}).length });
+          } catch {}
+          
           // Write to store using canonical ID - preserve ingredients from merged data
           storeUpdates[canonicalId] = {
             perGram: merged.nutrition?.perGram || {},
@@ -200,7 +205,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
             updatedAt: Date.now(),
           };
           
-          return { ...merged, id: canonicalId, __hydrated: true };
+          return { ...merged, id: canonicalId, __hydrated: true, __rev: (m as any)?.__rev ? (m as any).__rev + 1 : 1 };
         });
         
         if (Object.keys(storeUpdates).length) {
