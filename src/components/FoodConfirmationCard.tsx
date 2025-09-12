@@ -1549,7 +1549,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 <TabsTrigger value="nutrition" className="rounded-lg">Nutrition</TabsTrigger>
                 <TabsTrigger value="health" className="rounded-lg">Health Check</TabsTrigger>
                 <TabsTrigger value="ingredients" className="rounded-lg">
-                  Ingredients {hasIngredients && `(${ingredientsList.length})`}
+                  Ingredients
                 </TabsTrigger>
               </TabsList>
               
