@@ -1836,9 +1836,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             {/* Tabs for Nutrition and Health */}
             <Tabs defaultValue="nutrition" className="mb-6">
               <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-700 rounded-xl">
-                <TabsTrigger value="nutrition" className="rounded-lg">Nutrition</TabsTrigger>
-                <TabsTrigger value="health" className="rounded-lg">Health Check</TabsTrigger>
-                <TabsTrigger value="ingredients" className="rounded-lg">
+                <TabsTrigger value="nutrition" className="rounded-xl">Nutrition</TabsTrigger>
+                <TabsTrigger value="health" className="rounded-xl">Health Check</TabsTrigger>
+                <TabsTrigger value="ingredients" className="rounded-xl">
                   Ingredients
                 </TabsTrigger>
               </TabsList>
