@@ -15,7 +15,6 @@ import {
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 import { submitTextLookup } from '@/lib/food/textLookup';
-import { foodSearch, type FoodSearchMode } from '@/features/food/search/foodSearch';
 import { CandidateList } from '@/components/food/CandidateList';
 import { PortionUnitField } from '@/components/food/PortionUnitField';
 import { FOOD_TEXT_DEBUG } from '@/lib/flags';
@@ -249,15 +248,12 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
   };
 
-  // Debounced search with new typing vs submit modes
+  // Debounced search with abort controller
   const abortRef = useRef<AbortController | null>(null);
-  const submitAbortRef = useRef<AbortController | null>(null);
-  
-  const debouncedSearch = useCallback(async (query: string, mode: FoodSearchMode = 'type') => {
+  const debouncedSearch = useCallback(async (query: string) => {
     // Abort previous search
-    const currentAbortRef = mode === 'submit' ? submitAbortRef : abortRef;
-    if (currentAbortRef.current) {
-      currentAbortRef.current.abort();
+    if (abortRef.current) {
+      abortRef.current.abort();
     }
     
     if (!query.trim()) {
@@ -273,37 +269,129 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
 
     const ctrl = new AbortController();
-    currentAbortRef.current = ctrl;
+    abortRef.current = ctrl;
     const currentGen = ++searchGenRef.current;
+    setState('searching');
     
-    // Only show spinner for submit mode, not while typing
-    if (mode === 'submit') {
-      setState('searching');
-    }
+    // Flag: VITE_DISABLE_ENRICHMENT_ON_TYPE - avoid enrichment while typing
+    const disableEnrichmentOnType = (import.meta.env.VITE_DISABLE_ENRICHMENT_ON_TYPE ?? '1') === '1';
 
     try {
-      // Use new food search with mode gating
-      const results = await foodSearch(query, {
-        source: 'manual',
-        mode,
-        signal: ctrl.signal
-      });
-      
-      // Check if this search result is still valid
-      if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
-        return; // Ignore stale results
+      if (disableEnrichmentOnType) {
+        // Use cheap-first suggestions only, no enrichment while typing
+        console.log('[SUGGEST][CHEAP_FIRST] Using fast lookup without enrichment');
+        const fallback = await submitTextLookup(query, { source: 'manual' });
+        
+        // Check if this search result is still valid
+        if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
+          return; // Ignore stale results
+        }
+
+        // Process fallback results only
+        if (fallback) {
+          // Log what arrives from textLookup
+          console.log('[TRACE] UI receive', {
+            hasItems: Array.isArray(fallback?.items),
+            hasRankedAll: Array.isArray(fallback?.rankedAll),
+            itemsCount: fallback?.items?.length,
+            rankedAllCount: fallback?.rankedAll?.length,
+            used: fallback?.used || 'unknown'
+          });
+
+          // Use full set in this precedence:
+          const items: any[] =
+            fallback?.rankedAll ||
+            fallback?.results ||
+            fallback?.items ||
+            fallback?.rankedTop3 ||
+            [];
+
+          const count = Math.min(items.length, 8); // Limit to 5-8 suggestions
+          console.log(`[SUGGEST][CHEAP_FIRST] count=${count}, sources=[fdc,off]`);
+          logTelemetry('FALLBACK', { itemCount: count, used: fallback?.used });
+          setEnriched(null);
+
+          // Process candidates from fallback (V3 returns full list now)
+          const candidates = processCandidates(items, query);
+          setCandidates(candidates);
+          setState(candidates.length > 0 ? 'candidates' : 'idle');
+          return;
+        }
+      } else {
+        // Legacy enrichment path (when flag is off)
+        const { enriched, fallback } = await enrichWithFallback(
+          query,
+          'auto',
+          () => submitTextLookup(query, { source: 'manual' }),
+          selectedCandidate
+        );
+        
+        // Check if this search result is still valid
+        if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
+          return; // Ignore stale results
+        }
+
+        if (enriched) {
+          // Use enriched data
+          logTelemetry('ENRICHED', { source: enriched.source, confidence: enriched.confidence });
+          setEnriched(enriched);
+          
+          // Convert to candidate format
+          const enrichedCandidate: LocalCandidate = {
+            id: 'enriched-primary',
+            name: sanitizeName(enriched.name),
+            isGeneric: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7,
+            portionHint: enriched.perServing ? `${enriched.perServing.serving_grams}g serving` : '100g',
+            defaultPortion: { 
+              amount: enriched.perServing?.serving_grams || 100, 
+              unit: 'g' 
+            },
+            provider: enriched.source === 'GENERIC' ? 'generic' : sourceBadge(enriched.source).label.toLowerCase(),
+            data: enrichedFoodToLogItem(enriched, 100),
+            // NEW: stable identity fields
+            flags: {
+              generic: enriched.source === 'ESTIMATED' || enriched.confidence < 0.7,
+              brand: false,
+              restaurant: false
+            }
+          };
+
+          setCandidates([enrichedCandidate]);
+          setState('candidates');
+          return;
+        }
+
+        // Fall back to existing lookup system
+        if (fallback) {
+          // Log what arrives from textLookup  
+          console.log('[TRACE] UI receive', {
+            hasItems: Array.isArray(fallback?.items),
+            hasRankedAll: Array.isArray(fallback?.rankedAll),
+            itemsCount: fallback?.items?.length,
+            rankedAllCount: fallback?.rankedAll?.length
+          });
+
+          // Use full set in this precedence:
+          const items: any[] =
+            fallback?.rankedAll ||
+            fallback?.results ||
+            fallback?.items ||
+            fallback?.rankedTop3 ||
+            [];
+
+          logTelemetry('FALLBACK', { itemCount: items.length });
+          setEnriched(null);
+          // Process candidates from fallback
+          const candidates = processCandidates(items, query);
+          setCandidates(candidates);
+          setState(candidates.length > 0 ? 'candidates' : 'idle');
+          return;
+        }
       }
 
-      console.log(`[MANUAL_SEARCH][${mode.toUpperCase()}]`, { 
-        query, 
-        resultCount: results.length,
-        mode 
-      });
-
-      // Process candidates from new food search
-      const candidates = processCandidatesFromFoodSearch(results, query);
-      setCandidates(candidates);
-      setState(candidates.length > 0 ? 'candidates' : 'idle');
+      // No results from either path
+      setCandidates([]);
+      setState('idle');
       setEnriched(null);
       
     } catch (error) {
@@ -314,13 +402,9 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       
       setState('error');
       logTelemetry('ERROR', { message: (error as Error).message });
-      
-      // Only show error toast for submit mode, not while typing
-      if (mode === 'submit') {
-        toast.error('Search failed. Please try again.');
-      }
+      toast.error('Search failed. Please try again.');
     }
-  }, []);
+  }, [enrichWithFallback]);
 
   // Cleanup abort controller on unmount
   useEffect(() => {
@@ -397,27 +481,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }));
   };
 
-  // Process candidates from new foodSearch system
-  const processCandidatesFromFoodSearch = (results: any[], query: string): LocalCandidate[] => {
-    console.log('[CANDIDATES][FOOD_SEARCH_PROCESS]', { resultCount: results.length });
-    
-    return results.map((result, index) => ({
-      id: result.id || `fs-${index}`,
-      name: sanitizeName(result.name),
-      isGeneric: result.isGeneric,
-      portionHint: result.portionHint,
-      defaultPortion: result.defaultPortion,
-      provider: result.provider,
-      imageUrl: result.imageUrl,
-      data: result.data,
-      providerRef: result.providerRef,
-      canonicalKey: result.canonicalKey,
-      brand: result.brand,
-      classId: result.classId,
-      flags: result.flags
-    }));
-  };
-
   // Reset on open/close without wiping input while open
   useEffect(() => {
     // On open (false -> true): reset flow once, do NOT clear input
@@ -451,17 +514,16 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
   }, [isOpen]);
 
-  // Handle input changes with debouncing (typing mode only)
+  // Handle input changes with debouncing
   useEffect(() => {
     if (!manualFlow.selectedCandidate && foodName.length > 2) {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
 
-      // Use longer debounce (250ms) for typing to reduce vault computation
       searchTimeoutRef.current = setTimeout(() => {
-        debouncedSearch(foodName, 'type');
-      }, 250);
+        debouncedSearch(foodName);
+      }, 200);
 
       return () => {
         if (searchTimeoutRef.current) {
@@ -702,7 +764,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }, 200);
   };
 
-  // Keyboard shortcuts - Enhanced with Enter for submit search
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
@@ -710,15 +772,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       if (e.key === 'Escape') {
         e.preventDefault();
         handleClose();
-      }
-
-      // Enter key triggers submit mode search (edge function call)
-      if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey) {
-        e.preventDefault();
-        if (foodName.trim() && state !== 'loading') {
-          // Trigger submit mode search instead of handleSubmit
-          debouncedSearch(foodName, 'submit');
-        }
       }
 
       if (e.key === 'Enter' && e.ctrlKey) {
@@ -731,7 +784,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, foodName, state, debouncedSearch]);
+  }, [isOpen, foodName, state]);
 
   // Focus input on open
   useEffect(() => {
@@ -875,7 +928,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
             {/* Helper text */}
             <p className="text-xs text-slate-400 mt-2 text-center">
-              Press Enter to search with edge • Ctrl+Enter to add • Esc to close
+              Press Enter to search • Esc to close
             </p>
           </div>
 
