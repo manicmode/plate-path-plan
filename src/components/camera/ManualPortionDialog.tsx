@@ -11,16 +11,16 @@ interface Props {
 }
 
 export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCancel }: Props) {
+  // Guard: this dialog should never open without both
+  if (!candidate || !enrichedData) {
+    console.error('[DIALOG][ERROR] Opened without data', { candidate: !!candidate, enrichedData: !!enrichedData });
+    onCancel?.();
+    return null;
+  }
+
   // All hooks declared unconditionally at top
   const [portionSize, setPortionSize] = useState(() => enrichedData?.servingGrams || 100);
   const [mealType, setMealType] = useState('lunch');
-
-  // Guard: this dialog should never open without both
-  if (!candidate || !enrichedData) {
-    console.error('[DIALOG][ERROR] Opened without data', { candidate: !!candidate, enriched: !!enrichedData });
-    onCancel();
-    return null;
-  }
 
   // Log when dialog actually mounts
   console.log('[PORTION][OPEN]', { name: candidate?.name });

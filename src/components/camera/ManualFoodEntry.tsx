@@ -478,6 +478,15 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }));
   };
 
+  // Reset on open to unblock search
+  useEffect(() => {
+    if (!isOpen) return;
+    manualFlow.reset();
+    setSelectedCandidate(null);
+    setFoodName('');
+    setCandidates([]);
+  }, [isOpen, manualFlow]);
+
   // Handle input changes with debouncing
   useEffect(() => {
     if (!manualFlow.selectedCandidate && foodName.length > 2) {
@@ -500,8 +509,9 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   // Calculate whether to show portion dialog (conditional JSX, not early return)
   const showPortionDialog =
     !!manualFlow.selectedCandidate &&
-    manualFlow.enrichmentReady &&
-    manualFlow.nutritionReady &&
+    !!manualFlow.enrichmentReady &&
+    !!manualFlow.nutritionReady &&
+    !!manualFlow.portionDraft &&
     !manualFlow.uiCommitted;
 
   // Handle candidate selection - start enrichment and show portion dialog
@@ -706,6 +716,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       clearTimeout(searchTimeoutRef.current);
     }
     
+    manualFlow.reset();
+    
     // Reset state after close animation
     setTimeout(() => {
       setState('idle');
@@ -768,12 +780,19 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           enrichedData={manualFlow.portionDraft}
           onContinue={(finalData) => {
             console.log('[DIALOG][COMMIT]', { hasIngredients: !!finalData?.ingredientsList?.length });
+            
             manualFlow.setState(s => ({ ...s, uiCommitted: true }));
-            onResults?.([finalData]); // downstream route handler receives enriched item
+            
+            // Hand off to parent (keep as-is)
+            onResults?.([finalData]);
+            
+            // CRITICAL: Close manual entry and reset for next open
+            onClose?.();
+            manualFlow.reset();
           }}
           onCancel={() => {
             manualFlow.reset();
-            onClose?.();
+            setSelectedCandidate(null);
           }}
         />
       )}
