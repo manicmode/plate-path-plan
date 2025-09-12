@@ -196,6 +196,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Helper to clamp values and avoid NaN
   const clamp0 = (n: any) => (Number.isFinite(+n) ? +n : 0);
 
+  // Helper for parsing numeric values
+  const num = (v: any) => {
+    const n = typeof v === 'string' ? parseFloat(v) : Number(v);
+    return Number.isFinite(n) ? n : undefined;
+  };
+
   // Fast rollback guard: scope new logic only to detected items
   const isDetect = (currentFoodItem?.id ?? '').startsWith('detect-');
   
@@ -207,51 +213,14 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   
   // Also compute perGramSum for compatibility
   const perGramSum = Object.values(currentFoodItem?.perGram || {}).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
-  
-  // Permanent fix 1: normalize to per-gram no matter the source
-  const currentGrams = clamp0(currentFoodItem?.portionGrams) || 100;
-  const portionPct = (portionPercentage[0] || 100) / 100;
-
-  // Try in order: explicit perGram → basePer100 → fallback
-  const normalizedPerGram = currentFoodItem?.perGram ?? 
-    ((currentFoodItem as any)?.basePer100 ? {
-      protein: +(currentFoodItem as any).basePer100.protein_g / 100,
-      carbs: +(currentFoodItem as any).basePer100.carbs_g / 100,
-      fat: +(currentFoodItem as any).basePer100.fat_g / 100,
-      calories: Number.isFinite(+(currentFoodItem as any).basePer100.calories) ? +(currentFoodItem as any).basePer100.calories / 100 : undefined,
-    } : undefined);
-
-  // Compute macros for the displayed portion (never show "per-gram" numbers in tiles)
-  const displayProteinG = normalizedPerGram ? clamp0(normalizedPerGram.protein) * currentGrams
-                           : clamp0(currentFoodItem?.protein) * portionPct;
-  const displayCarbsG = normalizedPerGram ? clamp0(normalizedPerGram.carbs) * currentGrams
-                         : clamp0(currentFoodItem?.carbs) * portionPct;
-  const displayFatG = normalizedPerGram ? clamp0(normalizedPerGram.fat) * currentGrams
-                       : clamp0(currentFoodItem?.fat) * portionPct;
-
-  // Permanent fix 2: kcal with robust fallbacks (calories must never be 0 when macros exist)
-  const headerCalories = normalizedPerGram?.calories
-    ? Math.round(normalizedPerGram.calories * currentGrams)
-    : Math.round(
-        (Number.isFinite(displayProteinG) ? displayProteinG * 4 : 0) +
-        (Number.isFinite(displayCarbsG) ? displayCarbsG * 4 : 0) +
-        (Number.isFinite(displayFatG) ? displayFatG * 9 : 0)
-      )
-    || clamp0(currentFoodItem?.calories) * portionPct
-    || clamp0(currentFoodItem?.calories);
 
   // Sanity check logs (high-signal debugging)
   console.debug('[CARD:DERIVED]', {
     id: currentFoodItem?.id, 
     name: currentFoodItem?.name, 
     basis,
-    grams: currentGrams,
     perGram: currentFoodItem?.perGram ?? null,
-    basePer100: (currentFoodItem as any)?.basePer100 ?? null,
-    displayProteinG, 
-    displayCarbsG, 
-    displayFatG, 
-    headerCalories
+    basePer100: (currentFoodItem as any)?.basePer100 ?? null
   });
 
   console.debug('[CARD:IMAGE]', { 
@@ -274,11 +243,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     trace('CONFIRM:HEADER:CALS', {
       basis,
       usePerGram,
-      grams: currentGrams,
-      displayProteinG,
-      displayCarbsG,
-      displayFatG,
-      headerCalories
+      id: currentFoodItem?.id
     });
   }
   const [isChecked, setIsChecked] = useState(false);
@@ -426,11 +391,59 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   );
 
   const useHydration = !bypassHydration;
-  // Check if nutrition is ready from various sources  
-  const perGramReady = usePerGram;
   
-  const isNutritionReady = perGramReady
-    || ((useHydration && !isBarcodeSource) ? usePerGram : true);
+  // Check per-gram readiness (detect-* items)
+  const pg = currentFoodItem?.perGram ?? {};
+  const perGramReady =
+    num(pg.calories) !== undefined ||
+    num(pg.protein)  !== undefined ||
+    num(pg.carbs)    !== undefined ||
+    num(pg.fat)      !== undefined;
+
+  // NEW: consider per-serving as a valid basis (manual/barcode items)
+  const ps = (currentFoodItem as any)?.nutrition?.perServing ?? (currentFoodItem as any)?.perServing ?? {};
+  const perServingReady =
+    num(ps.calories) !== undefined ||
+    num(ps.protein)  !== undefined ||
+    num(ps.carbs)    !== undefined ||
+    num(ps.fat)      !== undefined;
+
+  // Only block if **neither** basis is available
+  const shouldBlockNutrition = !(perGramReady || perServingReady);
+  
+  const isNutritionReady = !shouldBlockNutrition;
+  
+  // Permanent fix 1: normalize to per-gram no matter the source
+  const currentGrams = clamp0(currentFoodItem?.portionGrams) || 100;
+  const portionPct = (portionPercentage[0] || 100) / 100;
+
+  // Decide basis once
+  const basisChosen: 'per-100g' | 'per-serving' = perGramReady ? 'per-100g' : 'per-serving';
+
+  // Header kcal + macros source
+  const macrosSource = perGramReady ? currentFoodItem?.perGram : ((currentFoodItem as any)?.nutrition?.perServing ?? (currentFoodItem as any)?.perServing);
+
+  // If per-serving and calories missing, derive from macros
+  const kcalFromMacrosFn = (p?: number, c?: number, f?: number) =>
+    (num(p) ?? 0) * 4 + (num(c) ?? 0) * 4 + (num(f) ?? 0) * 9;
+
+  const headerKcalRaw =
+    num(macrosSource?.calories) ??
+    kcalFromMacrosFn(num(macrosSource?.protein), num(macrosSource?.carbs), num(macrosSource?.fat));
+
+  // Bind header calories
+  const headerCalories = Math.round(headerKcalRaw);
+
+  // Compute macros based on chosen basis
+  const displayProteinG = perGramReady 
+    ? clamp0(macrosSource?.protein) * currentGrams
+    : clamp0(macrosSource?.protein) * portionPct;
+  const displayCarbsG = perGramReady 
+    ? clamp0(macrosSource?.carbs) * currentGrams
+    : clamp0(macrosSource?.carbs) * portionPct;
+  const displayFatG = perGramReady 
+    ? clamp0(macrosSource?.fat) * currentGrams
+    : clamp0(macrosSource?.fat) * portionPct;
   
   // Check if this is a manual entry that needs enrichment
   const isManual = mode === 'manual' || foodItem?.selectionSource === 'manual';
@@ -553,8 +566,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         pgKeys 
       });
     } else if (!isNutritionReady && currentFoodItem && !bypassHydration) {
-      const reason = !perGramReady && perGramSum === 0 ? 'NO_PER_GRAM_KEYS' : 'UNKNOWN';
-      console.log('[NUTRITION][BLOCKED]', { reason });
+      console.log('[NUTRITION][BLOCKED]', { perGramReady, perServingReady, shouldBlockNutrition });
     }
   }, [isNutritionReady, perGramReady, perGramSum, currentFoodItem, bypassHydration]);
 
@@ -709,13 +721,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const currentServingG = actualServingG;
   
   let kcalFromPg = 0;
-  if (normalizedPerGram) {
-    const pgP = clamp0(normalizedPerGram.protein) * currentServingG;
-    const pgC = clamp0(normalizedPerGram.carbs) * currentServingG;
-    const pgF = clamp0(normalizedPerGram.fat) * currentServingG;
+  if (perGramReady && macrosSource) {
+    const pgP = clamp0(macrosSource.protein) * currentServingG;
+    const pgC = clamp0(macrosSource.carbs) * currentServingG;
+    const pgF = clamp0(macrosSource.fat) * currentServingG;
     
-    kcalFromPg = Number.isFinite(normalizedPerGram.calories)
-      ? Math.round(clamp0(normalizedPerGram.calories) * currentServingG)
+    kcalFromPg = Number.isFinite(macrosSource.calories)
+      ? Math.round(clamp0(macrosSource.calories) * currentServingG)
       : Math.round(pgP * 4 + pgC * 4 + pgF * 9);
   }
 
@@ -725,7 +737,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       ? (currentFoodItem as any).kcal
       : (Number.isFinite((currentFoodItem as any)?.calories) && (currentFoodItem as any).calories > 0)
         ? (currentFoodItem as any).calories
-        : (kcalFromPg > 0 ? kcalFromPg : kcalFromMacros(p, c, f, alc));
+        : (kcalFromPg > 0 ? kcalFromPg : Math.round(p * 4 + c * 4 + f * 9));
   
   const proteinG = finalNutrition.protein;
   const carbsG = finalNutrition.carbs;

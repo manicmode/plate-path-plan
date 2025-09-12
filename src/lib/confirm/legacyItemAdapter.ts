@@ -272,6 +272,11 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
   // Enhanced image URL mapping to carry photos through the adapter
   const candidates = [
     raw.selectedImage, raw.imageUrl, raw.image_url, raw.photoUrl, raw.thumbnailUrl,
+    // Open Food Facts image fallbacks
+    raw.image_front_url,
+    raw?.selected_images?.front?.display?.en,
+    raw?.selected_images?.front?.display?.en_small,
+    raw.image_small_url,
     ...(Array.isArray(raw.imageUrls) ? raw.imageUrls : []),
     ...(Array.isArray(raw.images) ? raw.images : []),        // many brand/manual items use this
     ...(Array.isArray(raw.photos) ? raw.photos : []),
@@ -285,17 +290,58 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
     ?? raw.meta?.dataSourceLabel
     ?? null;
 
-  // Build basePer100 for FoodConfirmationCard portion scaling
+  // Build basePer100 for FoodConfirmationCard portion scaling with robust Open Food Facts mapping
   let basePer100 = null;
   if (sourceData && divisor > 0) {
+    // Helper to extract calories, handling kJ conversion if needed
+    const extractCalories = (data: any) => {
+      return pick<number>(
+        data?.calories_100g,
+        data?.['energy-kcal_100g'],
+        data?.energy_kcal_100g,
+        data?.calories,
+        n?.calories
+      ) || 0;
+    };
+
+    // Helper to extract carbs with various naming conventions
+    const extractCarbs = (data: any) => {
+      return pick<number>(
+        data?.carbohydrates_100g,
+        data?.carbohydrates_g,
+        data?.carbs_100g,
+        data?.carbs,
+        data?.carbs_g,
+        n?.carbs,
+        n?.carbs_g
+      ) || 0;
+    };
+
+    // Helper to extract sodium, converting from salt if needed
+    const extractSodium = (data: any) => {
+      const directSodium = pick<number>(
+        data?.sodium_100g,
+        data?.sodium_mg,
+        data?.sodium,
+        n?.sodium,
+        n?.sodium_mg
+      );
+      
+      if (directSodium) return directSodium;
+      
+      // Convert salt to sodium (salt contains ~40% sodium)
+      const saltValue = pick<number>(data?.salt_100g, data?.salt_mg, data?.salt);
+      return saltValue ? saltValue * 400 : 0;
+    };
+
     basePer100 = {
-      calories: pick<number>(sourceData?.calories, n?.calories) || 0,
-      protein_g: pick<number>(sourceData?.protein, sourceData?.protein_g, n?.protein, n?.protein_g) || 0,
-      carbs_g: pick<number>(sourceData?.carbs, sourceData?.carbs_g, n?.carbs, n?.carbs_g) || 0,
-      fat_g: pick<number>(sourceData?.fat, sourceData?.fat_g, n?.fat, n?.fat_g) || 0,
-      fiber_g: pick<number>(sourceData?.fiber, sourceData?.fiber_g, n?.fiber, n?.fiber_g) || 0,
-      sugar_g: pick<number>(sourceData?.sugar, sourceData?.sugar_g, n?.sugar, n?.sugar_g) || 0,
-      sodium_mg: pick<number>(sourceData?.sodium, sourceData?.sodium_mg, n?.sodium, n?.sodium_mg) || 0,
+      calories: extractCalories(sourceData),
+      protein_g: pick<number>(sourceData?.proteins_100g, sourceData?.protein_100g, sourceData?.protein, sourceData?.protein_g, n?.protein, n?.protein_g) || 0,
+      carbs_g: extractCarbs(sourceData),
+      fat_g: pick<number>(sourceData?.fat_100g, sourceData?.fat, sourceData?.fat_g, n?.fat, n?.fat_g) || 0,
+      fiber_g: pick<number>(sourceData?.fiber_100g, sourceData?.fiber, sourceData?.fiber_g, n?.fiber, n?.fiber_g) || 0,
+      sugar_g: pick<number>(sourceData?.sugars_100g, sourceData?.sugar, sourceData?.sugar_g, n?.sugar, n?.sugar_g) || 0,
+      sodium_mg: extractSodium(sourceData),
     };
   }
 
