@@ -37,6 +37,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import confetti from 'canvas-confetti';
 import { labelFromFlags } from '@/lib/food/search/getFoodCandidates';
+import { trace, caloriesFromMacros } from '@/debug/traceFood';
 
 // Fallback emoji component
 const FallbackEmoji: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -193,7 +194,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [currentFoodItem, setCurrentFoodItem] = useState<FoodItem | null>(foodItem);
   
   // Add header calories trace
-  const { trace, caloriesFromMacros } = require('@/debug/traceFood');
   const headerCalories = currentFoodItem?.calories ?? caloriesFromMacros({
     protein: currentFoodItem?.protein,
     carbs: currentFoodItem?.carbs,

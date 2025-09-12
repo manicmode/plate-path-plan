@@ -2,6 +2,7 @@ import { fetchCanonicalNutrition } from '@/lib/food/fetchCanonicalNutrition';
 import { normalizeIngredients } from '@/utils/normalizeIngredients';
 import { nvLabelLookup } from '@/lib/nutritionVault';
 import { isEan, offImageForBarcode, offImageCandidates } from '@/lib/imageHelpers';
+import { trace } from '@/debug/traceFood';
 
 async function fetchOffImageUrls(barcode: string): Promise<string[]> {
   try {
@@ -31,7 +32,6 @@ export async function enrichCandidate(candidate: any) {
   });
 
   // Add enrichment tracing
-  const { trace } = require('@/debug/traceFood');
   trace('PHOTO:ENRICH:PRE', candidate);
 
   let enriched = { ...candidate };

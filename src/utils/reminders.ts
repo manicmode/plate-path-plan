@@ -15,10 +15,10 @@ export function hashMealSet(items: Array<{ id?: string; name: string; grams?: nu
   return `mealset-${Math.abs(h).toString(36)}`;
 }
 
+import { useNutritionStore } from '@/stores/nutritionStore';
+import { perGramSum } from '@/lib/confirm/hydrationUtils';
 // Check if nutrition is ready for an item ID
 export const nutritionReady = (id: string) => {
-  const { useNutritionStore } = require('@/stores/nutritionStore');
-  const { perGramSum } = require('@/lib/confirm/hydrationUtils');
   const perGram = useNutritionStore.getState().byId[id]?.perGram;
   return !!perGram && perGramSum(perGram) > 0;
 };

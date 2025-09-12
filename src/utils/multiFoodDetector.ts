@@ -6,6 +6,7 @@ import { routeGPTModel } from "./GPTRouter";
 import { ANALYSIS_TIMEOUT_MS } from '@/config/timeouts';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { prepareImageForAnalysis } from '@/lib/img/prepareImageForAnalysis';
+import { trace } from '@/debug/traceFood';
 
 // Real Google Vision API call via Supabase edge function
 async function detectWithGoogle(image: string): Promise<Array<{ name: string; confidence: number; source: string }>> {
@@ -372,7 +373,6 @@ export async function detectFoodsFromAllSources(image: string, abortSignal?: Abo
   console.log('✅ [GPT Detection] Total items detected:', finalResults.length);
   
   // Add photo detection trace
-  const { trace } = require('@/debug/traceFood');
   trace('PHOTO:DETECT:RAW', finalResults);
   
   return finalResults;
