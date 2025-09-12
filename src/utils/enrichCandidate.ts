@@ -70,7 +70,7 @@ export async function enrichCandidate(candidate: any) {
     }
   }
 
-  // 3) Brand/Generic label lookup when still missing ingredients
+  // 3) Enhanced label lookup when still missing ingredients
   const missingIngredients = !enriched?.ingredientsList?.length && !enriched?.ingredientsText;
   if (missingIngredients) {
     try {
@@ -127,6 +127,13 @@ export async function enrichCandidate(candidate: any) {
   enriched.ingredientsText = enriched.ingredientsText || "";
   enriched.ingredientsList = Array.isArray(enriched.ingredientsList) ? enriched.ingredientsList : [];
 
+  console.log('[ENRICH][DONE]', { 
+    hasIngredients: !!enriched?.ingredientsList?.length || !!enriched?.ingredientsText, 
+    baseServingG: enriched?.servingGrams, 
+    classId: enriched?.classId, 
+    canonicalKey: enriched?.canonicalKey 
+  });
+  
   if (import.meta.env.DEV) {
     console.log('[ENRICH][DONE]', {
       name: candidate?.name,

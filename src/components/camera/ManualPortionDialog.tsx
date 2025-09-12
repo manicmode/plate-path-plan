@@ -64,7 +64,8 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
     console.log('[PORTION][COMMIT]', { 
       sendName: enrichedData?.name,
       sendServingG: portionGrams,
-      sendIngredients: !!enrichedData?.ingredientsList?.length,
+      hasIngredients: !!(enrichedData?.ingredientsText ||
+         (enrichedData?.ingredientsList && enrichedData.ingredientsList.length)),
       sendText: !!enrichedData?.ingredientsText,
       keys: Object.keys(enrichedData || {})
     });

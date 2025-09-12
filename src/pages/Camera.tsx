@@ -355,6 +355,14 @@ const CameraPage = () => {
       };
     };
     const normalizedItems = items.map(ensureIngredients);
+    
+    // Preserve isGeneric and provider from items - don't default to true
+    normalizedItems.forEach(item => {
+      // Preserve existing isGeneric property
+      if (item.isGeneric === undefined && item.provider) {
+        item.isGeneric = item.provider === 'generic';
+      }
+    });
 
     if (import.meta.env.DEV) {
       console.log('[CONFIRM][OPEN][PAYLOAD]', {

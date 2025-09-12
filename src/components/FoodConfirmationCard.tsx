@@ -471,9 +471,15 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
   const isTextItem = (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech';
   
-  // Use selection flags for badge (not post-enrichment flags)
+  // Use selection flags for badge (not post-enrichment flags) - Fix chip logic
   const badge = useMemo(() => {
     const sourceFlags = (currentFoodItem as any)?.selectionFlags || currentFoodItem?.flags;
+    const isGeneric = (currentFoodItem as any)?.isGeneric || (currentFoodItem as any)?.provider === 'generic';
+    
+    // Override labelFromFlags for correct Generic/Brand detection
+    if (isGeneric) return 'Generic';
+    if (sourceFlags?.brand || (currentFoodItem as any)?.provider === 'brand') return 'Brand';
+    
     return labelFromFlags(sourceFlags);
   }, [currentFoodItem]);
 
@@ -1168,6 +1174,20 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Honor forceConfirm - cannot be overridden by downstream logic
   const dialogOpen = forceConfirm === true || isOpen;
 
+  // Add CONFIRM BIND log - log what we receive
+  const isGeneric = (currentFoodItem as any)?.isGeneric || (currentFoodItem as any)?.provider === 'generic';
+  const chip = isGeneric ? 'generic' : 'brand';
+  const basis = isPerGramBasis ? 'per-gram' : 'per-100g';
+  const servingGrams = actualServingG;
+  const ingredientsLength = ingredientsList.length;
+  
+  console.log('[CONFIRM][BIND]', { 
+    chip, 
+    basis, 
+    servingG: servingGrams, 
+    ingredientsLength 
+  });
+
   // Show loading state during transition in multi-item flow
   if (!currentFoodItem && dialogOpen) {
     return (
@@ -1695,13 +1715,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                   ) : (
                     <div className="text-center py-6">
                       <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      {currentFoodItem?.ingredientsUnavailable ? (
+                       {currentFoodItem?.ingredientsUnavailable ? (
                         <div className="space-y-2">
                           <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
                             No label data available
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-500">
-                            We couldn't find ingredients for this item from any available source.
+                            No provider label found for this item.
                           </p>
                         </div>
                       ) : (

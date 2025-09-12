@@ -131,29 +131,44 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
 
     // Helper function to map candidate to food item
     const mapCandidateToFoodItem = (candidate: any, portion: any, index: number) => {
-      return {
+      const servingGrams = portion?.grams || inferPortion(candidate.name, candidate.name)?.grams || 100;
+      const isGeneric = !!candidate.canonicalKey?.startsWith('generic_') || candidate.kind === 'generic';
+      const provider = candidate.provider || candidate.kind || (isGeneric ? 'generic' : 'brand');
+      const providerRef = candidate.providerRef || candidate.brand || candidate.upc || null;
+      
+      const mapped = {
         id: candidate.id || `v3-${Date.now()}-${index}`,
         name: candidate.name,
         // Scale nutrition to portion grams (use existing rounding utilities if present)
-        calories: Math.round((candidate.calories || 0) * portion.grams / 100),
-        protein: Math.round(((candidate.protein || 0) * portion.grams / 100) * 10) / 10,
-        carbs: Math.round(((candidate.carbs || 0) * portion.grams / 100) * 10) / 10,
-        fat: Math.round(((candidate.fat || 0) * portion.grams / 100) * 10) / 10,
-        fiber: Math.round(((candidate.fiber || 0) * portion.grams / 100) * 10) / 10,
-        sugar: Math.round(((candidate.sugar || 0) * portion.grams / 100) * 10) / 10,
-        sodium: Math.round((candidate.sodium || 0) * portion.grams / 100),
+        calories: Math.round((candidate.calories || 0) * servingGrams / 100),
+        protein: Math.round(((candidate.protein || 0) * servingGrams / 100) * 10) / 10,
+        carbs: Math.round(((candidate.carbs || 0) * servingGrams / 100) * 10) / 10,
+        fat: Math.round(((candidate.fat || 0) * servingGrams / 100) * 10) / 10,
+        fiber: Math.round(((candidate.fiber || 0) * servingGrams / 100) * 10) / 10,
+        sugar: Math.round(((candidate.sugar || 0) * servingGrams / 100) * 10) / 10,
+        sodium: Math.round((candidate.sodium || 0) * servingGrams / 100),
         imageUrl: candidate.imageUrl,
-        servingGrams: portion.grams,
-        portionGrams: portion.grams,
+        servingGrams,
+        portionGrams: servingGrams,
         servingText: portion.displayText,
         source: source === 'speech' ? 'voice' : 'manual',
         confidence: candidate.confidence,
-        isGeneric: !!candidate.canonicalKey?.startsWith('generic_'),
+        isGeneric,
+        provider,
+        providerRef,
         // Pass through classification data
         kind: candidate.kind,
-        classId: candidate.classId,
-        provider: candidate.kind || candidate.provider
+        classId: candidate.classId
       };
+      
+      console.log('[CANDIDATE][MAP]', { 
+        name: mapped.name, 
+        servingGrams: mapped.servingGrams, 
+        isGeneric: mapped.isGeneric, 
+        providerRef: mapped.providerRef 
+      });
+      
+      return mapped;
     };
 
     // Get primary candidate
