@@ -255,28 +255,34 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [reminderOpen, setReminderOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
   
-  // Resolve image URL list once
+  // 🧪 DEBUG INSTRUMENTATION
+  const __IMG_DEBUG = true;
+  
+  // Collect URLs: from enrichment then fallback guesses
   const imageUrls: string[] = useMemo(() => {
-    const fromEnrichment = (currentFoodItem as any)?.image?.urls ?? [];
-    // final fallback if enrichment had none but we still have a barcode
-    const fromBarcode = (currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : [];
-    return Array.from(new Set([...fromEnrichment, ...fromBarcode].filter(Boolean)));
+    const a = (currentFoodItem as any)?.image?.urls ?? [];
+    const b = (currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : [];
+    return Array.from(new Set([...a, ...b].filter(Boolean)));
   }, [(currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef]);
 
+  useEffect(() => setImgIdx(0), [imageUrls.join('|')]);
+
   const resolvedSrc = imageUrls[imgIdx] || '';
-
-  useEffect(() => { 
-    setImgIdx(0); 
-    setLoaded(false);
-  }, [imageUrls.join('|')]);
-  
-  useEffect(() => { 
-    setLoaded(false); 
-  }, [resolvedSrc]);
-
   useEffect(() => {
-    console.log('[IMG][CARD][BIND]', { urls: imageUrls, using: resolvedSrc });
-  }, [imageUrls, resolvedSrc]);
+    console.log('[IMG][CARD][BIND]', {
+      providerRef: (currentFoodItem as any)?.providerRef,
+      fromEnrichment: (currentFoodItem as any)?.image?.urls ?? [],
+      fromBarcodeGuess: (currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : [],
+      using: resolvedSrc,
+    });
+  }, [resolvedSrc, imageUrls, (currentFoodItem as any)?.providerRef]);
+
+  // Store current food item for console debugging
+  useEffect(() => {
+    if (isOpen && currentFoodItem) {
+      (window as any).__lastConfirmItem = currentFoodItem;
+    }
+  }, [isOpen, currentFoodItem]);
 
   // Derive a stable ID from props (not from transient state)
   const foodId = foodItem?.id ?? null;
@@ -1700,28 +1706,28 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-              <div className="relative h-14 w-14 overflow-hidden rounded-xl bg-white/5">
-                {resolvedSrc ? (
+              <div style={{position:'relative',height:64,width:64,borderRadius:14,overflow:'hidden',background:'rgba(0,0,0,.25)'}}>
+                {resolvedSrc && (
                   <img
                     src={resolvedSrc}
-                    alt={(currentFoodItem as any)?.title ?? (currentFoodItem as any)?.name ?? 'Product'}
-                    className="absolute inset-0 h-full w-full object-cover transition-opacity duration-150"
-                    style={{ opacity: loaded ? 1 : 0 }}
-                    referrerPolicy="no-referrer"
-                    loading="eager"
-                    onLoad={() => { setLoaded(true); console.log('[IMG][LOAD]', resolvedSrc); }}
-                    onError={() => {
-                      console.warn('[IMG][ERROR]', resolvedSrc);
-                      if (imgIdx < imageUrls.length - 1) setImgIdx(i => i + 1);
-                    }}
+                    alt="proof"
+                    style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
+                    onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
+                    onError={() => { console.warn('[IMG][ERROR]', resolvedSrc); if (imgIdx < imageUrls.length-1) setImgIdx(i=>i+1); }}
                   />
-                ) : null}
-                {!loaded && (
-                  <div className="absolute inset-0 grid place-items-center text-white/70">
-                    <span aria-hidden>🍽️</span>
-                  </div>
                 )}
+                {!resolvedSrc && <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>}
               </div>
+              {/* Hardcoded OFF test image */}
+              {__IMG_DEBUG && (currentFoodItem as any)?.providerRef && (
+                <img
+                  src={`https://images.openfoodfacts.org/images/products/848/000/082/3328/front_en.200.jpg`}
+                  alt="OFF-hardcoded"
+                  style={{position:'absolute',top:0,left:68,width:64,height:64,objectFit:'cover',border:'2px solid #00E5',borderRadius:14}}
+                  onLoad={()=>console.log('[IMG][HARD][LOAD]')}
+                  onError={()=>console.warn('[IMG][HARD][ERROR]')}
+                />
+              )}
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg">

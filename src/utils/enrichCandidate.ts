@@ -132,8 +132,8 @@ export async function enrichCandidate(candidate: any) {
           enriched.imageUrlKind = 'provider';
         }
 
-        // Fetch and attach authoritative OFF image URLs
-        if ((enriched.labelSource === 'off' || enriched.enrichmentSource === 'off') && enriched.providerRef) {
+        // Fetch and attach authoritative OFF image URLs when we have a barcode and label/off source
+        if (enriched.providerRef && (enriched.enrichmentSource === 'off' || enriched.enrichmentSource === 'label' || source === 'off')) {
           const official = await fetchOffImageUrls(enriched.providerRef);
           // keep existing synthesized guesses as *fallbacks*
           const synthetic = enriched.image?.urls ?? [];
