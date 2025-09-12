@@ -256,7 +256,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [imageError, setImageError] = useState(false);
   
   // 🧪 DEBUG INSTRUMENTATION
-  const __IMG_DEBUG = true;
+  const __IMG_DEBUG = false; // keep instrumentation off in UI
   
   // Collect URLs: from enrichment then fallback guesses
   const imageUrls: string[] = useMemo(() => {
@@ -277,12 +277,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     });
   }, [resolvedSrc, imageUrls, (currentFoodItem as any)?.providerRef]);
 
-  // Store current food item for console debugging
-  useEffect(() => {
-    if (isOpen && currentFoodItem) {
-      (window as any).__lastConfirmItem = currentFoodItem;
-    }
-  }, [isOpen, currentFoodItem]);
 
   // Derive a stable ID from props (not from transient state)
   const foodId = foodItem?.id ?? null;
@@ -1710,24 +1704,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 {resolvedSrc && (
                   <img
                     src={resolvedSrc}
-                    alt="proof"
+                    alt=""
+                    aria-hidden="true"
                     style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
                     onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
                     onError={() => { console.warn('[IMG][ERROR]', resolvedSrc); if (imgIdx < imageUrls.length-1) setImgIdx(i=>i+1); }}
+                    referrerPolicy="no-referrer"
+                    loading="eager"
                   />
                 )}
                 {!resolvedSrc && <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>}
               </div>
-              {/* Hardcoded OFF test image */}
-              {__IMG_DEBUG && (currentFoodItem as any)?.providerRef && (
-                <img
-                  src={`https://images.openfoodfacts.org/images/products/848/000/082/3328/front_en.200.jpg`}
-                  alt="OFF-hardcoded"
-                  style={{position:'absolute',top:0,left:68,width:64,height:64,objectFit:'cover',border:'2px solid #00E5',borderRadius:14}}
-                  onLoad={()=>console.log('[IMG][HARD][LOAD]')}
-                  onError={()=>console.warn('[IMG][HARD][ERROR]')}
-                />
-              )}
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
