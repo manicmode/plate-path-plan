@@ -474,13 +474,21 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Use selection flags for badge (not post-enrichment flags) - Fix chip logic
   const badge = useMemo(() => {
     const sourceFlags = (currentFoodItem as any)?.selectionFlags || currentFoodItem?.flags;
-    const isGeneric = (currentFoodItem as any)?.isGeneric || (currentFoodItem as any)?.provider === 'generic';
+    const isGeneric = (currentFoodItem as any)?.isGeneric;
+    const provider = (currentFoodItem as any)?.provider;
     
-    // Override labelFromFlags for correct Generic/Brand detection
-    if (isGeneric) return 'Generic';
-    if (sourceFlags?.brand || (currentFoodItem as any)?.provider === 'brand') return 'Brand';
+    // First check explicit isGeneric flag
+    if (isGeneric === true || provider === 'generic') return 'Generic';
     
-    return labelFromFlags(sourceFlags);
+    // Then check for brand evidence
+    if (sourceFlags?.brand || provider === 'brand' || provider === 'nutritionix') return 'Brand';
+    
+    // Use flags as fallback, but ensure brand takes priority over generic
+    const fromFlags = labelFromFlags(sourceFlags);
+    if (fromFlags === 'Brand') return 'Brand';
+    
+    // Default to Brand for unknown items (conservative approach)
+    return fromFlags || 'Brand';
   }, [currentFoodItem]);
 
   // Normalize props to avoid layout branch flips

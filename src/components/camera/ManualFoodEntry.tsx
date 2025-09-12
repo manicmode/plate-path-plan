@@ -552,6 +552,9 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     !!manualFlow.nutritionReady &&
     !!manualFlow.portionDraft &&
     !manualFlow.uiCommitted;
+    
+  // Show loading state during enrichment to prevent white flash
+  const showEnrichmentLoading = !!manualFlow.selectedCandidate && !showPortionDialog && isLoading;
 
   // Handle candidate selection - start enrichment and show portion dialog
   const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
@@ -839,7 +842,17 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           }}
         />
       )}
-      {!showPortionDialog && (
+      
+      {/* Show loading overlay during enrichment to prevent white flash */}
+      <AnimatePresence>
+        {showEnrichmentLoading && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm grid place-items-center z-50">
+            <ThreeCirclesLoader />
+          </div>
+        )}
+      </AnimatePresence>
+      
+      {!showPortionDialog && !showEnrichmentLoading && (
         <>
           {/* Three Circles Loader - Full screen overlay during loading */}
           <AnimatePresence>
