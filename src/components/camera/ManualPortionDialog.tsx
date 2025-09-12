@@ -12,22 +12,28 @@ interface Props {
 }
 
 export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCancel }: Props) {
-  // Guard: this dialog should never open without both
-  if (!candidate || !enrichedData) {
-    console.error('[DIALOG][ERROR] Opened without data', { candidate: !!candidate, enrichedData: !!enrichedData });
-    onCancel?.();
-    return null;
-  }
-
-  // All hooks declared unconditionally at top
+  // ✅ Always call hooks first
   const [portionGrams, setPortionGrams] = useState(() => enrichedData?.servingGrams || 100);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
   const stepperIntervalRef = useRef<NodeJS.Timeout>();
+  
+  const ready = Boolean(candidate && enrichedData);
+  
+  // Close safely if data is missing, but after hooks are set up
+  useEffect(() => {
+    if (!ready) {
+      const id = requestAnimationFrame(() => onCancel?.());
+      return () => cancelAnimationFrame(id);
+    }
+  }, [ready, onCancel]);
+  
   const defaultGrams = enrichedData?.servingGrams || 100;
 
   // Log when dialog actually mounts
   console.log('[PORTION][OPEN]', { name: candidate?.name, defaultG: defaultGrams });
+
+  // Render nothing if we lack data, but AFTER hooks were called
+  if (!ready) return null;
 
   // Helper functions
   const setGrams = (newGrams: number) => {

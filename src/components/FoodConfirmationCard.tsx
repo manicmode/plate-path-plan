@@ -181,6 +181,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   candidates,
   originalText
 }) => {
+  // ✅ Call hooks unconditionally first
+  const ready = Boolean(foodItem);
+
+  // All hooks called unconditionally first
   const [portionPercentage, setPortionPercentage] = useState([100]);
   const [isConfirming, setIsConfirming] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -881,8 +885,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   };
 
   // Guard content rendering ONLY; hooks already executed
-  if (!currentFoodItem) {
-    return <span data-guard="no-current-food" />; // minimal placeholder to keep mount stable
+  if (!ready) {
+    return (
+      <AccessibleDialogContent 
+        title="Confirm Food"
+        aria-describedby="confirm-card-desc"
+      >
+        <p id="confirm-card-desc" className="sr-only">Confirm your food log.</p>
+        <div style={{ minHeight: 420 }} />
+      </AccessibleDialogContent>
+    );
   }
 
   // Always render dialog, show loading state if nutrition isn't ready
