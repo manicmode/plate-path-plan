@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Minus, Plus, Loader2 } from 'lucide-react';
 
@@ -23,7 +22,6 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
   // All hooks declared unconditionally at top
   const [portionGrams, setPortionGrams] = useState(() => enrichedData?.servingGrams || 100);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [directInputValue, setDirectInputValue] = useState(String(enrichedData?.servingGrams || 100));
   
   const stepperIntervalRef = useRef<NodeJS.Timeout>();
   const defaultGrams = enrichedData?.servingGrams || 100;
@@ -35,7 +33,6 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
   const setGrams = (newGrams: number) => {
     const clamped = Math.max(25, Math.min(500, Math.round(newGrams)));
     setPortionGrams(clamped);
-    setDirectInputValue(String(clamped));
   };
 
   const handlePreset = (multiplier: number) => {
@@ -61,13 +58,6 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
     }
   };
 
-  const handleDirectInput = (value: string) => {
-    setDirectInputValue(value);
-    const parsed = parseInt(value, 10);
-    if (!isNaN(parsed)) {
-      setGrams(parsed);
-    }
-  };
 
   const handleContinue = () => {
     setIsSubmitting(true);
@@ -193,26 +183,6 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
             </div>
           </div>
 
-          {/* Direct Input */}
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-center">Exact amount</p>
-            <div className="flex justify-center">
-              <div className="relative w-24">
-                <Input
-                  type="number"
-                  min={25}
-                  max={500}
-                  value={directInputValue}
-                  onChange={(e) => handleDirectInput(e.target.value)}
-                  disabled={isSubmitting}
-                  className="text-center pr-6"
-                />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                  g
-                </span>
-              </div>
-            </div>
-          </div>
 
           {/* Footer Buttons */}
           <div className="flex gap-3 pt-2">
