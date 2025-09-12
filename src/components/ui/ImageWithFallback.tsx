@@ -63,6 +63,7 @@ export function ImageWithFallback({
       className={className}
       onError={handleError}
       referrerPolicy="no-referrer"
+      crossOrigin="anonymous"
       loading="lazy"
     />
   );

@@ -17,7 +17,7 @@ import confetti from 'canvas-confetti';
 import { submitTextLookup } from '@/lib/food/textLookup';
 import { CandidateList } from '@/components/food/CandidateList';
 import { PortionUnitField } from '@/components/food/PortionUnitField';
-import { FOOD_TEXT_DEBUG, ENABLE_DEBOUNCED_SEARCH, MANUAL_SEARCH_EDGE_GATE, EDGE_MULTI_QUERY } from '@/lib/flags';
+import { FOOD_TEXT_DEBUG, ENABLE_DEBOUNCED_SEARCH, MANUAL_SEARCH_EDGE_GATE } from '@/lib/flags';
 import { ThreeCirclesLoader } from '@/components/loaders/ThreeCirclesLoader';
 import { useManualFoodEnrichment } from '@/hooks/useManualFoodEnrichment';
 import { enrichedFoodToLogItem } from '@/adapters/enrichedFoodToLogItem';
@@ -299,97 +299,86 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     return [];
   }, []);
 
-  // Enhanced debounced search with true 300ms debounce and single edge request
-  const performSearch = useCallback((rawQuery: string) => {
-    // Clear previous timeout
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
+  // Enhanced debounced search with SWR pattern
+  const debouncedSearch = useMemo(() => {
+    if (!ENABLE_DEBOUNCED_SEARCH) {
+      // Fallback to immediate search if flag disabled
+      return (query: string) => {
+        setFoodName(query);
+        if (!query.trim()) {
+          setCandidates([]);
+          setState('idle');
+          return;
+        }
+        setState('searching');
+        // Use existing immediate search logic
+      };
     }
 
-    const query = rawQuery.trim().toLowerCase();
-    if (!query) {
-      setCandidates([]);
-      setState('idle');
-      setSelectedCandidate(null);
-      return;
-    }
-
-    // Set debouncing state immediately
-    setState('debouncing');
-    setHasPartialResults(false);
-
-    searchTimeoutRef.current = setTimeout(async () => {
-      // Bump generation & abort any in-flight edge call
-      const myId = ++requestIdRef.current;
-      edgeAbortRef.current?.abort();
-      edgeAbortRef.current = new AbortController();
-
-      try {
-        // 1) Cheap local results first (render immediately)
-        console.log('[MANUAL][SWR] Starting cheap results for:', query);
-        const cheapResults = await runCheapSearch(query);
+    let timeoutId: NodeJS.Timeout;
+    
+    return (query: string) => {
+      clearTimeout(timeoutId);
+      
+      if (!query.trim()) {
+        setCandidates([]);
+        setState('idle');
+        setSelectedCandidate(null);
+        return;
+      }
+      
+      // Check cache first
+      const cached = getCachedResults(query);
+      if (cached) {
+        setCandidates(cached);
+        setState(cached.length > 0 ? 'candidates' : 'idle');
+        return;
+      }
+      
+      setState('debouncing');
+      setHasPartialResults(false);
+      
+      timeoutId = setTimeout(async () => {
+        // Cancel any previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
         
-        // Ignore stale responses
-        if (myId !== requestIdRef.current) return;
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+        const requestId = ++requestIdRef.current;
         
-        console.log('[MANUAL][SWR:cheap]', { count: cheapResults.length });
-        
-        // Add generic fallback if no results
-        const resultsWithFallback = cheapResults.length > 0 
-          ? cheapResults 
-          : [createGenericFallback(query)].filter(Boolean);
-        
-        setCandidates(resultsWithFallback);
-        setState('candidates');
-        setHasPartialResults(true);
-
-        // 2) Single edge call (no alias fan-out) only if MANUAL_SEARCH_EDGE_GATE enabled
-        if (MANUAL_SEARCH_EDGE_GATE && !EDGE_MULTI_QUERY) {
-          // Import searchFoodByName dynamically to avoid circular imports
-          const { searchFoodByName } = await import('@/lib/foodSearch');
+        try {
+          setState('searching');
           
-          try {
-            console.log('[MANUAL][EDGE] Single edge request for:', query);
-            const edgePrimary = await searchFoodByName(query, { 
-              signal: edgeAbortRef.current?.signal,
-              maxResults: 8
-            });
+          // SWR: Run cheap search first, show results immediately
+          console.log(`[MANUAL][SWR] Starting cheap-first search for: ${query}`);
+          const cheapResults = await runCheapSearch(query);
+          
+          // Only update if this is still the latest request
+          if (requestIdRef.current === requestId && !controller.signal.aborted) {
+            console.log('[MANUAL][SWR:cheap]', { count: cheapResults.length });
+            setCandidates(cheapResults);
+            setHasPartialResults(true);
+            setState(cheapResults.length > 0 ? 'candidates' : 'idle');
             
-            // Ignore stale responses
-            if (myId !== requestIdRef.current) return;
-
-            if (edgePrimary.length > 0) {
-              console.log('[MANUAL][EDGE:merge]', { edgeCount: edgePrimary.length });
-              // Merge edge results with cheap results using canonical key dedup
-              const mergedResults = mergeCandidates(cheapResults, processCandidates(edgePrimary, query));
-              
-              // Add generic fallback if still no results after merge
-              const finalResults = mergedResults.length > 0 
-                ? mergedResults 
-                : [createGenericFallback(query)].filter(Boolean);
-              
-              setCandidates(finalResults);
-            } else {
-              console.log('[MANUAL][IGNORE_EMPTY_EDGE] Edge returned 0 results, keeping cheap results');
-            }
-          } catch (edgeError: any) {
-            console.log('[MANUAL][EDGE:error] Edge failed, keeping cheap results:', edgeError.message);
-            // Keep cheap results if edge fails/times out - DO NOT clear list
+            // Cache the cheap results
+            setCachedResults(query, cheapResults);
+          }
+          
+          // TODO: Add edge search augmentation here when MANUAL_SEARCH_EDGE_GATE enabled
+          // For now, stick with cheap-only to eliminate edge timeout issues
+          
+        } catch (error: any) {
+          if (error.name !== 'AbortError' && requestIdRef.current === requestId) {
+            console.error('[MANUAL][SEARCH_ERROR]', error);
+            setState('error');
+            toast.error('Search failed. Please try again.');
           }
         }
-      } catch (error: any) {
-        if (myId === requestIdRef.current && error.name !== 'AbortError') {
-          console.error('[MANUAL][SEARCH_ERROR]', error);
-          setState('error');
-        }
-      } finally {
-        if (myId === requestIdRef.current) {
-          setState('candidates');
-          setHasPartialResults(false);
-        }
-      }
-    }, 300); // 300ms debounce
-  }, [runCheapSearch]);
+      }, 300); // 300ms debounce
+    };
+  }, [getCachedResults, setCachedResults, runCheapSearch]);
 
   // Cleanup all refs on unmount
   useEffect(() => {
@@ -511,13 +500,13 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     const value = e.target.value;
     setFoodName(value);
     if (value.trim()) {
-      performSearch(value);
+      debouncedSearch(value);
     } else {
       setCandidates([]);
       setState('idle');
       setSelectedCandidate(null);
     }
-  }, [performSearch]);
+  }, [debouncedSearch]);
 
   // Calculate whether to show portion dialog (conditional JSX, not early return)
   const showPortionDialog =

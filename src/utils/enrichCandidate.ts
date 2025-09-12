@@ -10,16 +10,18 @@ async function fetchOffImageUrls(barcode: string): Promise<string[]> {
     // Use proxy when flag is enabled to avoid CORS issues
     if (IMAGE_PROXY_OFF) {
       console.log('[ENRICH][OFF_PROXY] Using proxy for barcode:', barcode);
-      const res = await fetch(`/api/off-proxy/${barcode}`, {
-        headers: { 'Accept': 'application/json' }
-      });
-      if (!res.ok) {
-        console.warn('[ENRICH][OFF_PROXY] Failed:', res.status);
-        return [];
-      }
+      const res = await fetch(`/api/off-proxy/${barcode}`);
+      if (!res.ok) return [];
       const data = await res.json();
-      // Return image candidates from proxy response
-      return data?.images || [];
+      // Return structured OFF image candidates with fallback
+      const basePath = barcode.replace(/(\d{3})/g, '$1/').replace(/\/$/, '');
+      return data?.product?.images || [
+        `https://images.openfoodfacts.org/images/products/${basePath}/front_en.400.jpg`,
+        `https://images.openfoodfacts.org/images/products/${basePath}/front.400.jpg`,
+        `https://images.openfoodfacts.org/images/products/${basePath}/front_en.200.jpg`,
+        `https://images.openfoodfacts.org/images/products/${basePath}/front.200.jpg`,
+        '/images/food-placeholder.svg'
+      ];
     } else {
       // Legacy direct fetch (may have CORS issues)
       console.log('[ENRICH][OFF_DIRECT] Direct fetch for barcode:', barcode);
