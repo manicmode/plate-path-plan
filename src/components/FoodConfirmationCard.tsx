@@ -328,10 +328,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const isNutritionReady = perGramReady
     || ((useHydration && !isBarcodeSource) ? (perGramSum > 0) : true);
   
-  // Check if this is a manual entry that needs enrichment
-  const isManual = mode === 'manual' || foodItem?.selectionSource === 'manual';
+  // HARD GUARD: manual items never use store/hydration
+  const isManual = mode === 'manual' || 
+                   foodItem?.selectionSource === 'manual' || 
+                   currentFoodItem?.source === 'manual' ||
+                   (currentFoodItem as any)?.__source === 'manual';
   const readyForManual = !!foodItem?.enrichmentSource && Array.isArray(foodItem?.ingredientsList);
-
+  
   // Build and route sentinels on mount
   useEffect(() => {
     if (isOpen) {

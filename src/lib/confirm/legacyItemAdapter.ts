@@ -77,6 +77,40 @@ type AnyItem = Record<string, any>;
 const pick = <T = any>(...vals: any[]): T | undefined => vals.find(v => v !== undefined && v !== null);
 
 export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST = false): LegacyFoodItem {
+  // Early return for manual items - do NOT override with store or perGram
+  if (raw?.source === 'manual') {
+    const servingG = raw?.label?.servingSizeG ?? raw?.servingG ?? 100;
+    const perServing = raw?.label?.macrosPerServing || {};
+    
+    return {
+      id: typeof index === 'string' ? index : (raw.foodId ?? raw.id ?? generateFoodId(raw)),
+      name: raw?.name || `item-${typeof index === 'string' ? index : index + 1}`,
+      grams: servingG,
+      baseGrams: servingG,
+      calories: perServing.calories ?? raw?.calories ?? 100,
+      protein: perServing.protein_g ?? raw?.protein ?? 0,
+      carbs: perServing.carbs_g ?? raw?.carbs ?? 0,
+      fat: perServing.fat_g ?? raw?.fat ?? 0,
+      fiber: perServing.fiber_g ?? raw?.fiber ?? 0,
+      sugar: perServing.sugar_g ?? raw?.sugar ?? 0,
+      sodium: perServing.sodium_mg ?? raw?.sodium ?? 0,
+      basePer100: null,
+      portionGrams: servingG,
+      factor: servingG / 100,
+      source: 'manual',
+      confidence: raw?.confidence,
+      nutrition: {
+        perServing: perServing,
+        basis: 'perServing',
+        servingGrams: servingG,
+      },
+      analysis: {
+        source: 'manual',
+        confidence: raw?.confidence,
+      }
+    } as LegacyFoodItem;
+  }
+
   const name = pick<string>(
     raw.displayName, raw.name, raw.productName, raw.title, raw.canonicalName
   ) || `item-${typeof index === 'string' ? index : index + 1}`;

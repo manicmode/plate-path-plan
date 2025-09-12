@@ -155,11 +155,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
         const results = await resolveGenericFoodBatch(names);
         
-        console.log('[HYDRATE][WRITE]', { foundCount: results?.filter(Boolean).length });
+        // Add null guards
+        const safeResults = Array.isArray(results) ? results : [];
+        console.log('[HYDRATE][WRITE]', { foundCount: safeResults.filter(Boolean).length });
         
         const storeUpdates: Record<string, any> = {};
         const enrichedItems = initialModalItems.map((m, i) => {
-          const r = results?.[i];
+          if (!m || !safeResults) return { ...m, __hydrated: false };
+          const r = safeResults[i];
           if (!r) return { ...m, __hydrated: false };
           
           const canonicalId = m.id; // Use same ID from modal item
@@ -179,7 +182,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           return { ...merged, id: canonicalId, __hydrated: true };
         });
         
-        if (Object.keys(storeUpdates).length) {
+        if (storeUpdates && Object.keys(storeUpdates).length) {
           useNutritionStore.getState().upsertMany(storeUpdates);
           console.log('[HYDRATE][WROTE]', { ids: Object.keys(storeUpdates) });
         }
