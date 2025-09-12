@@ -440,44 +440,62 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     return 0;
   };
 
+  // Unified grams-first slider calculation - MOVED UP TO REPLACE SCATTERED DECLARATIONS
   const sliderPct = portionPercentage[0] / 100;
+  const baseServingG = Math.round(((currentFoodItem as any)?.servingGrams ?? 100));
+  const actualServingG = Math.max(1, Math.round(baseServingG * sliderPct));
+
+  // Helper for scaling nutrition values
+  const scaleNutrition = (src: Record<string, number>, factor: number) => {
+    const out: Record<string, number> = {};
+    for (const k in src) out[k] = Math.round((src[k] || 0) * factor);
+    return out;
+  };
+
+  // Calculate effective nutrients using unified grams-first approach
+  const base = currentFoodItem.basePer100; // per-100g baseline
   
-  // after you compute currentFoodItem, servingG and sliderPct…
-  const actualServingG = Math.max(0, Math.round(((currentFoodItem as any)?.servingGrams ?? 100) * sliderPct));
+  const effective = (() => {
+    // prefer per-gram when available
+    if (basisPerGram && Object.keys(basisPerGram).length > 0) {
+      return scaleNutrition(basisPerGram, actualServingG);            // grams
+    }
+    // else per-100g
+    if (base && Object.keys(base).length > 0) {
+      return scaleNutrition(base, actualServingG / 100);              // per-100g
+    }
+    // else per-portion fallback
+    const basePerPortion = {
+      calories: ((currentFoodItem as any)?.calories_serving ?? (currentFoodItem as any)?.calories ?? 0),
+      protein: ((currentFoodItem as any)?.protein_g_serving ?? (currentFoodItem as any)?.protein_g ?? 0),
+      carbs: ((currentFoodItem as any)?.carbs_g_serving ?? (currentFoodItem as any)?.carbs_g ?? 0),
+      fat: ((currentFoodItem as any)?.fat_g_serving ?? (currentFoodItem as any)?.fat_g ?? 0),
+      fiber: ((currentFoodItem as any)?.fiber_g_serving ?? (currentFoodItem as any)?.fiber_g ?? 0),
+      sugar: ((currentFoodItem as any)?.sugar_g_serving ?? (currentFoodItem as any)?.sugar_g ?? 0),
+      sodium: ((currentFoodItem as any)?.sodium_mg_serving ?? (currentFoodItem as any)?.sodium_mg ?? 0)
+    };
+    if (basePerPortion && Object.keys(basePerPortion).length > 0) {
+      return scaleNutrition(basePerPortion, sliderPct);               // fraction of portion
+    }
+    return {};
+  })();
 
-  // Which basis are we on?
-  // v3 manual/voice (canonical / Estimated / legacy_text_lookup) => per 1g
-  // legacy store (photo/barcode)       => per 100g
-  const dataSource = (currentFoodItem as any)?.dataSource as string | undefined;
-  const isPerGramBasis =
-    isManualVoiceSource ||
-    dataSource === 'canonical' ||
-    dataSource === 'Estimated' ||
-    dataSource === 'legacy_text_lookup';
+  const headerKcal = effective.calories ?? 0;
+  const proteinG = effective.protein ?? 0;
+  const carbsG = effective.carbs ?? 0;  
+  const fatG = effective.fat ?? 0;
+  const fiberG = effective.fiber ?? 0;
+  const sugarG = effective.sugar ?? 0;
 
-  // Choose the right multiplier for scaling macro tiles + header kcal
-  // per-gram basis: multiply by grams; per-100g basis: multiply by grams/100
-  const scaleMult = isPerGramBasis ? actualServingG : actualServingG / 100;
-
-  // convenient helpers
-  const safe = (n?: number) => (Number.isFinite(n!) ? (n as number) : 0);
-  const g1 = (n?: number) => Math.round(safe(n) * scaleMult * 10) / 10; // grams to 1 decimal
-  const kcal = (n?: number) => Math.round(safe(n) * scaleMult);         // calories to int
-
-  console.log('[CONFIRM][SCALING]', {
-    basis: isPerGramBasis ? 'per-gram' : 'per-100g',
-    servingG: actualServingG,
-    mult: scaleMult,
-    source: dataSource || 'unknown'
+  // Diagnostic logging for slider behavior
+  console.log('[CONFIRM][SLIDER]', {
+    basis: (basisPerGram && Object.keys(basisPerGram).length) ? 'per-gram'
+         : (base && Object.keys(base).length) ? 'per-100g'
+         : 'per-portion',
+    sliderValue: portionPercentage[0],
+    baseServingG, actualServingG,
+    kcalComputed: headerKcal
   });
-
-  // Use the helpers when binding values
-  const headerKcal = kcal(getPG('calories'));
-  const proteinG = g1(getPG('protein'));
-  const carbsG = g1(getPG('carbs'));
-  const fatG = g1(getPG('fat'));
-  const fiberG = g1(getPG('fiber'));
-  const sugarG = g1(getPG('sugar'));
 
   const isBarcodeItem = (currentFoodItem as any)?.source === 'barcode';
   const isTextItem = (currentFoodItem as any)?.source === 'manual' || (currentFoodItem as any)?.source === 'speech';
@@ -754,80 +772,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   }
 
   // Always render dialog, show loading state if nutrition isn't ready
-
-  const portionMultiplier = portionPercentage[0] / 100;
-  
-  // Helper for scaling
-  function scale(val: number, f: number) { return Math.round(val * f * 10) / 10; }
-
-  // Calculate effective nutrients - prefer foodItem data for barcode items
-  const base = currentFoodItem.basePer100; // per-100g baseline
-  const gramsFactor = currentFoodItem.factor ?? 1; // portionGrams/100 at 100% slider
-  const sliderFraction = portionMultiplier; // 0..1 (0%, 25%, 50%, 75%, 100%)
-
-  // Helper for scaling per-100g values to serving when serving fields missing
-  const scaleFrom100g = (val100?: number, grams?: number) =>
-    typeof val100 === 'number' && typeof grams === 'number'
-      ? Math.round((val100 * grams) / 100)
-      : undefined;
-
-  // Get base nutrition values - prefer serving data for barcode items
-  const baseCalories = preferItem 
-    ? ((currentFoodItem as any)?.calories_serving ?? (currentFoodItem as any)?.calories ?? 0) 
-    : currentFoodItem.calories;
-  const baseProtein = preferItem 
-    ? ((currentFoodItem as any)?.protein_g_serving ?? (currentFoodItem as any)?.protein_g ?? 0) 
-    : currentFoodItem.protein;
-  const baseCarbs = preferItem 
-    ? ((currentFoodItem as any)?.carbs_g_serving ?? (currentFoodItem as any)?.carbs_g ?? 0) 
-    : currentFoodItem.carbs;
-  const baseFat = preferItem 
-    ? ((currentFoodItem as any)?.fat_g_serving ?? (currentFoodItem as any)?.fat_g ?? 0) 
-    : currentFoodItem.fat;
-  const baseFiber = preferItem 
-    ? ((currentFoodItem as any)?.fiber_g_serving ?? (currentFoodItem as any)?.fiber_g ?? 0) 
-    : currentFoodItem.fiber;
-  const baseSugar = preferItem 
-    ? ((currentFoodItem as any)?.sugar_g_serving ?? (currentFoodItem as any)?.sugar_g ?? 0) 
-    : currentFoodItem.sugar;
-  const baseSodium = preferItem 
-    ? ((currentFoodItem as any)?.sodium_mg_serving ?? (currentFoodItem as any)?.sodium_mg ?? 0) 
-    : currentFoodItem.sodium;
-
-  // Add macro mode logging
-  console.log('[CONFIRM][MACROS_MODE]', (currentFoodItem as any)?.macro_mode || 'UNKNOWN');
-
-  const effective = basisPerGram && Object.keys(basisPerGram).length > 0
-    ? {
-        // Use normalized per-gram data with portion scaling
-        calories: headerKcal,
-        protein: proteinG,
-        carbs: carbsG,
-        fat: fatG,
-        fiber: fiberG,
-        sugar: sugarG,
-        sodium: Math.round(getPG('sodium') * scaleMult * 1000), // convert to mg
-      }
-    : base && !preferItem
-      ? {
-          calories: Math.round((base.calories || 0) * gramsFactor * sliderFraction),
-          protein: scale(base.protein_g || 0, gramsFactor * sliderFraction),
-          carbs:   scale(base.carbs_g   || 0, gramsFactor * sliderFraction),
-          fat:     scale(base.fat_g     || 0, gramsFactor * sliderFraction),
-          fiber:   scale(base.fiber_g   || 0, gramsFactor * sliderFraction),
-          sugar:   scale(base.sugar_g   || 0, gramsFactor * sliderFraction),
-          sodium:  Math.round((base.sodium_mg || 0) * gramsFactor * sliderFraction),
-        }
-      : {
-          // Use direct values with portion scaling
-          calories: Math.round(baseCalories * portionMultiplier),
-          protein: Math.round(baseProtein * portionMultiplier * 10) / 10,
-          carbs: Math.round(baseCarbs * portionMultiplier * 10) / 10,
-          fat: Math.round(baseFat * portionMultiplier * 10) / 10,
-          fiber: Math.round(baseFiber * portionMultiplier * 10) / 10,
-          sugar: Math.round(baseSugar * portionMultiplier * 10) / 10,
-          sodium: Math.round(baseSodium * portionMultiplier),
-        };
 
   const adjustedFood = {
     ...currentFoodItem,
