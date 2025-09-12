@@ -453,11 +453,39 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   };
 
   // Calculate effective nutrients using unified grams-first approach
-  const base = currentFoodItem.basePer100; // per-100g baseline
+  const base = currentFoodItem?.basePer100 || null; // null-safe
+  
+  // Defensive defaults for scaling inputs
+  const basePerGram = basisPerGram || null;
+  const basePer100 = base || null;
+  
+  // Safe early render guard (keeps UI stable)
+  const noBases = !basePerGram && !basePer100;
+  if (!currentFoodItem || noBases) {
+    if (import.meta.env.DEV) {
+      console.log('[CONFIRM][GUARD]', { hasItem: !!currentFoodItem, hasBase100: !!basePer100, hasPerGram: !!basePerGram });
+    }
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <AccessibleDialogContent 
+          title="Loading Food Details"
+          className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto"
+        >
+          <VisuallyHidden asChild>
+            <DialogTitle>Loading Food Details</DialogTitle>
+          </VisuallyHidden>
+          <div className="animate-pulse space-y-3">
+            <div className="h-6 bg-muted rounded w-2/3" />
+            <div className="h-4 bg-muted rounded w-1/2" />
+          </div>
+        </AccessibleDialogContent>
+      </Dialog>
+    );
+  }
   
   const effective = (() => {
     // prefer per-gram when available
-    if (basisPerGram && Object.keys(basisPerGram).length > 0) {
+    if (basePerGram && Object.keys(basePerGram).length > 0) {
       return scaleNutrition(basisPerGram, actualServingG);            // grams
     }
     // else per-100g
