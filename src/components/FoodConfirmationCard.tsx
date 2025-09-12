@@ -1687,42 +1687,41 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-              {(() => {
-                const imgUrl = 
-                  (currentFoodItem as any)?.image?.url ?? 
-                  (currentFoodItem as any)?.imageUrl ?? 
-                  (currentFoodItem as any)?.url ?? 
-                  displayImage ?? 
-                  undefined;
+{(() => {
+                const imgSrc = React.useMemo(() => {
+                  const img = (currentFoodItem as any)?.image;
 
-                const [imgState, setImgState] = React.useState<'loading'|'ok'|'err'>('loading');
+                  if (img?.url) return img.url;
+
+                  if (img?.kind === 'provider' && img.from === 'openfoodfacts' && (currentFoodItem as any)?.providerRef) {
+                    const p = (currentFoodItem as any).providerRef;
+                    const parts = [p.slice(0,3), p.slice(3,6), p.slice(6,9), p.slice(9)];
+                    return `https://images.openfoodfacts.org/images/products/${parts.join("/")}/front_en.200.jpg`;
+                  }
+
+                  // Fallback to legacy fields
+                  return (currentFoodItem as any)?.imageUrl ?? (currentFoodItem as any)?.url ?? displayImage ?? null;
+                }, [(currentFoodItem as any)?.image, (currentFoodItem as any)?.providerRef, displayImage]);
+
+                const [imgOk, setImgOk] = React.useState(true);
 
                 return (
-                  <div className="relative h-14 w-14 rounded-xl overflow-hidden bg-zinc-800">
-                    {imgUrl && (
+                  <div className="relative h-16 w-16 rounded-2xl overflow-hidden bg-muted/40">
+                    {imgSrc && imgOk ? (
                       <img
-                        src={imgUrl}
+                        src={imgSrc}
                         alt={(currentFoodItem as any)?.name ?? 'Food'}
-                        className="absolute inset-0 h-full w-full object-cover"
-                        decoding="async"
-                        loading="eager"
-                        style={{ opacity: imgState === 'ok' ? 1 : 0, transition: 'opacity 150ms ease-in' }}
-                        onLoad={() => {
-                          setImgState('ok');
-                          console.log('[CONFIRM][IMAGE][OK]', { url: imgUrl });
-                        }}
+                        className="h-full w-full object-cover"
+                        referrerPolicy="no-referrer"
+                        crossOrigin=""
+                        onLoad={() => console.log('[CONFIRM][IMAGE][OK]', { url: imgSrc })}
                         onError={() => {
-                          setImgState('err');
-                          console.warn('[CONFIRM][IMAGE][ERROR]', { url: imgUrl });
+                          setImgOk(false);
+                          console.warn('[CONFIRM][IMAGE][ERROR]', { url: imgSrc });
                         }}
                       />
-                    )}
-
-                    {/* Fallback while loading / on error */}
-                    {imgState !== 'ok' && (
-                      <div className="absolute inset-0 grid place-items-center">
-                        <FallbackEmoji className="h-6 w-6 opacity-70" />
-                      </div>
+                    ) : (
+                      <FallbackEmoji className="m-auto h-8 w-8 opacity-80" />
                     )}
                   </div>
                 );
