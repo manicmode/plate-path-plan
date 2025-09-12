@@ -23,7 +23,7 @@ import { SoundGate } from '@/lib/soundGate';
 import { supabase } from '@/integrations/supabase/client';
 import { detectFlags } from '@/lib/health/flagger';
 import { nvLabelLookup } from '@/lib/nutritionVault';
-import { isEan, offImageForBarcode } from '@/lib/imageHelpers';
+import { isEan, offImageForBarcode, offImageCandidates } from '@/lib/imageHelpers';
 import type { NutritionThresholds } from '@/lib/health/flagRules';
 import { useNutritionStore } from '@/stores/nutritionStore';
 // Add the FoodCandidate type import
@@ -199,6 +199,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [prevItem, setPrevItem] = useState<any | null>(null);
+  const [imgIdx, setImgIdx] = useState(0);
   
   // B. Lazy ingredients state
   const [lazyIngredients, setLazyIngredients] = useState<{
@@ -252,6 +253,25 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   const [reminderOpen, setReminderOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
+  
+  // Resolve image URL list once
+  const imageUrls: string[] = React.useMemo(() => {
+    const urls = ((currentFoodItem as any)?.image?.urls ?? []).filter(Boolean);
+    if (!urls.length && (currentFoodItem as any)?.providerRef) {
+      urls.push(...offImageCandidates((currentFoodItem as any).providerRef));
+    }
+    return urls;
+  }, [currentFoodItem]);
+
+  const resolvedSrc = imageUrls[imgIdx] || '';
+
+  React.useEffect(() => { 
+    setImgIdx(0); 
+  }, [imageUrls.join('|')]);
+  
+  React.useEffect(() => {
+    console.log('[IMG][CARD][BIND]', { urls: imageUrls, using: resolvedSrc });
+  }, [imageUrls, resolvedSrc]);
 
   // Derive a stable ID from props (not from transient state)
   const foodId = foodItem?.id ?? null;
@@ -814,57 +834,45 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     'Per 100 g'
   ) : (servingG ? `${servingG} g per portion` : 'Per portion (unknown size)');
   
-  // Image display logic with enrichment support
-  const displayImage = 
-    (currentFoodItem as any)?.imageThumbUrl ||
-    (currentFoodItem as any)?.imageUrl ||
-    ((currentFoodItem as any)?.providerRef && isEan((currentFoodItem as any).providerRef) 
-      ? offImageForBarcode((currentFoodItem as any).providerRef).imageThumbUrl 
-      : undefined);
-
-  const hasImage = !!displayImage;
-  
-  // Legacy compatibility
+  // Legacy compatibility  
   const displayName = title;
-  const imgUrl = displayImage;
-  const validImg = hasImage;
   
   // Add image diagnostics logging
   console.log('[CONFIRM][IMAGE]', {
-    has: hasImage,
-    kind: (currentFoodItem as any)?.imageUrlKind,
-    from: (currentFoodItem as any)?.imageAttribution,
+    has: !!resolvedSrc,
+    urls: imageUrls.length,
+    using: resolvedSrc,
     providerRef: (currentFoodItem as any)?.providerRef
   });
 
   // Pre-load image to avoid flash
   useEffect(() => {
-    if (displayImage) {
+    if (resolvedSrc) {
       const img = new Image();
-      img.src = displayImage;
+      img.src = resolvedSrc;
     }
-  }, [displayImage]);
+  }, [resolvedSrc]);
 
   // Check if this is an unknown product that needs manual entry
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
   const hasBarcode = !!(currentFoodItem as any)?.barcode;
 
   useEffect(() => {
-    const url = imgUrl ?? '';
+    const url = resolvedSrc ?? '';
     const imageUrlKind = /^https?:\/\//i.test(url) ? 'http' : 'none';
     const isBarcode = !!(currentFoodItem as any)?.barcode || !!(currentFoodItem as any)?._provider;
     console.log('[CONFIRM][MOUNT]', {
       rev: CONFIRM_FIX_REV,
       name: displayName,
       nameType: typeof currentFoodItem?.name, // Add diagnostic logging
-      imageUrlKind: validImg ? "http" : "none",
-      url: (imgUrl || "").slice(0, 120),
+      imageUrlKind: !!resolvedSrc ? "http" : "none",
+      url: (resolvedSrc || "").slice(0, 120),
     });
     
     if (isBarcode && isOpen) {
       console.log('[CONFIRM][MOUNT][BARCODE]', { id: currentFoodItem?.name, name: currentFoodItem?.name, nameType: typeof currentFoodItem?.name });
     }
-  }, [imgUrl, displayName, isOpen, currentFoodItem]);
+  }, [resolvedSrc, displayName, isOpen, currentFoodItem]);
 
   // Stabilize: directly sync from prop without null flip
   useEffect(() => {
@@ -1687,17 +1695,22 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-              {hasImage ? (
+              {resolvedSrc ? (
                 <img
-                  src={displayImage}
-                  alt={(currentFoodItem as any)?.title ?? (currentFoodItem as any)?.name}
-                  className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/10"
-                  loading="lazy"
+                  src={resolvedSrc}
+                  alt={(currentFoodItem as any)?.title ?? (currentFoodItem as any)?.name ?? 'Product'}
                   referrerPolicy="no-referrer"
+                  loading="lazy"
+                  className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/10"
+                  onError={() => {
+                    console.warn('[IMG][ERROR]', resolvedSrc);
+                    if (imgIdx < imageUrls.length - 1) setImgIdx(i => i + 1);
+                  }}
+                  onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
                 />
               ) : (
                 <div className="h-14 w-14 rounded-xl bg-white/5 grid place-items-center">
-                  <FallbackEmoji className="h-8 w-8" />
+                  <span className="text-2xl">🍽️</span>
                 </div>
               )}
               <div className="flex-1">

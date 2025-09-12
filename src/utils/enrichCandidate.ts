@@ -1,7 +1,7 @@
 import { fetchCanonicalNutrition } from '@/lib/food/fetchCanonicalNutrition';
 import { normalizeIngredients } from '@/utils/normalizeIngredients';
 import { nvLabelLookup } from '@/lib/nutritionVault';
-import { isEan, offImageForBarcode } from '@/lib/imageHelpers';
+import { isEan, offImageForBarcode, offImageCandidates } from '@/lib/imageHelpers';
 
 export async function enrichCandidate(candidate: any) {
   console.log('[ENRICH][START]', { 
@@ -110,6 +110,16 @@ export async function enrichCandidate(candidate: any) {
           enriched.imageAttribution = img.imageAttribution;
           enriched.imageUrlKind = 'provider';
         }
+
+        // Attach OFF image candidates for robust fallback
+        const urls = candidate.providerRef ? offImageCandidates(candidate.providerRef) : [];
+        if (!candidate.image) candidate.image = {};
+        candidate.image.urls = [
+          ...(candidate.image.urls ?? []),
+          ...(urls ?? []),
+        ];
+        candidate.image.kind = candidate.image.kind ?? 'provider';
+        candidate.image.attribution = candidate.image.attribution ?? 'OpenFoodFacts';
         
         // Add image diagnostics logging
         console.log('[ENRICH][IMG]', { 

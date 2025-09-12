@@ -34,3 +34,33 @@ export function offImageForBarcode(barcode: string): { imageUrl?: string; imageT
     imageThumbUrl: `${baseUrl}/${formattedBarcode}/front_en.200.jpg`
   };
 }
+
+/**
+ * Build correct OFF path as 848/000/082/3328 for barcode 8480000823328
+ */
+export function offPathFromBarcode(barcode: string) {
+  const digits = (barcode || '').replace(/\D/g, '');
+  if (!digits) return null;
+  const len = digits.length;
+  if (len < 8) return digits;
+
+  const upto = len - 4;
+  const parts: string[] = [];
+  for (let i = 0; i < upto; i += 3) parts.push(digits.slice(i, i + 3));
+  parts.push(digits.slice(upto));
+  return parts.join('/');
+}
+
+/**
+ * Generate multiple OFF image URL candidates to try in order
+ */
+export function offImageCandidates(barcode: string, size = 200, lang = 'en') {
+  const p = offPathFromBarcode(barcode);
+  if (!p) return [];
+  return [
+    `https://images.openfoodfacts.org/images/products/${p}/front_${lang}.${size}.jpg`,
+    `https://images.openfoodfacts.org/images/products/${p}/front.${size}.jpg`,
+    `https://images.openfoodfacts.org/images/products/${p}/front_${lang}.400.jpg`,
+    `https://images.openfoodfacts.org/images/products/${p}/front.400.jpg`,
+  ];
+}
