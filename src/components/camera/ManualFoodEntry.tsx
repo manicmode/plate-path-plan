@@ -161,6 +161,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const searchGenRef = useRef<number>(0);
   const searchLockedRef = useRef<boolean>(false);
+  const wasOpenRef = useRef(false);
 
   // Hooks
   const { enrichWithFallback, loading: enriching, error: enrichError } = useManualFoodEnrichment();
@@ -478,14 +479,25 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }));
   };
 
-  // Reset on open to unblock search
+  // Reset on open/close without wiping input while open
   useEffect(() => {
-    if (!isOpen) return;
-    manualFlow.reset();
-    setSelectedCandidate(null);
-    setFoodName('');
-    setCandidates([]);
-  }, [isOpen, manualFlow]);
+    // On open (false -> true): reset flow once, do NOT clear input
+    if (isOpen && !wasOpenRef.current) {
+      wasOpenRef.current = true;
+      manualFlow.reset();
+      setSelectedCandidate(null);
+      setCandidates([]);
+      // IMPORTANT: do NOT call setFoodName('') here
+    }
+
+    // On close (true -> false): full cleanup including input
+    if (!isOpen && wasOpenRef.current) {
+      wasOpenRef.current = false;
+      setFoodName('');
+      setCandidates([]);
+      setSelectedCandidate(null);
+    }
+  }, [isOpen]);
 
   // Handle input changes with debouncing
   useEffect(() => {
