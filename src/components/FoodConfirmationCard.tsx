@@ -1835,10 +1835,23 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Tabs for Nutrition and Health */}
             <Tabs defaultValue="nutrition" className="mb-6">
-              <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-700 rounded-xl">
-                <TabsTrigger value="nutrition" className="rounded-lg">Nutrition</TabsTrigger>
-                <TabsTrigger value="health" className="rounded-lg">Health Check</TabsTrigger>
-                <TabsTrigger value="ingredients" className="rounded-lg">
+              <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-700 rounded-xl p-1 h-12">
+                <TabsTrigger 
+                  value="nutrition" 
+                  className="rounded-lg h-full flex items-center justify-center text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-800 dark:data-[state=active]:text-white"
+                >
+                  Nutrition
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="health" 
+                  className="rounded-lg h-full flex items-center justify-center text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-800 dark:data-[state=active]:text-white"
+                >
+                  Health Check
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="ingredients" 
+                  className="rounded-lg h-full flex items-center justify-center text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-800 dark:data-[state=active]:text-white"
+                >
                   Ingredients
                 </TabsTrigger>
               </TabsList>
