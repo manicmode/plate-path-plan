@@ -193,23 +193,49 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [currentFoodItem, setCurrentFoodItem] = useState<FoodItem | null>(foodItem);
   
-  // Add header calories trace
-  const headerCalories = (currentFoodItem?.calories && currentFoodItem.calories > 0)
-    ? currentFoodItem.calories
-    : caloriesFromMacros({
-        protein: currentFoodItem?.protein,
-        carbs: currentFoodItem?.carbs,
-        fat: currentFoodItem?.fat
-      }) ?? 0;
+  // Helper to clamp values and avoid NaN
+  const clamp0 = (n: any) => (Number.isFinite(+n) ? +n : 0);
+
+  // Derive per-gram readiness from current item (don't rely on a mount-time flag)
+  const pg = currentFoodItem?.perGram ?? {};
+  const hasPg = 
+    Number.isFinite(pg?.protein) ||
+    Number.isFinite(pg?.carbs) ||
+    Number.isFinite(pg?.fat) ||
+    Number.isFinite(pg?.calories); // Use 'calories' instead of 'kcal'
+
+  // Always pick basis reactively
+  const basis: 'per-100g'|'legacy' = hasPg ? 'per-100g' : 'legacy';
+  
+  // Also compute perGramSum for compatibility
+  const perGramSum = Object.values(pg).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
+  
+  // Add header calories trace (reactive computation based on current mode)
+  // grams actually shown on the slider (final grams for this item)
+  const servingGrams = Math.round(currentFoodItem?.portionGrams || 100);
+  const portionPct = (portionPercentage[0] || 100) / 100;
+
+  // Compute macros reactively (no NaN propagation)
+  const proteinGrams = hasPg ? clamp0(pg.protein) * servingGrams : clamp0(currentFoodItem?.protein) * portionPct;
+  const carbsGrams = hasPg ? clamp0(pg.carbs) * servingGrams : clamp0(currentFoodItem?.carbs) * portionPct;
+  const fatGrams = hasPg ? clamp0(pg.fat) * servingGrams : clamp0(currentFoodItem?.fat) * portionPct;
+
+  const kcalFromPerGram = hasPg
+    ? (Number.isFinite(pg.calories) ? Math.round(pg.calories * servingGrams)
+                                : Math.round(proteinGrams * 4 + carbsGrams * 4 + fatGrams * 9))
+    : clamp0(currentFoodItem?.calories) * portionPct;
+
+  const headerCalories = kcalFromPerGram; // don't keep the old 100 default once pg is present
+  
   if (currentFoodItem) {
     trace('CONFIRM:HEADER:CALS', {
-      raw: currentFoodItem?.calories,
-      fromMacros: caloriesFromMacros({
-        protein: currentFoodItem?.protein,
-        carbs: currentFoodItem?.carbs,
-        fat: currentFoodItem?.fat
-      }),
-      chosen: headerCalories
+      basis,
+      hasPg,
+      servingGrams,
+      proteinGrams,
+      carbsGrams,
+      fatGrams,
+      headerCalories
     });
   }
   const [isChecked, setIsChecked] = useState(false);
@@ -339,9 +365,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     s => (foodId ? s.byId[foodId] : undefined)
   );
 
-  // Optional helpers (no new hooks below guards) 
-  const perGram = storeAnalysis?.perGram || {};
-  const perGramSum = Object.values(perGram).reduce((a: number, v: any) => a + (Number(v) || 0), 0);
+  // Optional helpers (no new hooks below guards)
 
   // Detect barcode immediately from stable signals present on first render
   const isBarcodeSource = !!(
@@ -360,13 +384,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   const useHydration = !bypassHydration;
   // Check if nutrition is ready from various sources
-  const perGramReady =
-    !!currentFoodItem?.perGram ||
-    (Array.isArray(currentFoodItem?.perGramKeys) && currentFoodItem.perGramKeys.length > 0) ||
-    (typeof currentFoodItem?.pgSum === 'number' && currentFoodItem.pgSum > 0);
+  const perGramReady = hasPg;
   
   const isNutritionReady = perGramReady
-    || ((useHydration && !isBarcodeSource) ? (perGramSum > 0) : true);
+    || ((useHydration && !isBarcodeSource) ? hasPg : true);
   
   // Check if this is a manual entry that needs enrichment
   const isManual = mode === 'manual' || foodItem?.selectionSource === 'manual';
@@ -628,9 +649,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     sodium: Math.round(getPG('sodium') * scaleMult * 1000)
   };
 
-  // NaN-proof helper
-  const clamp0 = (n: any) => Number.isFinite(+n) ? +n : 0;
-
+  // NaN-proof helper (reuse existing clamp0)
+  
   // 1) Helper near the top of the file
   const kcalFromMacros = (p = 0, c = 0, f = 0, alcohol = 0) =>
     Math.round(p * 4 + c * 4 + f * 9 + alcohol * 7);
@@ -643,7 +663,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const alc = clamp0((finalNutrition as any)?.alcohol);
 
   // Compute kcal from per-gram if available, otherwise from scaled macros
-  const pg = (currentFoodItem as any)?.perGram;
   const currentServingG = actualServingG;
   
   let kcalFromPg = 0;
@@ -652,8 +671,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     const pgC = clamp0(pg.carbs) * currentServingG;
     const pgF = clamp0(pg.fat) * currentServingG;
     
-    kcalFromPg = Number.isFinite(pg.kcal)
-      ? Math.round(clamp0(pg.kcal) * currentServingG)
+    kcalFromPg = Number.isFinite(pg.calories)
+      ? Math.round(clamp0(pg.calories) * currentServingG)
       : Math.round(pgP * 4 + pgC * 4 + pgF * 9);
   }
 
@@ -1532,12 +1551,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Honor forceConfirm - cannot be overridden by downstream logic
   const dialogOpen = forceConfirm === true || isOpen;
 
-  // Add CONFIRM BIND log - log what we receive
+  // Add CONFIRM BIND log - log what we receive (reuse existing variables)
   const isGeneric = (currentFoodItem as any)?.isGeneric;
   const provider = (currentFoodItem as any)?.provider;
   const chip = (isGeneric === true || provider === 'generic') ? 'generic' : 'brand';
-  const basis = isPerGramBasis ? 'per-gram' : 'per-100g';
-  const servingGrams = actualServingG;
   const ingredientsLength = ingredientsList.length;
   
   console.log('[CONFIRM][BIND]', { 

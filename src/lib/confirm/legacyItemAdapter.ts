@@ -24,6 +24,7 @@ export type LegacyAnalysis = {
   source?: string;                   // 'ocr' | 'base' | 'est' | 'db'
   confidence?: number;               // 0..1
   imageUrl?: string;
+  imageUrls?: string[];              // Add imageUrls array for UI compatibility
   dataSourceLabel?: string;          // appears under panel
 };
 
@@ -200,15 +201,23 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
           ? +sourceData.calories
           : Math.round(p100 * 4 + c100 * 4 + f100 * 9);
           
-        perGram.calories = kcal100 / divisor;
+        // ✅ Normalize ONCE to per gram - using 'calories' instead of 'kcal'
+        perGram = {
+          protein: p100 / 100,
+          carbs: c100 / 100,
+          fat: f100 / 100,
+          calories: kcal100 / 100,
+        };
         
-        // Mark perGramReady when protein/carbs/fat are numeric (zero counts as numeric)
+        // Mark ready if at least calories or any macro is present (zeros allowed)
         const perGramReady = 
-          Number.isFinite(perGram.protein ?? 0) &&
-          Number.isFinite(perGram.carbs ?? 0) &&
-          Number.isFinite(perGram.fat ?? 0);
+          Number.isFinite(perGram.calories) ||
+          Number.isFinite(perGram.protein) ||
+          Number.isFinite(perGram.carbs) ||
+          Number.isFinite(perGram.fat);
           
         if (perGramReady) {
+          (raw as any).perGram = perGram;
           (raw as any).perGramReady = true;
           (raw as any).pgSum = (perGram.protein ?? 0) + (perGram.carbs ?? 0) + (perGram.fat ?? 0);
         }
@@ -353,6 +362,7 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
       source: raw.source ?? raw.analysis?.source ?? 'db',
       confidence,
       imageUrl,
+      imageUrls,
       dataSourceLabel,
     }
   };

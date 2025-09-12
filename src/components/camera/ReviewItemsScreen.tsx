@@ -166,12 +166,20 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           const enrichedInput = { ...m, nutrients: r.nutrients, serving: r.serving };
           const merged = toLegacyFoodItem(enrichedInput, i, true);
           
+          // Carry the photo through the review → store path
+          const frameImage = (selectedItems[i] as any)?.selectedImage || 
+                            (selectedItems[i] as any)?.imageUrl || 
+                            (selectedItems[i] as any)?.photoUrl;
+          
           // Write to store using canonical ID - preserve ingredients from merged data
           storeUpdates[canonicalId] = {
             perGram: merged.nutrition?.perGram || {},
             healthScore: 0,
             flags: [],
             ingredients: merged.analysis?.ingredients || [], // Use ingredients from analysis field
+            imageUrl: frameImage ?? merged.analysis?.imageUrl,
+            imageUrls: frameImage ? [frameImage] : merged.analysis?.imageUrls ?? [],
+            portionSource: merged.portionSource ?? 'vision',
             __hydrated: true,
             updatedAt: Date.now(),
           };
