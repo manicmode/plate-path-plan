@@ -480,51 +480,78 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
   // Handle input changes with debouncing
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    searchTimeoutRef.current = setTimeout(() => {
-      debouncedSearch(foodName);
-    }, 200);
-
-    return () => {
+    if (!manualFlow.selectedCandidate && foodName.length > 2) {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
-    };
-  }, [foodName, debouncedSearch]);
+
+      searchTimeoutRef.current = setTimeout(() => {
+        debouncedSearch(foodName);
+      }, 200);
+
+      return () => {
+        if (searchTimeoutRef.current) {
+          clearTimeout(searchTimeoutRef.current);
+        }
+      };
+    }
+  }, [foodName, manualFlow.selectedCandidate, debouncedSearch]);
 
   // Calculate whether to show portion dialog (conditional JSX, not early return)
-  const showPortionDialog = manualFlow.selectedCandidate && manualFlow.enrichmentReady && !manualFlow.uiCommitted;
+  const showPortionDialog =
+    !!manualFlow.selectedCandidate &&
+    manualFlow.enrichmentReady &&
+    manualFlow.nutritionReady &&
+    !manualFlow.uiCommitted;
 
   // Handle candidate selection - start enrichment and show portion dialog
   const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
     setSelectedCandidate(candidate);
-    setFoodName(candidate.name);
-    
-    const labelKind = labelFromFlags(candidate.flags);
-    console.log('[MANUAL][SELECT]', { 
+
+    console.log('[MANUAL][SELECT]', {
       isGeneric: candidate.isGeneric,
       canonicalKey: candidate.canonicalKey,
-      name: candidate.name, 
-      provider: candidate.provider, 
-      key: candidate.providerRef ?? candidate.canonicalKey, 
-      labelKind 
+      name: candidate.name,
+      provider: candidate.provider,
+      key: candidate.providerRef ?? candidate.canonicalKey,
     });
-    
-    // NEW: Begin enrichment and hold user on portion dialog
-    manualFlow.setState(s => ({ ...s, selectedCandidate: candidate }));
+
+    // IMPORTANT: do not mutate the text input / query here
+    // e.g., remove: setFoodName(candidate.name)
+
+    manualFlow.setState(s => ({
+      ...s,
+      selectedCandidate: candidate,
+      enrichmentReady: false,
+      nutritionReady: false,
+      portionDraft: null,
+    }));
+
+    setIsLoading(true);
     try {
-      const enriched = await enrichCandidate(candidate);
+      const enriched = await enrichCandidate(candidate); // existing util
+      console.log('[ENRICH][DONE]', { 
+        hasIngredients: !!enriched?.ingredientsList?.length,
+        count: enriched?.ingredientsList?.length || 0
+      });
       manualFlow.setState(s => ({
         ...s,
         enrichmentReady: true,
         nutritionReady: true,
-        portionDraft: enriched
+        portionDraft: enriched,
       }));
     } catch (e) {
       console.error('[ENRICH][ERROR]', e);
+      manualFlow.setState(s => ({
+        ...s,
+        selectedCandidate: null,
+        enrichmentReady: false,
+        nutritionReady: false,
+        portionDraft: null,
+      }));
+      toast.error('Failed to load food details. Please try another option.');
+    } finally {
+      setIsLoading(false);
     }
   }, [manualFlow]);
 
@@ -744,7 +771,10 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             manualFlow.setState(s => ({ ...s, uiCommitted: true }));
             onResults?.([finalData]); // downstream route handler receives enriched item
           }}
-          onCancel={() => manualFlow.reset()}
+          onCancel={() => {
+            manualFlow.reset();
+            onClose?.();
+          }}
         />
       )}
       {!showPortionDialog && (
@@ -876,11 +906,20 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                 exit={{ opacity: 0, y: -20 }}
                 className="mb-6"
               >
-                <CandidateList
-                  candidates={candidates} // Show all candidates (6-8) without slicing
-                  selectedCandidate={selectedCandidate}
-                  onSelect={handleCandidateSelect}
-                />
+                <div className="relative">
+                  <CandidateList
+                    candidates={candidates} // Show all candidates (6-8) without slicing
+                    selectedCandidate={selectedCandidate}
+                    onSelect={handleCandidateSelect}
+                  />
+                  {manualFlow.selectedCandidate && !manualFlow.enrichmentReady && (
+                    <div className="absolute inset-0 bg-black/40 grid place-items-center rounded-lg">
+                      <div className="bg-white/95 rounded-md px-3 py-2 text-sm">
+                        Loading nutrition details…
+                      </div>
+                    </div>
+                  )}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
