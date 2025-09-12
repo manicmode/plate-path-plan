@@ -1,48 +1,25 @@
-// Minimal stub edge function to prevent deploy failures
-// This function is not currently implemented but referenced in deployment config
+// Stub edge function to fix deploy issues
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// deno-lint-ignore no-explicit-any
-export const handler = async (req: Request): Promise<Response> => {
+serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    console.log('[PARSE-FOOD-ITEMS] Stub function called');
-    
-    return new Response(JSON.stringify({ 
-      ok: true, 
-      reason: "stub - function not yet implemented",
-      timestamp: new Date().toISOString()
-    }), {
-      status: 200,
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'application/json' 
-      },
-    });
-    
-  } catch (error) {
-    console.error('[PARSE-FOOD-ITEMS] Error:', error);
-    
-    return new Response(JSON.stringify({ 
-      ok: false, 
-      error: error.message 
-    }), {
-      status: 500,
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'application/json' 
-      },
-    });
-  }
-};
-
-// Supabase Deno serve
-Deno.serve(handler);
+  return new Response(JSON.stringify({ 
+    ok: true, 
+    message: "Parse food items stub - not implemented" 
+  }), {
+    headers: { 
+      ...corsHeaders,
+      "content-type": "application/json" 
+    },
+    status: 200
+  });
+});

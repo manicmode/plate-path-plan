@@ -1,3 +1,4 @@
+import { ImageWithFallback } from '@/components/ui/ImageWithFallback';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogHeader, DialogClose } from '@/components/ui/dialog';
 import { withSafeCancel } from '@/lib/ui/withSafeCancel';
@@ -205,7 +206,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const [showQualityDetails, setShowQualityDetails] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [prevItem, setPrevItem] = useState<any | null>(null);
-  const [imgIdx, setImgIdx] = useState(0);
   const [loaded, setLoaded] = useState(false);
   
   // B. Lazy ingredients state
@@ -259,35 +259,32 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const { playFoodLogConfirm } = useSound();
 
   const [reminderOpen, setReminderOpen] = useState(false);
-  const [imageError, setImageError] = useState(false);
   
-  // 🧪 DEBUG INSTRUMENTATION
-  const __IMG_DEBUG = false; // keep instrumentation off in UI
-  
-  // Collect URLs: safe candidates for manual, enriched for photo/barcode
-  const PLACEHOLDER = '/images/food-placeholder.png';
+  // Image state and constants
+  const PLACEHOLDER = '/images/food-placeholder.svg';
   const isManualImage = inputSource === 'manual';
   
+  // Use ImageWithFallback for OFF images with proper fallback chain
+  const [imgIdx, setImgIdx] = useState(0);
   const imageUrls: string[] = useMemo(() => {
-    // Prefer only safe, local/manual URLs for manual flow
     let candidates: string[] = [];
 
     if (isManualImage) {
-      // Start with any precomputed/safe images we already had
+      // Manual flow - prefer safe local URLs first
       candidates = [
         (currentFoodItem as any)?.imageUrl,
         (currentFoodItem as any)?.thumbnailUrl,
         (currentFoodItem as any)?.photoUrl,
       ].filter(Boolean) as string[];
       
-      // If the selected item came from OFF, build robust URLs
+      // If from OFF, add robust image candidates  
       const provider = (currentFoodItem as any)?._provider;
       const providerRef = (currentFoodItem as any)?.providerRef;
       if (provider === 'off' && providerRef) {
-        candidates.push(...offImageCandidatesNew(providerRef, 'en')); // or current locale if you have it
+        candidates.push(...offImageCandidatesNew(providerRef, 'en'));
       }
     } else if (ENABLE_PHOTO_BARCODE_ENRICH) {
-      // keep existing enrichment / barcode candidates
+      // Photo/barcode flow - use enrichment data
       const fromEnrichment = (currentFoodItem as any)?.image?.urls ?? [];
       const providerRef = (currentFoodItem as any)?.providerRef;
       const ean = typeof providerRef === 'string' && /^\d{8,}$/.test(providerRef) ? providerRef : null;
@@ -299,11 +296,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       ].filter(Boolean) as string[];
     }
 
-    // Guaranteed fallback so the <img> never goes blank
-    if (candidates.length === 0) candidates = [PLACEHOLDER];
-    
+    // Always have fallback
+    candidates.push('/images/food-placeholder.svg');
     return Array.from(new Set(candidates));
-  }, [(currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef, (currentFoodItem as any)?.imageUrl, (currentFoodItem as any)?.thumbnailUrl, (currentFoodItem as any)?.photoUrl, isManualImage]);
+  }, [(currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef, (currentFoodItem as any)?.imageUrl, isManualImage]);
 
   useEffect(() => setImgIdx(0), [imageUrls.join('|')]);
 
@@ -1748,25 +1744,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
               <div style={{position:'relative',height:64,width:64,borderRadius:14,overflow:'hidden',background:'rgba(0,0,0,.25)'}}>
                 {resolvedSrc && (
-                  <img
-                    src={resolvedSrc}
-                    alt=""
-                    aria-hidden="true"
-                    style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
-                    onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
-                    onError={() => {
-                      const next = imgIdx + 1;
-                      if (next < imageUrls.length) {
-                        console.log('[IMG][ERROR]', resolvedSrc);
-                        setImgIdx(next);
-                      } else if (resolvedSrc !== PLACEHOLDER) {
-                        console.log('[IMG][ERROR][FALLBACK]', resolvedSrc);
-                        setImgIdx(imageUrls.length > 0 ? imageUrls.length - 1 : 0);
-                      }
-                    }}
-                    referrerPolicy="no-referrer"
-                    loading="eager"
-                  />
+                <ImageWithFallback
+                  src={resolvedSrc}
+                  candidateUrls={imageUrls}
+                  alt=""
+                  className="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 1;"
+                  fallbackIcon={<div style={{color: '#fff8'}}>🍽️</div>}
+                />
                 )}
                 {!resolvedSrc && <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>}
               </div>

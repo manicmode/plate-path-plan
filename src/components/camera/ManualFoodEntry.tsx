@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
@@ -397,12 +397,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     };
   }, []);
 
-  // Input handler with debouncing
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setFoodName(value);
-    debouncedSearch(value);
-  }, [debouncedSearch]);
 
   // Add deduplication helpers
   const slug = (s: string) =>
@@ -503,24 +497,18 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
   }, [isOpen]);
 
-  // Handle input changes with debouncing
-  useEffect(() => {
-    if (!manualFlow.selectedCandidate && foodName.length > 2) {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-
-      searchTimeoutRef.current = setTimeout(() => {
-        debouncedSearch(foodName);
-      }, 200);
-
-      return () => {
-        if (searchTimeoutRef.current) {
-          clearTimeout(searchTimeoutRef.current);
-        }
-      };
+  // Input handler with debounced search (replace duplicate effect)
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setFoodName(value);
+    if (value.trim()) {
+      debouncedSearch(value);
+    } else {
+      setCandidates([]);
+      setState('idle');
+      setSelectedCandidate(null);
     }
-  }, [foodName, manualFlow.selectedCandidate, debouncedSearch]);
+  }, [debouncedSearch]);
 
   // Calculate whether to show portion dialog (conditional JSX, not early return)
   const showPortionDialog =
@@ -896,14 +884,14 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           {/* Main Input */}
           <div className="mb-6">
             <div className="relative">
-              <Input
-                ref={inputRef}
-                value={foodName}
-                onChange={(e) => setFoodName(e.target.value)}
-                placeholder="What did you eat?"
-                className="text-lg h-14 pl-4 pr-12 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:bg-white/15 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/50 rounded-xl"
-                disabled={state === 'loading'}
-              />
+                <Input
+                  ref={inputRef}
+                  value={foodName}
+                  onChange={handleInputChange}
+                  placeholder="What did you eat?"
+                  className="text-lg h-14 pl-4 pr-12 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:bg-white/15 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/50 rounded-xl"
+                  disabled={state === 'loading'}
+                />
               
               {/* Search icon or loading spinner */}
               <div className="absolute right-4 top-1/2 -translate-y-1/2">
