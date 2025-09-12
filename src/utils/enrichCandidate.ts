@@ -1,6 +1,7 @@
 import { fetchCanonicalNutrition } from '@/lib/food/fetchCanonicalNutrition';
 import { normalizeIngredients } from '@/utils/normalizeIngredients';
 import { nvLabelLookup } from '@/lib/nutritionVault';
+import { isEan, offImageForBarcode } from '@/lib/imageHelpers';
 
 export async function enrichCandidate(candidate: any) {
   console.log('[ENRICH][START]', { 
@@ -90,13 +91,32 @@ export async function enrichCandidate(candidate: any) {
         enriched.hasIngredients = true;
         enriched.enrichmentSource = source;
 
-        // 3) Fill the brand image from OFF (or fallback)
-        // After you receive the OFF product in your enrichment
-        const offImg = (source as any)?.image_url || (source as any)?.image_front_url || (source as any)?.selected_images?.front?.display?.en;
-        if (offImg && !enriched.imageUrl) {
-          enriched.imageUrl = offImg;
-          enriched.imageUrlKind = 'off';
+        // Map image fields after label success
+        const label = { ingredientsText, ingredientsList, source } as any;
+        const img =
+          label.imageUrl ? { 
+            imageUrl: label.imageUrl, 
+            imageThumbUrl: label.imageThumbUrl, 
+            imageAttribution: label.imageAttribution ?? 'openfoodfacts', 
+            imageUrlKind: 'provider' 
+          }
+          : (candidate.providerRef && isEan(candidate.providerRef))
+            ? { ...offImageForBarcode(candidate.providerRef), imageAttribution: 'openfoodfacts', imageUrlKind: 'provider' }
+            : undefined;
+
+        if (img?.imageUrl) {
+          enriched.imageUrl = img.imageUrl;
+          enriched.imageThumbUrl = img.imageThumbUrl ?? img.imageUrl;
+          enriched.imageAttribution = img.imageAttribution;
+          enriched.imageUrlKind = 'provider';
         }
+        
+        // Add image diagnostics logging
+        console.log('[ENRICH][IMG]', { 
+          has: !!enriched.imageUrl, 
+          kind: enriched.imageUrlKind, 
+          src: enriched.imageAttribution 
+        });
         
         // Ingredients pipeline logging
         console.log('[ING][SET]', {

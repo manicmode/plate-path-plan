@@ -23,6 +23,7 @@ import { SoundGate } from '@/lib/soundGate';
 import { supabase } from '@/integrations/supabase/client';
 import { detectFlags } from '@/lib/health/flagger';
 import { nvLabelLookup } from '@/lib/nutritionVault';
+import { isEan, offImageForBarcode } from '@/lib/imageHelpers';
 import type { NutritionThresholds } from '@/lib/health/flagRules';
 import { useNutritionStore } from '@/stores/nutritionStore';
 // Add the FoodCandidate type import
@@ -813,12 +814,36 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     'Per 100 g'
   ) : (servingG ? `${servingG} g per portion` : 'Per portion (unknown size)');
   
-  const imageUrl = preferItem ? ((currentFoodItem as any)?.imageUrl ?? null) : (currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null);
+  // Image display logic with enrichment support
+  const displayImage = 
+    (currentFoodItem as any)?.imageThumbUrl ||
+    (currentFoodItem as any)?.imageUrl ||
+    ((currentFoodItem as any)?.providerRef && isEan((currentFoodItem as any).providerRef) 
+      ? offImageForBarcode((currentFoodItem as any).providerRef).imageThumbUrl 
+      : undefined);
+
+  const hasImage = !!displayImage;
   
+  // Legacy compatibility
   const displayName = title;
+  const imgUrl = displayImage;
+  const validImg = hasImage;
   
-  const imgUrl = imageUrl ?? currentFoodItem?.image ?? currentFoodItem?.imageUrl ?? null;
-  const validImg = typeof imgUrl === "string" && /^https?:\/\//i.test(imgUrl);
+  // Add image diagnostics logging
+  console.log('[CONFIRM][IMAGE]', {
+    has: hasImage,
+    kind: (currentFoodItem as any)?.imageUrlKind,
+    from: (currentFoodItem as any)?.imageAttribution,
+    providerRef: (currentFoodItem as any)?.providerRef
+  });
+
+  // Pre-load image to avoid flash
+  useEffect(() => {
+    if (displayImage) {
+      const img = new Image();
+      img.src = displayImage;
+    }
+  }, [displayImage]);
 
   // Check if this is an unknown product that needs manual entry
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
@@ -1662,19 +1687,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-              {validImg ? (
+              {hasImage ? (
                 <img
-                  key={imgUrl}             // force refresh when URL changes
-                  src={imgUrl}
-                  referrerPolicy="no-referrer"
+                  src={displayImage}
+                  alt={(currentFoodItem as any)?.title ?? (currentFoodItem as any)?.name}
+                  className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/10"
                   loading="lazy"
-                  decoding="async"
-                  onLoad={() => console.log("[CONFIRM][IMAGE]", { rev: CONFIRM_FIX_REV, event: "load" })}
-                  onError={(e) => { console.log("[CONFIRM][IMAGE]", { rev: CONFIRM_FIX_REV, error: "onError->fallback", src: (e.target as HTMLImageElement)?.src }); setImageError(true); }}
-                  className="h-16 w-16 rounded-xl object-cover"
+                  referrerPolicy="no-referrer"
                 />
               ) : (
-                <FallbackEmoji className="h-16 w-16 rounded-xl" />
+                <div className="h-14 w-14 rounded-xl bg-white/5 grid place-items-center">
+                  <FallbackEmoji className="h-8 w-8" />
+                </div>
               )}
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">

@@ -76,16 +76,21 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
       keys: Object.keys(enrichedData || {})
     });
     
-    onContinue({
-      ...enrichedData,
-      // Ensure ingredients pass through:
-      ingredientsList: enrichedData?.ingredientsList ?? [],
-      ingredientsText:
-        enrichedData?.ingredientsText ??
-        (Array.isArray(enrichedData?.ingredientsList)
-          ? enrichedData.ingredientsList.join(', ')
-          : ''),
-      hasIngredients:
+      onContinue({
+        ...enrichedData,
+        // Forward image fields
+        imageUrl: enrichedData?.imageUrl,
+        imageThumbUrl: enrichedData?.imageThumbUrl,
+        imageAttribution: enrichedData?.imageAttribution,
+        imageUrlKind: enrichedData?.imageUrlKind,
+        // Ensure ingredients pass through:
+        ingredientsList: enrichedData?.ingredientsList ?? [],
+        ingredientsText:
+          enrichedData?.ingredientsText ??
+          (Array.isArray(enrichedData?.ingredientsList)
+            ? enrichedData.ingredientsList.join(', ')
+            : ''),
+        hasIngredients:
         !!(enrichedData?.ingredientsText ||
            (enrichedData?.ingredientsList && enrichedData.ingredientsList.length)),
       servingGrams: portionGrams,

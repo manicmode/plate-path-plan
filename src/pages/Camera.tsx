@@ -349,6 +349,11 @@ const CameraPage = () => {
       const text = it?.ingredientsText ?? (list.length ? list.join(', ') : '');
       return {
         ...it,
+        // Preserve image fields
+        imageUrl: it?.imageUrl,
+        imageThumbUrl: it?.imageThumbUrl,
+        imageAttribution: it?.imageAttribution,
+        imageUrlKind: it?.imageUrlKind,
         ingredientsList: list,
         ingredientsText: text,
         hasIngredients: Boolean(text || (list && list.length)),
