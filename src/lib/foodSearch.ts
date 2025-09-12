@@ -10,6 +10,9 @@ import { nvSearch } from './nutritionVault';
 // Import setup verification (runs automatically in dev mode)
 import './nvSetupTest';
 
+// --- add near the top of the file (module scope)
+let currentEdgeAbort: AbortController | null = null;
+
 // Self-test functionality
 async function selfTestSuggestPipeline(query: string) {
   let vaultHits = 0;
@@ -129,11 +132,17 @@ export async function searchFoodByName(
       }
     }
 
+    // Abort any in-flight edge call before starting a new one
+    if (currentEdgeAbort) {
+      currentEdgeAbort.abort();
+    }
+    currentEdgeAbort = new AbortController();
+
     console.log('📡 [FoodSearch] Calling food-search edge function...');
     const t0 = performance.now();
     
-    // Create timeout controller with custom timeout
-    const ctrl = new AbortController();
+    // Create timeout controller with custom timeout, linking to the current abort controller
+    const ctrl = currentEdgeAbort;
     const link = signal;
     if (link) link.addEventListener('abort', () => ctrl.abort(), { once: true });
 
@@ -160,11 +169,20 @@ export async function searchFoodByName(
       
       const dt = Math.round(performance.now() - t0);
       return processSearchResults(data, error, dt, normalized, vaultHits, trimmedQuery, maxResults);
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.name === 'AbortError') {
+        console.log('[EDGE][ABORTED]', { q: normalized });
+        // Return vault candidates as fallback when aborted
+        return vaultHits.length > 0 ? vaultHits.map(transformVaultToCanonical).slice(0, maxResults) : [];
+      }
       console.log('[FoodSearch][aborted-or-failed]', { q: query, err: String(e) });
       return [];                   // never throw upstream
     } finally {
       clearTimeout(t);
+      // Clear the controller only if this is the active one
+      if (ctrl === currentEdgeAbort) {
+        currentEdgeAbort = null;
+      }
     }
   } catch (error) {
     console.error('[FoodSearch] Outer catch:', error);
