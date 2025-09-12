@@ -279,24 +279,43 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // 🧪 DEBUG INSTRUMENTATION
   const __IMG_DEBUG = false; // keep instrumentation off in UI
   
+  // Pick the best available direct image first
+  const directImg = useMemo(() => {
+    return currentFoodItem?.imageUrl ||
+      (currentFoodItem as any)?.image ||
+      (currentFoodItem as any)?.images?.[0] ||
+      (currentFoodItem as any)?.imageUrls?.[0] ||
+      undefined;
+  }, [currentFoodItem]);
+  
   // Collect URLs: from enrichment then fallback guesses
   const imageUrls: string[] = useMemo(() => {
+    const direct = directImg ? [directImg] : [];
     const a = (currentFoodItem as any)?.image?.urls ?? [];
     const b = (currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : [];
-    return Array.from(new Set([...a, ...b].filter(Boolean)));
-  }, [(currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef]);
+    return Array.from(new Set([...direct, ...a, ...b].filter(Boolean)));
+  }, [directImg, (currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef]);
 
   useEffect(() => setImgIdx(0), [imageUrls.join('|')]);
 
   const resolvedSrc = imageUrls[imgIdx] || '';
+  
+  // Log image binding with direct image priority
   useEffect(() => {
+    if (directImg) {
+      console.log('[CONFIRM][IMAGE]', { has: true, urls: 1, using: 'direct', url: directImg });
+    } else {
+      console.log('[CONFIRM][IMAGE]', { has: false, urls: 0 });
+    }
+    
     console.log('[IMG][CARD][BIND]', {
+      directImg,
       providerRef: (currentFoodItem as any)?.providerRef,
       fromEnrichment: (currentFoodItem as any)?.image?.urls ?? [],
       fromBarcodeGuess: (currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : [],
       using: resolvedSrc,
     });
-  }, [resolvedSrc, imageUrls, (currentFoodItem as any)?.providerRef]);
+  }, [directImg, resolvedSrc, imageUrls, (currentFoodItem as any)?.providerRef]);
 
 
   // Derive a stable ID from props (not from transient state)
@@ -722,9 +741,30 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     // Skip if we already have ingredients or marked unavailable
     if (hasItemIngredients || hasLazyIngredients || isUnavailable) return;
     
-    // Skip lazy ingredient fetch for whole foods
-    if ((currentFoodItem as any).__disableLazyIngredients) {
+    // Apply whole food detection and clamping for detected items
+    function isWholeFoodName(n?: string) {
+      if (!n) return false;
+      n = n.toLowerCase().trim();
+      return ['salmon','atlantic salmon','asparagus','broccoli','spinach','avocado',
+              'egg','banana','apple','rice','chicken breast','steak','tuna','oats']
+             .some(k => n === k || n.startsWith(k));
+    }
+    
+    if (currentFoodItem?.id?.startsWith('detect-') && isWholeFoodName(currentFoodItem?.name)) {
       console.log('[LAZY][ING] skipped: whole-food');
+      setLazyIngredients({
+        ingredientsList: [ (currentFoodItem.name || 'food').toLowerCase() ],
+        ingredientsText: (currentFoodItem.name || 'food').toLowerCase(),
+        hasIngredients: true,
+        ingredientsUnavailable: false,
+        isLoading: false
+      });
+      return;
+    }
+    
+    // Skip lazy ingredient fetch for items with disable flag
+    if ((currentFoodItem as any).__disableLazyIngredients) {
+      console.log('[LAZY][ING] skipped: disabled flag');
       return;
     }
     

@@ -103,10 +103,13 @@ export function useManualFoodEnrichment() {
     const isDetect = (item?.id || '').startsWith('detect-');
     const missingMacros =
       !item?.macros ||
-      (item.macros.protein ?? 0) === 0 &&
-      (item.macros.carbs ?? 0) === 0 &&
-      (item.macros.fat ?? 0) === 0;
+      ((item.macros.protein ?? 0) === 0 &&
+       (item.macros.carbs ?? 0) === 0 &&
+       (item.macros.fat ?? 0) === 0);
     const missingKcal = !item?.calories || item.calories === 0;
+    
+    // 🔓 force hydration for detect items with missing nutrition
+    const shouldHydrate = isDetect && (missingMacros || missingKcal);
     
     console.log('[ENRICH][DETECT_CHECK]', { 
       isDetect, 
@@ -246,25 +249,33 @@ export function useManualFoodEnrichment() {
           }
         }
         
-        // Apply whole food overrides if this is a detected item
-        if (isDetect && isWholeFoodName(item?.name)) {
-          const grams = item.gramsPerServing ?? item.servingGrams ?? 100;
-          
-          // single-ingredient truth
-          (item as any).ingredients = [ (item!.name!).toLowerCase() ];
-          // prevent the lazy ingredient adapter from replacing with 58-line labels
-          (item as any).__disableLazyIngredients = true;
-        }
-        
         return data;
       }
 
       // Apply fallback nutrition for detected items if still empty
       if ((missingMacros || missingKcal) && isDetect) {
         const grams = item?.gramsPerServing ?? item?.servingGrams ?? 100;
+        
+        // Apply whole food overrides for detected items
+        if (isWholeFoodName(item?.name)) {
+          // single-ingredient truth  
+          (item as any).ingredients = [ (item!.name!).toLowerCase() ];
+          // prevent the lazy ingredient adapter from replacing with 58-line labels
+          (item as any).__disableLazyIngredients = true;
+        }
+        
         const filled = fillMacrosFromPer100(item?.name || '', grams);
         if (filled) {
           console.log('[ENRICH][FALLBACK]', { name: item?.name, grams, filled });
+          
+          // help per-gram path in the card
+          (item as any).per100g = { 
+            protein: filled.macros.protein, 
+            carbs: filled.macros.carbs, 
+            fat: filled.macros.fat, 
+            kcal: Math.round(filled.macros.protein * 4 + filled.macros.carbs * 4 + filled.macros.fat * 9) 
+          };
+          
           return {
             name: item?.name || query,
             aliases: [],
@@ -272,7 +283,7 @@ export function useManualFoodEnrichment() {
             ingredients: [{ name: (item?.name || query).toLowerCase() }],
             ingredientsList: [(item?.name || query).toLowerCase()],
             per100g: {
-              calories: filled.macros.protein * 4 + filled.macros.carbs * 4 + filled.macros.fat * 9,
+              calories: Math.round(filled.macros.protein * 4 + filled.macros.carbs * 4 + filled.macros.fat * 9),
               protein: filled.macros.protein,
               carbs: filled.macros.carbs,
               fat: filled.macros.fat,
@@ -280,9 +291,9 @@ export function useManualFoodEnrichment() {
             perServing: {
               serving_grams: grams,
               calories: filled.calories,
-              protein: filled.macros.protein,
-              carbs: filled.macros.carbs,
-              fat: filled.macros.fat,
+              protein: filled.macros.protein * (grams / 100),
+              carbs: filled.macros.carbs * (grams / 100),
+              fat: filled.macros.fat * (grams / 100),
             },
             source: "ESTIMATED",
             confidence: 0.7
