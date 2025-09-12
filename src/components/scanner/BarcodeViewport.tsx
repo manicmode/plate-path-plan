@@ -343,6 +343,11 @@ export default function BarcodeViewport({
         if (capturingRef.current) return;             // don't decode during capture
 
         const res = await decodeFrame(v);             // EXISTING decoder path
+        if (!res || res === null) {
+          // nothing decoded this pass; continue loop without touching res.ok
+          return;
+        }
+        // only after null-guard:
         if (res?.code) {
           pushSample({ t: performance.now(), code: res.code, cx: 0.5, cy: 0.5 }); // center fallback
           const { best, bestCount, dwellMs } = windowStats();

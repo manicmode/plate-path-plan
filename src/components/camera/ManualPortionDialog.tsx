@@ -17,23 +17,29 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
   const [isSubmitting, setIsSubmitting] = useState(false);
   const stepperIntervalRef = useRef<NodeJS.Timeout>();
   
-  const ready = Boolean(candidate && enrichedData);
-  
-  // Close safely if data is missing, but after hooks are set up
-  useEffect(() => {
-    if (!ready) {
-      const id = requestAnimationFrame(() => onCancel?.());
-      return () => cancelAnimationFrame(id);
-    }
-  }, [ready, onCancel]);
+  // Guard against incomplete data (show skeleton)
+  if (!candidate || !enrichedData || !enrichedData.ingredientsList) {
+    console.error('[DIALOG][ERROR] Incomplete data', {
+      candidate: !!candidate,
+      enrichedData: !!enrichedData,
+      ingredients: enrichedData?.ingredientsList?.length || 0,
+    });
+    return (
+      <div className="fixed inset-0 bg-black/50 grid place-items-center z-50">
+        <div className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="animate-pulse space-y-4">
+            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   const defaultGrams = enrichedData?.servingGrams || 100;
 
   // Log when dialog actually mounts
   console.log('[PORTION][OPEN]', { name: candidate?.name, defaultG: defaultGrams });
-
-  // Render nothing if we lack data, but AFTER hooks were called
-  if (!ready) return null;
 
   // Helper functions
   const setGrams = (newGrams: number) => {

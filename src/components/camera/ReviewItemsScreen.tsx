@@ -141,7 +141,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     const initialModalItems = selectedItems.map((item, index) => {
       const canonicalId = item.id; // Use existing item.id as canonical
-      return toLegacyFoodItem({ ...item, id: canonicalId }, index, true);
+      // Ensure grams and photo are available immediately
+      const itemWithDefaults = {
+        ...item,
+        id: canonicalId,
+        imageUrl: (item as any).imageUrl || (item as any).photoUrl || (item as any).selectedImage || null,
+        grams: (item as any).grams || (item as any).portionGrams || (item as any).baseGrams || 100
+      };
+      return toLegacyFoodItem(itemWithDefaults, index, true);
     });
     
     // Set modal items BEFORE async hydration
@@ -155,26 +162,36 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         const { resolveGenericFoodBatch } = await import('@/health/generic/resolveGenericFood');
         const results = await resolveGenericFoodBatch(names);
         
-        // Add null guards
-        const safeResults = Array.isArray(results) ? results : [];
-        console.log('[HYDRATE][WRITE]', { foundCount: safeResults.filter(Boolean).length });
+        console.log('[HYDRATE][WRITE]', { foundCount: results?.filter(Boolean).length });
         
         const storeUpdates: Record<string, any> = {};
         const enrichedItems = initialModalItems.map((m, i) => {
-          if (!m || !safeResults) return { ...m, __hydrated: false };
-          const r = safeResults[i];
+          const r = results?.[i];
           if (!r) return { ...m, __hydrated: false };
           
           const canonicalId = m.id; // Use same ID from modal item
           const enrichedInput = { ...m, nutrients: r.nutrients, serving: r.serving };
           const merged = toLegacyFoodItem(enrichedInput, i, true);
           
+          // Keep photo fixes but fence them to detect-* items
+          const isDetectItem = (selectedItems[i] as any)?.id?.startsWith('detect-') || 
+                              (selectedItems[i] as any)?.source === 'vision';
+          
+          const frameImage = isDetectItem ? (
+            (selectedItems[i] as any)?.selectedImage || 
+            (selectedItems[i] as any)?.imageUrl || 
+            (selectedItems[i] as any)?.photoUrl
+          ) : undefined;
+          
           // Write to store using canonical ID - preserve ingredients from merged data
           storeUpdates[canonicalId] = {
             perGram: merged.nutrition?.perGram || {},
             healthScore: 0,
             flags: [],
-            ingredients: merged.analysis?.ingredients || [], // Use ingredients from analysis field
+            ingredients: merged.analysis?.ingredients || [],
+            imageUrl: frameImage ?? merged.analysis?.imageUrl,
+            imageUrls: frameImage ? [frameImage] : merged.analysis?.imageUrls ?? [],
+            portionSource: isDetectItem ? 'vision' : (merged.portionSource ?? 'inferred'),
             __hydrated: true,
             updatedAt: Date.now(),
           };
@@ -182,7 +199,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           return { ...merged, id: canonicalId, __hydrated: true };
         });
         
-        if (storeUpdates && Object.keys(storeUpdates).length) {
+        if (Object.keys(storeUpdates).length) {
           useNutritionStore.getState().upsertMany(storeUpdates);
           console.log('[HYDRATE][WROTE]', { ids: Object.keys(storeUpdates) });
         }
@@ -821,6 +838,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         
         if (canRender && cur) {
           console.log('[CONFIRM][MOUNT]', { name: cur.name, id: cur.id });
+          console.log('[REVIEW->CARD][SEED]', { grams: cur.grams, image: !!(cur.imageUrl || cur.photoUrl || cur.selectedImage) });
           return (
             <FoodConfirmationCard
               isOpen={confirmModalOpen}
@@ -829,6 +847,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
               onSkip={handleConfirmModalSkip}
               onCancelAll={handleConfirmModalReject}
               foodItem={cur}
+              initialGrams={cur.grams || cur.portionGrams || cur.baseGrams || 100}
+              imageUrlFromPhoto={cur.imageUrl || cur.photoUrl || cur.selectedImage || null}
               showSkip={true}
               currentIndex={currentConfirmIndex}
               totalItems={confirmModalItems.length}

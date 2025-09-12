@@ -248,14 +248,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
   };
 
-  // Debounced search with abort controller
-  const abortRef = useRef<AbortController | null>(null);
+  // Debounced search
   const debouncedSearch = useCallback(async (query: string) => {
-    // Abort previous search
-    if (abortRef.current) {
-      abortRef.current.abort();
-    }
-    
     if (!query.trim()) {
       setCandidates([]);
       setState('idle');
@@ -263,13 +257,12 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       return;
     }
 
-    // Check if search is locked
-    if (searchLockedRef.current) {
+    // Only block if actively processing a request
+    if (searchLockedRef.current && state === 'loading') {
+      console.log('[SEARCH][BLOCKED]', { locked: true, state });
       return;
     }
 
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
     const currentGen = ++searchGenRef.current;
     setState('searching');
     
@@ -283,7 +276,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         const fallback = await submitTextLookup(query, { source: 'manual' });
         
         // Check if this search result is still valid
-        if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
+        if (currentGen !== searchGenRef.current || searchLockedRef.current) {
           return; // Ignore stale results
         }
 
@@ -294,8 +287,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             hasItems: Array.isArray(fallback?.items),
             hasRankedAll: Array.isArray(fallback?.rankedAll),
             itemsCount: fallback?.items?.length,
-            rankedAllCount: fallback?.rankedAll?.length,
-            used: fallback?.used || 'unknown'
+            rankedAllCount: fallback?.rankedAll?.length
           });
 
           // Use full set in this precedence:
@@ -308,7 +300,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
           const count = Math.min(items.length, 8); // Limit to 5-8 suggestions
           console.log(`[SUGGEST][CHEAP_FIRST] count=${count}, sources=[fdc,off]`);
-          logTelemetry('FALLBACK', { itemCount: count, used: fallback?.used });
+          logTelemetry('FALLBACK', { itemCount: count });
           setEnriched(null);
 
           // Process candidates from fallback (V3 returns full list now)
@@ -327,7 +319,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         );
         
         // Check if this search result is still valid
-        if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
+        if (currentGen !== searchGenRef.current || searchLockedRef.current) {
           return; // Ignore stale results
         }
 
@@ -396,7 +388,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       
     } catch (error) {
       // Check if this error is still relevant
-      if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
+      if (currentGen !== searchGenRef.current || searchLockedRef.current) {
         return; // Ignore stale errors
       }
       
@@ -405,15 +397,6 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       toast.error('Search failed. Please try again.');
     }
   }, [enrichWithFallback]);
-
-  // Cleanup abort controller on unmount
-  useEffect(() => {
-    return () => {
-      if (abortRef.current) {
-        abortRef.current.abort();
-      }
-    };
-  }, []);
 
   // Add deduplication helpers
   const slug = (s: string) =>
@@ -577,53 +560,55 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   // Handle candidate selection - start enrichment and show portion dialog
   const handleCandidateSelect = useCallback(async (candidate: LocalCandidate) => {
     setSelectedCandidate(candidate);
+    setFoodName(candidate.name);
 
-    console.log('[MANUAL][SELECT]', {
-      isGeneric: candidate.isGeneric,
-      canonicalKey: candidate.canonicalKey,
-      name: candidate.name,
-      provider: candidate.provider,
-      key: candidate.providerRef ?? candidate.canonicalKey,
-    });
+    // Clear previous state
+    setIsLoading(true);
+    setShowDialog(false);
 
-    // IMPORTANT: do not mutate the text input / query here
-    // e.g., remove: setFoodName(candidate.name)
-
-    manualFlow.setState(s => ({
+    manualFlow.setState((s) => ({
       ...s,
       selectedCandidate: candidate,
       enrichmentReady: false,
       nutritionReady: false,
       portionDraft: null,
+      uiCommitted: false,
     }));
 
-    setIsLoading(true);
     try {
-      const enriched = await enrichCandidate(candidate); // existing util
-      console.log('[ENRICH][DONE]', { 
-        hasIngredients: !!enriched?.ingredientsList?.length,
-        count: enriched?.ingredientsList?.length || 0
-      });
-      manualFlow.setState(s => ({
+      console.log('[ENRICH][START]', { candidate: candidate.name });
+      const enriched = await enrichCandidate(candidate);
+
+      // Still the same candidate?
+      if (selectedCandidate?.id && selectedCandidate.id !== candidate.id) {
+        console.log('[ENRICH][STALE]', { expected: candidate.id, current: selectedCandidate.id });
+        return;
+      }
+
+      console.log('[ENRICH][DONE]', { hasIngredients: !!enriched?.ingredientsList?.length });
+
+      setEnriched(enriched);
+      manualFlow.setState((s) => ({
         ...s,
         enrichmentReady: true,
         nutritionReady: true,
         portionDraft: enriched,
       }));
-    } catch (e) {
-      console.error('[ENRICH][ERROR]', e);
-      manualFlow.setState(s => ({
-        ...s,
-        selectedCandidate: null,
-        enrichmentReady: false,
-        nutritionReady: false,
-        portionDraft: null,
-      }));
-      toast.error('Failed to load food details. Please try another option.');
+
+      // Open dialog only after everything is ready
+      setShowDialog(true);
+    } catch (error) {
+      console.error('[ENRICH][ERROR]', error);
+      manualFlow.reset?.();
+      setSelectedCandidate(null);
+      try { 
+        const { toast } = await import('sonner');
+        toast.error('Failed to load nutrition data. Please try another option.');
+      } catch {}
     } finally {
       setIsLoading(false);
     }
-  }, [manualFlow]);
+  }, [manualFlow, selectedCandidate, enrichCandidate]);
 
   // Handle suggestion chip selection
   const handleSuggestionSelect = (suggestion: string) => {
@@ -765,33 +750,30 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
   // Handle modal close
   const handleClose = () => {
-    onClose();
-    
-    // Reset search locks
+    // Reset flow state BEFORE closing
+    manualFlow.reset?.();
+    setSelectedCandidate(null);
+    setEnriched(null);
+    setState('idle');
+    setFoodName('');
+    setCandidates([]);
+
+    // Reset search locks / timers
     searchLockedRef.current = false;
     searchGenRef.current++;
-    
-    // Cancel pending search timeouts
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    
-    manualFlow.reset();
-    
-    // Reset state after close animation
-    setTimeout(() => {
-      setState('idle');
-      setFoodName('');
-      setCandidates([]);
-      setSelectedCandidate(null);
-      setPortionAmount(100);
-      setPortionUnit('g');
-      setAmountEaten([100]);
-      setMealType('');
-      setNotes('');
-      setShowAdvanced(false);
-      setShowMoreCandidates(false);
-    }, 200);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+
+    // Reset other UI state
+    setPortionAmount(100);
+    setPortionUnit('g');
+    setAmountEaten([100]);
+    setMealType('');
+    setNotes('');
+    setShowAdvanced(false);
+    setShowMoreCandidates(false);
+
+    // Now close the modal
+    onClose?.();
   };
 
   // Keyboard shortcuts
@@ -840,19 +822,11 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
           candidate={manualFlow.selectedCandidate}
           enrichedData={manualFlow.portionDraft}
           onContinue={(finalData) => {
-            manualFlow.setState(s => ({ ...s, uiCommitted: true }));
-            onHandoffStart?.(); // Trigger parent handoff overlay
-            
-            
             console.log('[DIALOG][COMMIT]', { hasIngredients: !!finalData?.ingredientsList?.length });
-            
-            // Hand off to parent (keep as-is)
+            manualFlow.setState(s => ({ ...s, uiCommitted: true }));
             onResults?.([finalData]);
-            
-            // CRITICAL: Close manual entry and reset for next open
-            onClose?.();
-            manualFlow.reset();
-            
+            // CRITICAL: Close manual entry and reset state
+            handleClose();
           }}
           onCancel={() => {
             manualFlow.reset();
@@ -861,14 +835,15 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         />
       )}
       
-      {/* Show loading overlay during enrichment to prevent white flash */}
-      <AnimatePresence>
-        {showEnrichmentLoading && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm grid place-items-center z-50">
-            <ThreeCirclesLoader />
+      {/* Loading overlay while enriching */}
+      {isLoading && selectedCandidate && !manualFlow.enrichmentReady && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg z-10">
+          <div className="bg-white/90 dark:bg-gray-800/90 rounded-lg p-4 flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm font-medium">Loading nutrition details...</span>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
       
       {!showPortionDialog && !showEnrichmentLoading && (
         <>
