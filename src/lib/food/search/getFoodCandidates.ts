@@ -497,129 +497,98 @@ export async function getFoodCandidates(
   const normalizedQuery = normalizeQuery(rawQuery);
   console.log(`[CANDIDATES] Starting search for "${rawQuery}" -> "${normalizedQuery}"`);
   console.log('[CANDIDATES] Facets:', facets);
+
+  // For manual entry with short queries, return early
+  const minChars = 2;
+  if (source === 'manual' && normalizedQuery.trim().length < minChars) {
+    return [];
+  }
+
+  // Run all searches in parallel with fallback strategy
+  const [cheapFirst, lexical, alias] = await Promise.allSettled([
+    lexicalSearch(normalizedQuery, 15),
+    lexicalSearch(normalizedQuery, 10), // reuse for lexical
+    aliasSearch(normalizedQuery, 10)
+  ]);
+
+  const cheapResults = cheapFirst.status === 'fulfilled' ? cheapFirst.value : [];
+  const lexicalResults = lexical.status === 'fulfilled' ? lexical.value : [];
+  const aliasResults = alias.status === 'fulfilled' ? alias.value : [];
+
+  // 🔑 If edge has nothing, don't block the UI — use lexical/alias now.
+  let combinedResults = cheapResults;
+  let used: 'cheap-first' | 'lexical-alias' | 'mixed' = 'cheap-first';
+
+  if (combinedResults.length === 0) {
+    combinedResults = [...lexicalResults, ...aliasResults];
+    used = 'lexical-alias';
+  } else if (source === 'manual') {
+    // nice-to-have: enrich with lexical for diversity
+    combinedResults = [...cheapResults, ...lexicalResults, ...aliasResults];
+    used = 'mixed';
+  }
+
+  console.log(`[CANDIDATES] Combined results: ${combinedResults.length}, strategy: ${used}`);
   
   const candidates = new Map<string, Candidate>();
   
-  // Strategy 1: Lexical search
-  try {
-    const lexicalResults = await lexicalSearch(normalizedQuery, 15);
-    console.log(`[CANDIDATES] Lexical: ${lexicalResults.length} results`);
-    
-    for (const result of lexicalResults) {
-      // Apply core token filter if required
-      if (options.requireCoreToken && !hasCoreTokNounMatch(normalizedQuery, result.name)) {
-        continue;
-      }
-      
-      const kind = classifyItemKind(result);
-      
-      // Map real brand name from provider
-      const brand = normalizeBrandFromFDC(result) || normalizeBrandFromOFF(result);
-      console.log(brand ? '[BRAND][MAPPED]' : '[BRAND][MISSING]', { provider: 'lexical', brand });
-      
-      // Instrumentation: VITE_MANUAL_ENTRY_DIAG=1 diagnostic logging
-      if (import.meta.env.VITE_MANUAL_ENTRY_DIAG === '1') {
-        console.log('[MANUAL_DIAG][CANDIDATE]', {
-          q: normalizedQuery,
-          name: result.name,
-          kind,
-          brand: brand || (result as any).brand,
-          brands: (result as any).brands,
-          code: (result as any).code,
-          canonicalKey: (result as any).canonicalKey,
-          score: null // will be calculated next
-        });
-      }
-      
-      const { score, confidence, explanation } = scoreFoodCandidate(
-        normalizedQuery, 
-        result, 
-        'lexical', 
-        facets, 
-        kind === 'unknown' ? 'brand' : (kind as 'generic' | 'brand'), // Treat unknown as brand for scoring
-        source
-      );
-      
-        candidates.set(result.id, {
-          id: result.id,
-          name: result.name,
-          kind: brand ? 'brand' : (kind || 'generic'),
-          brand,
-          classId: inferClassId(result.name, facets),
-          score,
-          confidence,
-          explanation,
-          source: 'lexical',
-          imageUrl: result.imageUrl,
-          servingGrams: (result as any).servingGrams || 100,
-          grams: (result as any).servingGrams || (result as any).grams || 0,
-          calories: result.caloriesPer100g || 0,
-          protein: 0, // Will be populated from nutrition data
-          carbs: 0,
-          fat: 0,
-          fiber: 0,
-          sugar: 0,
-          sodium: 0,
-        });
+  // Process all combined results
+  for (const result of combinedResults) {
+    // Apply core token filter if required (skip for manual to improve recall)
+    if (options.requireCoreToken && source !== 'manual' && !hasCoreTokNounMatch(normalizedQuery, result.name)) {
+      continue;
     }
-  } catch (error) {
-    console.error('[CANDIDATES] Lexical search failed:', error);
-  }
-  
-  // Strategy 2: Alias search
-  try {
-    const aliasResults = await aliasSearch(normalizedQuery, 10);
-    console.log(`[CANDIDATES] Alias: ${aliasResults.length} results`);
     
-    for (const result of aliasResults) {
-      // Apply core token filter if required
-      if (options.requireCoreToken && !hasCoreTokNounMatch(normalizedQuery, result.name)) {
-        continue;
-      }
-      
-      const existing = candidates.get(result.id);
-      const kind = classifyItemKind(result);
-      
-      // Map real brand name from provider
-      const brand = normalizeBrandFromFDC(result) || normalizeBrandFromOFF(result);
-      console.log(brand ? '[BRAND][MAPPED]' : '[BRAND][MISSING]', { provider: 'alias', brand });
-      
-      const { score, confidence, explanation } = scoreFoodCandidate(
-        normalizedQuery, 
-        result, 
-        'alias', 
-        facets, 
-        kind === 'unknown' ? 'brand' : (kind as 'generic' | 'brand'), // Treat unknown as brand for scoring
-        source
-      );
-      
-      // Only add if not exists or has better score
-      if (!existing || score > existing.score) {
-        candidates.set(result.id, {
-          id: result.id,
-          name: result.name,
-          kind: brand ? 'brand' : (kind || 'generic'),
-          brand,
-          classId: inferClassId(result.name, facets),
-          score,
-          confidence,
-          explanation,
-          source: 'alias',
-          imageUrl: result.imageUrl,
-          servingGrams: (result as any).servingGrams || 100,
-          grams: (result as any).servingGrams || (result as any).grams || 0,
-          calories: result.caloriesPer100g || 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
-          fiber: 0,
-          sugar: 0,
-          sodium: 0,
-        });
-      }
+    const kind = classifyItemKind(result);
+    
+    // Map real brand name from provider
+    const brand = normalizeBrandFromFDC(result) || normalizeBrandFromOFF(result);
+    console.log(brand ? '[BRAND][MAPPED]' : '[BRAND][MISSING]', { provider: 'combined', brand });
+    
+    // Instrumentation: VITE_MANUAL_ENTRY_DIAG=1 diagnostic logging
+    if (import.meta.env.VITE_MANUAL_ENTRY_DIAG === '1') {
+      console.log('[MANUAL_DIAG][CANDIDATE]', {
+        q: normalizedQuery,
+        name: result.name,
+        kind,
+        brand: brand || (result as any).brand,
+        brands: (result as any).brands,
+        code: (result as any).code,
+        canonicalKey: (result as any).canonicalKey,
+        score: null // will be calculated next
+      });
     }
-  } catch (error) {
-    console.error('[CANDIDATES] Alias search failed:', error);
+    
+    const { score, confidence, explanation } = scoreFoodCandidate(
+      normalizedQuery, 
+      result, 
+      'lexical', 
+      facets, 
+      kind === 'unknown' ? 'brand' : (kind as 'generic' | 'brand'), // Treat unknown as brand for scoring
+      source
+    );
+    
+    candidates.set(result.id, {
+      id: result.id,
+      name: result.name,
+      kind: brand ? 'brand' : (kind || 'generic'),
+      brand,
+      classId: inferClassId(result.name, facets),
+      score,
+      confidence,
+      explanation,
+      source: 'lexical',
+      imageUrl: result.imageUrl,
+      servingGrams: (result as any).servingGrams || 100,
+      grams: (result as any).servingGrams || (result as any).grams || 0,
+      calories: result.caloriesPer100g || 0,
+      protein: 0, // Will be populated from nutrition data
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      sodium: 0,
+    });
   }
   
   // Convert to array and sort by score

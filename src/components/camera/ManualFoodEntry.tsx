@@ -248,8 +248,14 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
   };
 
-  // Debounced search
+  // Debounced search with abort controller
+  const abortRef = useRef<AbortController | null>(null);
   const debouncedSearch = useCallback(async (query: string) => {
+    // Abort previous search
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    
     if (!query.trim()) {
       setCandidates([]);
       setState('idle');
@@ -262,6 +268,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       return;
     }
 
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     const currentGen = ++searchGenRef.current;
     setState('searching');
     
@@ -275,7 +283,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         const fallback = await submitTextLookup(query, { source: 'manual' });
         
         // Check if this search result is still valid
-        if (currentGen !== searchGenRef.current || searchLockedRef.current) {
+        if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
           return; // Ignore stale results
         }
 
@@ -286,7 +294,8 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
             hasItems: Array.isArray(fallback?.items),
             hasRankedAll: Array.isArray(fallback?.rankedAll),
             itemsCount: fallback?.items?.length,
-            rankedAllCount: fallback?.rankedAll?.length
+            rankedAllCount: fallback?.rankedAll?.length,
+            used: fallback?.used || 'unknown'
           });
 
           // Use full set in this precedence:
@@ -299,7 +308,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
           const count = Math.min(items.length, 8); // Limit to 5-8 suggestions
           console.log(`[SUGGEST][CHEAP_FIRST] count=${count}, sources=[fdc,off]`);
-          logTelemetry('FALLBACK', { itemCount: count });
+          logTelemetry('FALLBACK', { itemCount: count, used: fallback?.used });
           setEnriched(null);
 
           // Process candidates from fallback (V3 returns full list now)
@@ -318,7 +327,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
         );
         
         // Check if this search result is still valid
-        if (currentGen !== searchGenRef.current || searchLockedRef.current) {
+        if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
           return; // Ignore stale results
         }
 
@@ -387,7 +396,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       
     } catch (error) {
       // Check if this error is still relevant
-      if (currentGen !== searchGenRef.current || searchLockedRef.current) {
+      if (currentGen !== searchGenRef.current || searchLockedRef.current || ctrl.signal.aborted) {
         return; // Ignore stale errors
       }
       
@@ -396,6 +405,15 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       toast.error('Search failed. Please try again.');
     }
   }, [enrichWithFallback]);
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
+    };
+  }, []);
 
   // Add deduplication helpers
   const slug = (s: string) =>

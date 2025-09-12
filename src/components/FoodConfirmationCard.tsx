@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { detectFlags } from '@/lib/health/flagger';
 import { nvLabelLookup } from '@/lib/nutritionVault';
 import { isEan, offImageForBarcode, offImageCandidates } from '@/lib/imageHelpers';
+import { offImageCandidates as offImageCandidatesNew } from '@/lib/offImages';
 import type { NutritionThresholds } from '@/lib/health/flagRules';
 import { useNutritionStore } from '@/stores/nutritionStore';
 // Add the FoodCandidate type import
@@ -261,7 +262,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Collect URLs: from enrichment then fallback guesses
   const imageUrls: string[] = useMemo(() => {
     const a = (currentFoodItem as any)?.image?.urls ?? [];
-    const b = (currentFoodItem as any)?.providerRef ? offImageCandidates((currentFoodItem as any).providerRef) : [];
+    const providerRef = (currentFoodItem as any)?.providerRef;
+    const ean = typeof providerRef === 'string' && /^\d{8,}$/.test(providerRef) ? providerRef : null;
+    const b = ean ? offImageCandidatesNew(ean, 'en') : [];
     return Array.from(new Set([...a, ...b].filter(Boolean)));
   }, [(currentFoodItem as any)?.image?.urls, (currentFoodItem as any)?.providerRef]);
 
