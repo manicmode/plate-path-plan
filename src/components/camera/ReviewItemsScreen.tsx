@@ -141,7 +141,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     const initialModalItems = selectedItems.map((item, index) => {
       const canonicalId = item.id; // Use existing item.id as canonical
-      return toLegacyFoodItem({ ...item, id: canonicalId }, index, true);
+      // Ensure grams and photo are available immediately
+      const itemWithDefaults = {
+        ...item,
+        id: canonicalId,
+        imageUrl: (item as any).imageUrl || (item as any).photoUrl || (item as any).selectedImage || null,
+        grams: (item as any).grams || (item as any).portionGrams || (item as any).baseGrams || 100
+      };
+      return toLegacyFoodItem(itemWithDefaults, index, true);
     });
     
     // Set modal items BEFORE async hydration
@@ -831,6 +838,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
         
         if (canRender && cur) {
           console.log('[CONFIRM][MOUNT]', { name: cur.name, id: cur.id });
+          console.log('[REVIEW->CARD][SEED]', { grams: cur.grams, image: !!(cur.imageUrl || cur.photoUrl || cur.selectedImage) });
           return (
             <FoodConfirmationCard
               isOpen={confirmModalOpen}
@@ -839,6 +847,8 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
               onSkip={handleConfirmModalSkip}
               onCancelAll={handleConfirmModalReject}
               foodItem={cur}
+              initialGrams={cur.grams || cur.portionGrams || cur.baseGrams || 100}
+              imageUrlFromPhoto={cur.imageUrl || cur.photoUrl || cur.selectedImage || null}
               showSkip={true}
               currentIndex={currentConfirmIndex}
               totalItems={confirmModalItems.length}

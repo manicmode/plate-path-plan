@@ -601,8 +601,10 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       console.error('[ENRICH][ERROR]', error);
       manualFlow.reset?.();
       setSelectedCandidate(null);
-      // Optional toast if available in this file:
-      try { toast.error?.('Failed to load nutrition data. Please try another option.'); } catch {}
+      try { 
+        const { toast } = await import('sonner');
+        toast.error('Failed to load nutrition data. Please try another option.');
+      } catch {}
     } finally {
       setIsLoading(false);
     }
