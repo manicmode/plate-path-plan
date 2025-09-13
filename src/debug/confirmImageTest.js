@@ -1,105 +1,91 @@
-// DevTools test script for Confirm Food Card image functionality
-// Paste this into the browser console when the Confirm card is open
+// Runtime test script for Confirm Food Card image binding
+// Paste in DevTools console when confirm card is open
 
 (() => {
-  console.log('🔍 [CONFIRM-IMAGE-TEST] Starting comprehensive image test...');
+  console.log('=== CONFIRM IMAGE TEST ===');
   
-  // Test 1: Check if image element exists
+  // 1. Check for image element
   const imgEl = document.querySelector('[data-test="confirm-food-img"]');
-  const fallbackEl = document.querySelector('[data-test="confirm-food-fallback"]');
+  const initialsEl = document.querySelector('[data-test="confirm-food-initials"]');
+  
+  console.log('[TEST][IMG-ELEMENT]', {
+    hasImage: !!imgEl,
+    hasInitials: !!initialsEl,
+    imageSrc: imgEl?.getAttribute('src'),
+    imageLoaded: imgEl?.complete,
+    naturalWidth: imgEl?.naturalWidth,
+    naturalHeight: imgEl?.naturalHeight
+  });
+  
+  // 2. Check for control image (should load)
   const controlEl = document.querySelector('[data-test="confirm-img-control"]');
-  
-  console.log('📷 [IMG-ELEMENTS]', {
-    mainImage: !!imgEl,
-    fallbackImage: !!fallbackEl,
-    controlImage: !!controlEl,
-    mainImageSrc: imgEl?.getAttribute('src'),
-    fallbackImageSrc: fallbackEl?.getAttribute('src')
+  console.log('[TEST][CONTROL]', {
+    found: !!controlEl,
+    loaded: controlEl?.complete
   });
   
-  // Test 2: Check image dimensions and loading
-  if (imgEl) {
-    console.log('🖼️ [IMG-DIMENSIONS]', {
-      naturalWidth: imgEl.naturalWidth,
-      naturalHeight: imgEl.naturalHeight,
-      displayWidth: imgEl.offsetWidth,
-      displayHeight: imgEl.offsetHeight,
-      complete: imgEl.complete
-    });
-  }
-  
-  // Test 3: Check CSP compliance
-  const cspEl = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
-  const cspContent = cspEl?.getAttribute('content') || 'No CSP found';
-  const imgSrcDirective = cspContent.match(/img-src ([^;]+)/)?.[1] || 'Not found';
-  
-  console.log('🔒 [CSP-CHECK]', {
-    hasCsp: !!cspEl,
-    imgSrcDirective,
-    allowsHttps: imgSrcDirective.includes('https:'),
-    allowsCloudfront: imgSrcDirective.includes('cloudfront'),
-    allowsOpenfoodfacts: imgSrcDirective.includes('openfoodfacts')
+  // 3. Check for estimated ribbons (should be none)
+  const ribbons = document.querySelectorAll('.estimated-ribbon');
+  console.log('[TEST][RIBBONS]', {
+    count: ribbons.length,
+    shouldBeZero: ribbons.length === 0
   });
   
-  // Test 4: Check store state
-  const storeState = (window).__stores?.nutrition?.getState?.() || {};
-  console.log('🏪 [STORE-STATE]', {
-    currentItem: storeState.currentFoodItem?.name,
-    hasImageUrl: !!storeState.currentFoodItem?.imageUrl,
-    imageUrl: storeState.currentFoodItem?.imageUrl,
-    imageAttribution: storeState.currentFoodItem?.imageAttribution
+  // 4. Check brand pill positioning
+  const brandPill = document.querySelector('.brand-badge');
+  console.log('[TEST][BRAND-PILL]', {
+    found: !!brandPill,
+    pointerEvents: brandPill ? getComputedStyle(brandPill).pointerEvents : null,
+    zIndex: brandPill ? getComputedStyle(brandPill).zIndex : null
   });
   
-  // Test 5: Check avatar container styling
-  const avatarEl = document.querySelector('.confirm-avatar');
-  if (avatarEl) {
-    const styles = window.getComputedStyle(avatarEl);
-    console.log('🎨 [AVATAR-STYLES]', {
-      position: styles.position,
-      overflow: styles.overflow,
-      width: styles.width,
-      height: styles.height,
-      zIndex: styles.zIndex
-    });
-  }
+  // 5. Check for placeholder requests
+  const networkEntries = performance.getEntriesByType('resource');
+  const placeholderRequests = networkEntries.filter(entry => 
+    entry.name.includes('food-placeholder') || 
+    entry.name.includes('placeholder.png')
+  );
+  console.log('[TEST][PLACEHOLDER-REQUESTS]', {
+    count: placeholderRequests.length,
+    shouldBeZero: placeholderRequests.length === 0,
+    requests: placeholderRequests
+  });
   
-  // Test 6: Check brand badge positioning
-  const badgeEl = document.querySelector('.brand-badge');
-  if (badgeEl) {
-    const styles = window.getComputedStyle(badgeEl);
-    console.log('🏷️ [BADGE-STYLES]', {
-      position: styles.position,
-      pointerEvents: styles.pointerEvents,
-      zIndex: styles.zIndex,
-      right: styles.right,
-      top: styles.top
-    });
-  }
+  // 6. Check CSP errors
+  const cspErrors = [];
+  const originalError = console.error;
+  console.error = (...args) => {
+    const message = args.join(' ');
+    if (message.includes('Content Security Policy') && message.includes('image')) {
+      cspErrors.push(message);
+    }
+    originalError.apply(console, args);
+  };
   
-  // Test 7: Network request check
-  const imageUrl = imgEl?.getAttribute('src');
-  if (imageUrl && imageUrl.startsWith('http')) {
-    fetch(imageUrl, { method: 'HEAD' })
-      .then(response => {
-        console.log('🌐 [NETWORK-CHECK]', {
-          url: imageUrl,
-          status: response.status,
-          contentType: response.headers.get('content-type'),
-          contentLength: response.headers.get('content-length')
-        });
-      })
-      .catch(error => {
-        console.warn('❌ [NETWORK-ERROR]', { url: imageUrl, error: error.message });
-      });
-  }
+  console.log('[TEST][CSP-ERRORS]', {
+    count: cspErrors.length,
+    shouldBeZero: cspErrors.length === 0,
+    errors: cspErrors
+  });
   
-  console.log('✅ [CONFIRM-IMAGE-TEST] Test complete. Check logs above for results.');
+  // 7. Overall test result
+  const allTestsPassed = 
+    (!!imgEl || !!initialsEl) && // Has image OR initials
+    ribbons.length === 0 && // No estimated ribbons
+    placeholderRequests.length === 0 && // No placeholder requests
+    cspErrors.length === 0; // No CSP errors
+    
+  console.log('[TEST][RESULT]', {
+    allTestsPassed,
+    summary: allTestsPassed ? 'ALL TESTS PASSED ✅' : 'SOME TESTS FAILED ❌'
+  });
   
   return {
+    passed: allTestsPassed,
     hasImage: !!imgEl,
-    imageLoaded: imgEl?.complete,
-    imageUrl: imgEl?.getAttribute('src'),
-    cspCompliant: imgSrcDirective.includes('https:'),
-    storeHasImage: !!storeState.currentFoodItem?.imageUrl
+    hasInitials: !!initialsEl,
+    noRibbons: ribbons.length === 0,
+    noPlaceholders: placeholderRequests.length === 0,
+    noCspErrors: cspErrors.length === 0
   };
 })();

@@ -37,6 +37,8 @@ import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
 import { InitialsTile } from '@/components/ui/InitialsTile';
 import { resolveFoodImage, buildInitialsDataUrl } from "@/lib/food/getFoodImage";
 import { resolveImageUrl } from '@/lib/food/image';
+import ConfirmHeaderAvatar from '@/components/confirm/ConfirmHeaderAvatar';
+import '@/styles/confirm-avatar.css';
 
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import confetti from 'canvas-confetti';
@@ -412,7 +414,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         perGram: result.perGram,
         perGramKeys: result.perGramKeys,
         pgSum: 1,
-        dataSource: result.dataSource
+        dataSource: result.dataSource,
+        // Preserve image fields from existing item
+        imageUrl: prev.imageUrl,
+        imageAttribution: prev.imageAttribution
       }) : null);
       
       console.log('[NUTRITION][READY]', {
@@ -838,6 +843,24 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Store/selector proof
   console.debug('[IMG][STORE]', currentFoodItem?.name, currentFoodItem?.imageUrl);
   
+  // Add runtime probe for easy testing
+  if (typeof window !== 'undefined') {
+    (window as any).__probe = () => {
+      const item = currentFoodItem;
+      console.log('[PROBE][CURRENT-ITEM]', {
+        name: item?.name,
+        hasImageUrl: !!item?.imageUrl,
+        imageUrl: item?.imageUrl,
+        imageAttribution: item?.imageAttribution
+      });
+      return {
+        name: item?.name,
+        hasImage: !!item?.imageUrl,
+        imageUrl: item?.imageUrl
+      };
+    };
+  }
+  
   // Add layout check and feature flag logging
   useEffect(() => {
     console.debug('[FLAG][MANUAL_CHEAP_ONLY]', FEAT_MANUAL_CHEAP_ONLY);
@@ -1051,7 +1074,8 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         fiber: candidate.fiber,
         sugar: candidate.sugar,
         sodium: candidate.sodium,
-        imageUrl: candidate.imageUrl,
+        imageUrl: candidate.imageUrl ?? currentFoodItem?.imageUrl ?? null,
+        imageAttribution: candidate.imageAttribution ?? currentFoodItem?.imageAttribution ?? 'unknown',
         portionGrams: portionEstimate.grams
       });
     }
@@ -1736,69 +1760,18 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </div>
             )}
 
-            {/* Food Item Display with Hard-Bound Avatar */}
+            {/* Food Item Display with Clean Avatar */}
             <div className="confirm-card-header flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl" style={{ position: 'relative' }}>
-              <div className="confirm-avatar" style={{ position: 'relative', width: 64, height: 64, overflow: 'hidden' }}>
-                {imgSrc ? (
-                  <img
-                    src={imgSrc}
-                    alt={currentFoodItem?.name ?? 'food'}
-                    data-test="confirm-food-img"
-                    onLoad={(e) =>
-                      console.debug('[IMG][LOAD]', imgSrc, {
-                        w: e.currentTarget.naturalWidth,
-                        h: e.currentTarget.naturalHeight
-                      })
-                    }
-                    onError={(e) => {
-                      console.warn('[IMG][ERROR]', imgSrc, e);
-                      (e.currentTarget as HTMLImageElement).src = buildInitialsDataUrl(currentFoodItem?.name ?? 'food');
-                    }}
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      borderRadius: 12,
-                      zIndex: 1
-                    }}
-                  />
-                ) : (
-                  <img
-                    src={buildInitialsDataUrl(displayName)}
-                    alt={displayName}
-                    data-test="confirm-food-fallback"
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      borderRadius: 12,
-                      zIndex: 1
-                    }}
-                  />
-                )}
-
-                {/* Temporary: 24px control image to prove painting path */}
-                <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/3/3f/Placeholder_view_vector.svg"
-                  alt="control"
-                  data-test="confirm-img-control"
-                  style={{ position: 'absolute', left: -9999, width: 24, height: 24 }}
-                  onLoad={() => console.debug('[IMG][HARD][LOAD] control ok')}
-                  onError={() => console.warn('[IMG][HARD][ERROR] control failed')}
-                />
-
-                {/* Brand badge must NEVER block clicks or cover image */}
-                <div className="brand-badge" style={{ position: 'absolute', right: -6, top: -6, zIndex: 2, pointerEvents: 'none' }}>
+              <ConfirmHeaderAvatar
+                name={displayName}
+                imageUrl={imgSrc}
+                brandPill={
                   <DataSourceChip
                     source={currentFoodItem?.enrichmentSource || currentFoodItem?.source || 'unknown'}
                     confidence={currentFoodItem?.enrichmentConfidence || currentFoodItem?.confidence}
                   />
-                </div>
-              </div>
+                }
+              />
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
@@ -1812,12 +1785,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     {Number.isFinite(headerKcal) ? headerKcal : 0} calories
                   </p>
-                 {((currentFoodItem as any)?.enrichmentSource === "ESTIMATED" || 
-                   ((currentFoodItem as any)?.enrichmentConfidence && (currentFoodItem as any).enrichmentConfidence < 0.7)) && (
-                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                     Estimated — tap to adjust if needed
-                   </p>
-                 )}
               </div>
             </div>
 
