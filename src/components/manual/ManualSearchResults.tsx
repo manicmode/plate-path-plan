@@ -47,10 +47,15 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
       });
     }, 300);
 
-    // Preserve imageUrl and add diagnostic logging
+    // Preserve imageUrl and imageAttribution with enhanced logging
+    const pickImage = (a?: string, b?: string) => a ?? b ?? null;
     const candidateImg = resolveImageUrl(food);
-    const selected = { ...food, imageUrl: candidateImg };
-    console.debug('[select] candidate=', candidateImg, 'detail=', candidateImg, 'final=', selected.imageUrl);
+    const selected = { 
+      ...food, 
+      imageUrl: pickImage(food.imageUrl, candidateImg),
+      imageAttribution: food.imageAttribution ?? 'unknown'
+    };
+    console.debug('[IMG][SELECT]', selected.name, { url: selected.imageUrl, attr: selected.imageAttribution });
     
     onFoodSelect(selected);
   }, [onFoodSelect]);

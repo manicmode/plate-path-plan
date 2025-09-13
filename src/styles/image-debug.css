@@ -1,0 +1,11 @@
+/* Temporary CSS for image debugging */
+[data-img-probe] { 
+  outline: 0px solid transparent; 
+  /* change to 2px solid magenta if needed for debugging */
+}
+
+/* Ensure no overlay covers the image */
+.image-overlay {
+  pointer-events: none;
+  z-index: 1;
+}

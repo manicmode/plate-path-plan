@@ -30,6 +30,7 @@ import { IMAGE_PROXY_OFF } from '@/lib/flags';
 // Add the FoodCandidate type import
 import type { Candidate } from '@/lib/food/search/getFoodCandidates';
 import { inferPortion } from '@/lib/food/portion/inferPortion';
+import { FEAT_MANUAL_CHEAP_ONLY, MANUAL_FX } from '@/config/flags';
 import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR } from '@/lib/flags';
 import { extractName } from '@/lib/debug/extractName';
 import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
@@ -61,6 +62,7 @@ interface FoodItem {
   sodium: number;
   image?: string;
   imageUrl?: string; // Add imageUrl property
+  imageAttribution?: 'nutritionix'|'off'|'usda'|'barcode'|'manual'|'unknown';
   barcode?: string;
   ingredientsText?: string;
   ingredientsAvailable?: boolean;
@@ -870,13 +872,32 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const normalizedName = extractName({ name: rawName }) || (isBarcodeItem ? `Product ${(currentFoodItem as any)?.barcode || 'Unknown'}` : 'Unknown Product');
   const title = sanitizeName(normalizedName);
   
-  // Resolve image URL with enhanced logging
-  const imgSrc = resolveImageUrl(currentFoodItem);
+  // Enhanced image resolution with store/selector probe  
+  const imgSrc = currentFoodItem?.imageUrl ?? null;
+  console.debug('[IMG][STORE]', currentFoodItem?.name, { url: currentFoodItem?.imageUrl, attr: currentFoodItem?.imageAttribution });
+  console.debug('[IMG][CARD][BIND]', currentFoodItem?.name, { url: imgSrc });
+  
+  // Add layout check and feature flag logging
+  useEffect(() => {
+    console.debug('[FLAG][MANUAL_CHEAP_ONLY]', FEAT_MANUAL_CHEAP_ONLY);
+    console.debug('[IMG][LAYOUT]', { hasOverlay: !!document.querySelector('.image-overlay') });
+    
+    // Console spot check helper
+    (window as any).__probe = () => {
+      const s = (window as any).__stores?.nutrition?.getState?.() || {};
+      console.log('[PROBE][STATE]', {
+        current: s.currentFoodItem?.name,
+        url: s.currentFoodItem?.imageUrl,
+        attr: s.currentFoodItem?.imageAttribution
+      });
+    };
+  }, []);
+  
   useEffect(() => {
     if (currentFoodItem) {
-      console.debug('[confirm] food.imageUrl=', currentFoodItem?.imageUrl, 'resolved=', imgSrc, 'source=', currentFoodItem?.source);
+      console.debug('[confirm] food.imageUrl=', currentFoodItem?.imageUrl, 'resolved=', imgSrc, 'source=', currentFoodItem?.source, 'attribution=', currentFoodItem?.imageAttribution);
     }
-  }, [currentFoodItem?.imageUrl, imgSrc, currentFoodItem?.source]);
+  }, [currentFoodItem?.imageUrl, imgSrc, currentFoodItem?.source, currentFoodItem?.imageAttribution]);
 
   // Serving grams and label - use consistent gram-based labeling
   const servingG = preferItem
@@ -1764,21 +1785,39 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
+              {imgSrc ? (
+                <img
+                  src={imgSrc}
+                  alt={displayName}
+                  loading="lazy"
+                  decoding="async"
+                  referrerPolicy="no-referrer"
+                  crossOrigin="anonymous"  
+                  className="h-16 w-16 flex-none rounded-xl object-cover bg-neutral-900 ring-1 ring-white/10"
+                  style={{ objectFit: 'cover', borderRadius: 12 }}
+                  data-img-probe
+                  onLoad={(e) => {
+                    console.debug('[IMG][LOAD]', imgSrc, { w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight });
+                  }}
+                  onError={(e) => {
+                    console.warn('[IMG][ERROR]', imgSrc);
+                    (e.currentTarget as HTMLImageElement).src = buildInitialsDataUrl(displayName);
+                  }}
+                />
+              ) : (
+                <img
+                  src={buildInitialsDataUrl(displayName)}
+                  alt={displayName}
+                  className="h-16 w-16 flex-none rounded-xl object-cover bg-neutral-900 ring-1 ring-white/10"
+                />
+              )}
+              
+              {/* Control image to rule out overlay/CSS issues (temporary) */}
               <img
-                src={imgSrc ?? ''}
-                alt={displayName}
-                loading="lazy"
-                decoding="async"
-                referrerPolicy="no-referrer"
-                crossOrigin="anonymous"
-                className="h-16 w-16 flex-none rounded-xl object-cover bg-neutral-900 ring-1 ring-white/10"
-                onError={(e) => {
-                  console.debug('[confirm] Image error, falling back to initials:', imgSrc);
-                  (e.currentTarget as HTMLImageElement).src = buildInitialsDataUrl(displayName);
-                }}
-                onLoad={() => {
-                  console.debug('[confirm] Image loaded successfully:', imgSrc);
-                }}
+                src="https://upload.wikimedia.org/wikipedia/commons/3/3f/Placeholder_view_vector.svg"
+                alt="control"
+                onLoad={(e) => console.debug('[IMG][HARD][LOAD]', { w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+                style={{ width: 1, height: 1, opacity: 0, position: 'absolute', pointerEvents: 'none' }}
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">

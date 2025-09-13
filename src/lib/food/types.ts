@@ -5,6 +5,7 @@ export type LogProduct = {
   productName: string;
   barcode: string;
   imageUrl?: string;
+  imageAttribution?: 'nutritionix'|'off'|'usda'|'barcode'|'manual'|'unknown';
 
   nutrition: {
     calories: number;    // kcal per serving (or per 100g mapped to serving if serving exists)

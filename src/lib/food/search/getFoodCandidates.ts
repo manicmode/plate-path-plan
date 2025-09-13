@@ -80,6 +80,7 @@ export interface Candidate {
   confidence: number;
   explanation: string;
   imageUrl?: string;
+  imageAttribution?: 'nutritionix'|'off'|'usda'|'barcode'|'manual'|'unknown';
   servingGrams?: number;
   servingText?: string;
   grams?: number;          // serving size for deduplication
@@ -557,6 +558,23 @@ export async function getFoodCandidates(
     const brand = normalizeBrandFromFDC(result) || normalizeBrandFromOFF(result);
     console.log(brand ? '[BRAND][MAPPED]' : '[BRAND][MISSING]', { provider: 'combined', brand });
     
+    // Provider-specific image resolution with attribution
+    const bestProviderImage = (item: any) => {
+      if (item.photo?.highres || item.photo?.thumb) {
+        return { url: item.photo.highres || item.photo.thumb, attribution: 'nutritionix' as const };
+      }
+      if (item.image_url || item.image_front_url || item.selected_images?.front?.display?.[0]) {
+        return { url: item.image_url || item.image_front_url || item.selected_images?.front?.display?.[0], attribution: 'off' as const };
+      }
+      if (item.images?.[0]?.url) {
+        return { url: item.images[0].url, attribution: 'usda' as const };
+      }
+      return { url: null, attribution: 'unknown' as const };
+    };
+    
+    const imageInfo = bestProviderImage(result);
+    console.debug('[IMG][PROVIDER]', 'combined', result.name, { url: imageInfo.url, attr: imageInfo.attribution });
+    
     // Instrumentation: VITE_MANUAL_ENTRY_DIAG=1 diagnostic logging
     if (import.meta.env.VITE_MANUAL_ENTRY_DIAG === '1') {
       console.log('[MANUAL_DIAG][CANDIDATE]', {
@@ -590,7 +608,8 @@ export async function getFoodCandidates(
       confidence,
       explanation,
       source: 'lexical',
-      imageUrl: resolveImageUrl(result),
+      imageUrl: imageInfo.url,
+      imageAttribution: imageInfo.attribution,
       servingGrams: (result as any).servingGrams || 100,
       grams: (result as any).servingGrams || (result as any).grams || 0,
       calories: result.caloriesPer100g || 0,
@@ -602,7 +621,7 @@ export async function getFoodCandidates(
       sodium: 0,
     });
     
-    console.debug('[norm] src=', (result as any).provider || (result as any).source, 'name=', result.name, 'img=', resolveImageUrl(result));
+    console.debug('[norm] src=', (result as any).provider || (result as any).source, 'name=', result.name, 'img=', imageInfo.url, 'attr=', imageInfo.attribution);
   }
   
   // Convert to array and sort by score

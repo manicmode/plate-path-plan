@@ -35,6 +35,8 @@ interface EnrichedFood {
   source: "FDC" | "EDAMAM" | "NUTRITIONIX" | "CURATED" | "ESTIMATED" | "GENERIC";
   source_id?: string;
   confidence: number;
+  imageUrl?: string;
+  imageAttribution?: 'nutritionix'|'off'|'usda'|'barcode'|'manual'|'unknown';
 }
 
 export type { EnrichedFood };
@@ -83,7 +85,15 @@ export function useManualFoodEnrichment() {
         }
       }
       
-      // Convert to ingredient objects format
+      // Preserve image fields across enrichment merge - never clobber images
+      const pickImage = (a?: string, b?: string) => a ?? b ?? null;
+      const existing = { imageUrl: selectedCandidate?.imageUrl, imageAttribution: selectedCandidate?.imageAttribution };
+      const canonical = { imageUrl: null, imageAttribution: 'generic' };
+      const merged = { ...existing, ...canonical };
+      merged.imageUrl = pickImage(existing.imageUrl, canonical.imageUrl);
+      merged.imageAttribution = existing.imageAttribution ?? canonical.imageAttribution ?? 'unknown';
+      console.debug('[IMG][ENRICH]', selectedCandidate.name, { url: merged.imageUrl, from: merged.imageAttribution });
+      
       const baseIngredients = ingredientsList.map(name => ({ name }));
       
       return {
@@ -96,6 +106,8 @@ export function useManualFoodEnrichment() {
         locale: locale || 'en',
         ingredients: baseIngredients, // Preserve canonical ingredients
         ingredientsList, // Add normalized list for adapter
+        imageUrl: merged.imageUrl,
+        imageAttribution: merged.imageAttribution as 'nutritionix'|'off'|'usda'|'barcode'|'manual'|'unknown',
         per100g: {
           calories: genericData.per100g.kcal,
           protein: genericData.per100g.protein_g,
