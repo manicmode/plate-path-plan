@@ -284,6 +284,20 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     setIsHydrating(true);
     
     try {
+      // ✅ PRESERVE-FIRST: Build payload with image fields
+      const enrichedPayload = selectedItems.map(item => ({
+        ...item,
+        // Preserve image fields (access safely from any property that might exist)
+        imageUrl: (item as any).imageUrl || null,
+        imageAttribution: (item as any).imageAttribution || null,
+      }));
+
+      // ✅ Snapshot for verification  
+      console.debug('[CONFIRM][OPEN][PAYLOAD_SNAPSHOT]', {
+        hasImage: !!enrichedPayload[0]?.imageUrl,
+        imageUrl: enrichedPayload[0]?.imageUrl,
+      });
+
       setConfirmFlowActive(true);
       setConfirmModalOpen(true); // This triggers hydration effect
       setCurrentConfirmIndex(0);

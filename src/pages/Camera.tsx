@@ -323,10 +323,13 @@ const CameraPage = () => {
         if (signal?.aborted) return;
         
         if (legacy?.perGram) {
+          // ✅ Image-preserving merge: don't clobber existing images
           item.perGram = legacy.perGram;
           item.perGramKeys = Object.keys(legacy.perGram);
           item.pgSum = 1;
           item.dataSource = 'legacy_text_lookup';
+          // Note: legacy response doesn't have image fields, so we preserve existing ones
+          
           console.log('[NUTRITION][LEGACY_SUCCESS]', { 
             name: item.name,
             perGramKeys: item.perGramKeys

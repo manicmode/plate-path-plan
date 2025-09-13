@@ -275,8 +275,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       : u;
 
   const imageUrls = useMemo(() => {
+    // ✅ Direct bind: use imageUrl from foodItem prop first
+    const imgSrc = foodItem?.imageUrl ?? currentFoodItem?.imageUrl ?? null;
+    
     const candidates: string[] = [
-      (currentFoodItem as any)?.imageUrl,
+      imgSrc,
       (currentFoodItem as any)?.thumbnailUrl,
       (currentFoodItem as any)?.photoUrl,
     ].filter(Boolean) as string[];
@@ -285,6 +288,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     const dedup = Array.from(new Set(candidates.map(ensureProxied)));
     return dedup.length ? dedup : [PLACEHOLDER];
   }, [
+    foodItem?.imageUrl,
     (currentFoodItem as any)?.imageUrl,
     (currentFoodItem as any)?.thumbnailUrl,
     (currentFoodItem as any)?.photoUrl,
@@ -322,6 +326,15 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       ingLen: foodItem?.ingredients?.length ?? 0,
       enrichmentSource: foodItem?.enrichmentSource,
       enrichmentConfidence: foodItem?.enrichmentConfidence
+    });
+  }, [foodItem]);
+
+  // ✅ Mount snapshot for verification
+  useEffect(() => {
+    console.debug('[CONFIRM][MOUNT_SNAPSHOT]', {
+      hasImageUrl: !!foodItem?.imageUrl,
+      imageUrl: foodItem?.imageUrl ?? null,
+      name: foodItem?.name,
     });
   }, [foodItem]);
 
@@ -1755,28 +1768,28 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
               <div style={{position:'relative',height:64,width:64,borderRadius:14,overflow:'hidden',background:'rgba(0,0,0,.25)'}}>
-                {resolvedSrc && (
+                {resolvedSrc && resolvedSrc !== PLACEHOLDER ? (
                   <img
+                    data-test="confirm-food-img"
                     src={resolvedSrc}
-                    alt=""
-                    aria-hidden="true"
+                    alt={currentFoodItem?.name ?? 'Food'}
                     style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
-                    onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
+                    onLoad={() => console.debug('[CONFIRM][IMG_LOADED]', resolvedSrc)}
                     onError={() => {
+                      console.debug('[CONFIRM][IMG_ERROR]', resolvedSrc);
                       const next = imgIdx + 1;
                       if (next < imageUrls.length) {
-                        console.log('[IMG][ERROR]', resolvedSrc);
                         setImgIdx(next);
                       } else if (resolvedSrc !== PLACEHOLDER) {
-                        console.log('[IMG][ERROR][FALLBACK]', resolvedSrc);
                         setImgIdx(imageUrls.length > 0 ? imageUrls.length - 1 : 0);
                       }
                     }}
                     referrerPolicy="no-referrer"
                     loading="eager"
                   />
+                ) : (
+                  <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>
                 )}
-                {!resolvedSrc && <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
