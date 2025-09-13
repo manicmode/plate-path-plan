@@ -8,6 +8,7 @@ import { expandAliases, normalizeQuery } from '../text/food_aliases';
 import { parseQuery, ParsedFacets } from '../text/parse';
 import { searchFoodByName, CanonicalSearchResult } from '@/lib/foodSearch';
 import { significantTokens } from './lexical';
+import { FEAT_MANUAL_CHEAP_ONLY } from '@/config/flags';
 
 // Helper for badge labeling
 export function labelFromFlags(f?: {generic?:boolean; brand?:boolean; restaurant?:boolean}) {
@@ -99,6 +100,7 @@ export interface CandidateOpts {
   allowMoreBrands?: boolean;    // default false
   allowPrefix?: boolean;        // NEW: enable prefix matching
   minPrefixLen?: number;        // NEW: minimum length for prefix matching
+  allowNetwork?: boolean;       // NEW: allow network/edge function calls
   source?: string;             // for logging
 }
 
@@ -420,7 +422,12 @@ function scoreFoodCandidate(
 /**
  * Performs lexical search using existing food search infrastructure
  */
-async function lexicalSearch(query: string, limit: number = 15): Promise<CanonicalSearchResult[]> {
+async function lexicalSearch(query: string, limit: number = 15, allowNetwork = true): Promise<CanonicalSearchResult[]> {
+  if (!allowNetwork) {
+    console.log(`[LEXICAL][SKIP] Network disabled for "${query}"`);
+    return [];
+  }
+  
   try {
     const results = await searchFoodByName(query, { 
       maxResults: limit, 
@@ -438,11 +445,16 @@ async function lexicalSearch(query: string, limit: number = 15): Promise<Canonic
 /**
  * Searches using food aliases
  */
-async function aliasSearch(query: string, limit: number = 10): Promise<CanonicalSearchResult[]> {
+async function aliasSearch(query: string, limit: number = 10, allowNetwork = true): Promise<CanonicalSearchResult[]> {
   const aliases = expandAliases(query);
   const results: CanonicalSearchResult[] = [];
   
   console.log(`[ALIAS] Expanded "${query}" to ${aliases.length} terms:`, aliases.slice(0, 5));
+  
+  if (!allowNetwork) {
+    console.log(`[ALIAS][SKIP] Network disabled for "${query}"`);
+    return [];
+  }
   
   for (const alias of aliases.slice(0, 3)) { // Limit to top 3 aliases
     if (alias === query.toLowerCase()) continue; // Skip original
@@ -453,19 +465,16 @@ async function aliasSearch(query: string, limit: number = 10): Promise<Canonical
         bypassGuard: true 
       });
       
-      results.push(...aliasResults);
+      results.push(...aliasResults.slice(0, Math.ceil(limit / 3)));
+      
+      if (results.length >= limit) break;
     } catch (error) {
       console.error(`[ALIAS] Search error for "${alias}":`, error);
     }
   }
   
-  // Remove duplicates by ID
-  const unique = results.filter((item, index, self) => 
-    index === self.findIndex(t => t.id === item.id)
-  );
-  
-  console.log(`[ALIAS] Found ${unique.length} unique results`);
-  return unique.slice(0, limit);
+  console.log(`[ALIAS] Found ${results.length} results from alias expansion`);
+  return results.slice(0, limit);
 }
 
 /**
@@ -483,6 +492,7 @@ export async function getFoodCandidates(
     maxPerFamily: 1,
     disableBrandInterleave: false,
     allowMoreBrands: false,
+    allowNetwork: true,
     source,
     ...opts
   };
@@ -491,7 +501,8 @@ export async function getFoodCandidates(
     source,
     maxPerFamily: options.maxPerFamily,
     disableBrandInterleave: options.disableBrandInterleave,
-    allowMoreBrands: options.allowMoreBrands
+    allowMoreBrands: options.allowMoreBrands,
+    allowNetwork: options.allowNetwork
   });
   
   const normalizedQuery = normalizeQuery(rawQuery);
@@ -506,9 +517,9 @@ export async function getFoodCandidates(
 
   // Run all searches in parallel with fallback strategy
   const [cheapFirst, lexical, alias] = await Promise.allSettled([
-    lexicalSearch(normalizedQuery, 15),
-    lexicalSearch(normalizedQuery, 10), // reuse for lexical
-    aliasSearch(normalizedQuery, 10)
+    lexicalSearch(normalizedQuery, 15, options.allowNetwork),
+    lexicalSearch(normalizedQuery, 10, options.allowNetwork), // reuse for lexical
+    aliasSearch(normalizedQuery, 10, options.allowNetwork)
   ]);
 
   const cheapResults = cheapFirst.status === 'fulfilled' ? cheapFirst.value : [];

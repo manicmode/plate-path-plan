@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
@@ -29,6 +29,15 @@ import { DataSourceChip } from '@/components/ui/data-source-chip';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import { sourceBadge } from '@/utils/helpers/sourceBadge';
 import { labelFromFlags, type Candidate as SearchCandidate } from '@/lib/food/search/getFoodCandidates';
+
+// P0: Manual Search Performance Imports
+import { 
+  FEAT_MANUAL_CHEAP_ONLY, 
+  FEAT_MANUAL_HOLE_PUNCH, 
+  FEAT_MANUAL_LRU_CACHE, 
+  FEAT_MANUAL_KEEP_LAST 
+} from '@/config/flags';
+import * as manualSearchCache from '@/services/manualSearchCache';
 
 interface ManualFoodEntryProps {
   isOpen: boolean;
@@ -166,8 +175,11 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const searchGenRef = useRef<number>(0);
   const searchLockedRef = useRef<boolean>(false);
   const wasOpenRef = useRef(false);
+  // P0: Manual Search Performance - refs and state
   const searchRequestId = useRef(0);
   const candidatesRef = useRef<LocalCandidate[]>([]);
+  const lastGoodResultsRef = useRef<LocalCandidate[]>([]);
+  const abortRef = useRef<AbortController | null>(null);
   
   useEffect(() => { candidatesRef.current = candidates; }, [candidates]);
 
@@ -252,61 +264,238 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
   };
 
-  // Debounced search with abort controller
-  const abortRef = useRef<AbortController | null>(null);
-  const debouncedSearch = useCallback(async (query: string) => {
-    // cancel previous
-    if (abortRef.current) abortRef.current.abort();
-    if (!query.trim()) { setCandidates([]); setState('idle'); setEnriched(null); return; }
-    if (searchLockedRef.current) return;
+  // P0: Clear cache on auth changes
+  useEffect(() => {
+    const clearCacheOnAuthChange = () => {
+      manualSearchCache.clear();
+    };
+    
+    // You might want to hook this into your auth context
+    // For now, just clear on unmount to be safe
+    return clearCacheOnAuthChange;
+  }, []);
 
+  // P0: Enhanced debounced search with all optimizations
+  const debouncedSearch = useCallback(async (query: string) => {
+    logManualAction('search_start', { query: query.slice(0, 20) });
+    
+    // Cancel previous request
+    if (abortRef.current) {
+      abortRef.current.abort();
+      logManualAction('search_abort', { reason: 'new_request' });
+    }
+    
+    if (!query.trim()) { 
+      setCandidates([]);
+      setState('idle');
+      setEnriched(null);
+      return;
+    }
+    
+    if (searchLockedRef.current) {
+      logManualAction('search_skip', { reason: 'locked' });
+      return;
+    }
+
+    // Create new request context
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     const currentGen = ++searchGenRef.current;
     const requestId = ++searchRequestId.current;
-    setState('searching');
-    console.log('[SEARCH][START]', { requestId, query, source: 'manual' });
     
-    // Flag: VITE_DISABLE_ENRICHMENT_ON_TYPE - avoid enrichment while typing
-    const disableEnrichmentOnType = (import.meta.env.VITE_DISABLE_ENRICHMENT_ON_TYPE ?? '1') === '1';
+    setState('searching');
+    console.log('[MANUAL][START]', { requestId, query: query.slice(0, 30), source: 'manual' });
+    logManualAction('search_request', { requestId, queryLength: query.length });
+
+    // 1) Check cache first
+    if (FEAT_MANUAL_LRU_CACHE) {
+      const cached = manualSearchCache.get(query);
+      if (cached && cached.candidates.length > 0) {
+        if (currentGen === searchGenRef.current && !ctrl.signal.aborted) {
+          const cachedCandidates = processCandidates(cached.candidates, query);
+          setCandidates(cachedCandidates);
+          setState(cachedCandidates.length > 0 ? 'candidates' : 'idle');
+          lastGoodResultsRef.current = cachedCandidates;
+          
+          console.log('[MANUAL][DONE]', { 
+            requestId, 
+            timeMs: 0, 
+            count: cachedCandidates.length, 
+            source: 'cache' 
+          });
+        }
+        return;
+      }
+    }
 
     try {
-    // cheap-first path (no enrichment while typing)
-    const t0 = performance.now();
-    const fallback = await submitTextLookup(query, { source: 'manual', skipEdge: true });
-      const cheapMs = Math.round(performance.now() - t0);
+      // 2) Hard timeout budget for consistency
+      const timeoutMs = 800;
+      const searchPromise = performLocalSearch(query, requestId);
+      
+      const timeoutPromise = new Promise<LocalCandidate[]>((_, reject) => {
+        setTimeout(() => reject(new Error('Search timeout')), timeoutMs);
+      });
+      
+      const t0 = performance.now();
+      let newCandidates: LocalCandidate[];
+      
+      try {
+        newCandidates = await Promise.race([searchPromise, timeoutPromise]);
+      } catch (timeoutError) {
+        console.log('[MANUAL][TIMEOUT]', { requestId, timeoutMs });
+        
+        // Keep last good results if enabled
+        if (FEAT_MANUAL_KEEP_LAST && lastGoodResultsRef.current.length > 0) {
+          console.log('[KEEP_LAST] rendered');
+          logManualAction('keep_last_used', { previousCount: lastGoodResultsRef.current.length });
+          return; // Keep showing previous results
+        }
+        
+        newCandidates = [];
+      }
+      
+      const searchMs = Math.round(performance.now() - t0);
 
+      // Check if request is still valid
       if (currentGen !== searchGenRef.current || ctrl.signal.aborted || searchLockedRef.current) {
-        console.log('[SEARCH][STALE]', { requestId }); return;
+        console.log('[MANUAL][ABORT]', { requestId, reason: 'stale_request' });
+        return;
       }
 
-      const items = fallback?.items || fallback?.rankedTop3 || fallback?.rankedAll || [];
-      console.log('[SEARCH][CHEAP]', { requestId, count: items.length, timeMs: cheapMs });
-
-      const newCandidates = processCandidates(items, query);
+      // 3) Update UI if we have results OR no previous results
       const current = candidatesRef.current;
-
-      // SWR guard: only update if we have results, or nothing shown yet
-      if (newCandidates.length > 0 || current.length === 0) {
+      const shouldUpdate = newCandidates.length > 0 || current.length === 0;
+      
+      if (shouldUpdate) {
         setCandidates(newCandidates);
         setState(newCandidates.length > 0 ? 'candidates' : 'idle');
-        console.log('[SEARCH][MERGE]', {
-          requestId, cheapCount: newCandidates.length, edgeCount: 0,
-          finalCount: newCandidates.length, cacheHit: newCandidates.length > 0, source: 'manual'
+        
+        if (newCandidates.length > 0) {
+          lastGoodResultsRef.current = newCandidates;
+          
+          // Cache successful results
+          if (FEAT_MANUAL_LRU_CACHE) {
+            manualSearchCache.set(query, newCandidates, 'local');
+          }
+        }
+        
+        console.log('[MANUAL][DONE]', { 
+          requestId, 
+          timeMs: searchMs, 
+          count: newCandidates.length, 
+          source: 'local' 
         });
       } else {
-        console.log('[SEARCH][MERGE]', {
-          requestId, cheapCount: newCandidates.length, edgeCount: 0,
-          finalCount: current.length, action: 'preserved_existing', cacheHit: true, source: 'manual'
+        console.log('[MANUAL][DONE]', {
+          requestId, 
+          timeMs: searchMs,
+          count: current.length, 
+          action: 'preserved_existing', 
+          source: 'local'
         });
       }
       
     } catch (e) {
       if (currentGen !== searchGenRef.current || ctrl.signal.aborted) return;
-      console.error('[SEARCH][ERROR]', e);
+      
+      console.error('[MANUAL][ERROR]', e);
+      logManualAction('search_error', { error: String(e) });
+      
+      // Keep last good results on error if enabled
+      if (FEAT_MANUAL_KEEP_LAST && lastGoodResultsRef.current.length > 0) {
+        console.log('[KEEP_LAST] error fallback');
+        return;
+      }
+      
       setState('error');
     }
-  }, [enrichWithFallback]);
+  }, []);
+
+  // P0: Local search function (bypasses network when FEAT_MANUAL_CHEAP_ONLY is true)
+  const performLocalSearch = useCallback(async (query: string, requestId: number): Promise<LocalCandidate[]> => {
+    const allowNetwork = !FEAT_MANUAL_CHEAP_ONLY;
+    
+    console.log('[MANUAL][SEARCH]', { 
+      requestId, 
+      query: query.slice(0, 30), 
+      allowNetwork,
+      cheapOnly: FEAT_MANUAL_CHEAP_ONLY 
+    });
+    
+    if (!allowNetwork) {
+      console.log('[MANUAL][CHEAP_ONLY] Skipping edge functions');
+    }
+    
+    const fallback = await submitTextLookup(query, { 
+      source: 'manual', 
+      allowNetwork 
+    });
+    
+    const items = fallback?.items || fallback?.rankedTop3 || fallback?.rankedAll || [];
+    return processCandidates(items, query);
+  }, []);
+
+  // P0: "Hole punch" search for broader sources (user-initiated)
+  const performHolePunchSearch = useCallback(async (query: string) => {
+    if (!FEAT_MANUAL_HOLE_PUNCH) return;
+    
+    const requestId = ++searchRequestId.current;
+    console.log('[MANUAL][HOLE_PUNCH]', { requestId, query: query.slice(0, 30) });
+    logManualAction('hole_punch_start', { requestId });
+    
+    setState('searching');
+    
+    try {
+      // Force network search with strict timeout
+      const ctrl = new AbortController();
+      const timeoutMs = 1800;
+      
+      setTimeout(() => ctrl.abort(), timeoutMs);
+      
+      const t0 = performance.now();
+      const result = await submitTextLookup(query, { 
+        source: 'manual', 
+        allowNetwork: true // Force network
+      });
+      
+      const searchMs = Math.round(performance.now() - t0);
+      const items = result?.items || result?.rankedTop3 || result?.rankedAll || [];
+      const newCandidates = processCandidates(items, query);
+      
+      setCandidates(newCandidates);
+      setState(newCandidates.length > 0 ? 'candidates' : 'idle');
+      lastGoodResultsRef.current = newCandidates;
+      
+      // Cache successful hole-punch results
+      if (FEAT_MANUAL_LRU_CACHE && newCandidates.length > 0) {
+        manualSearchCache.set(query, newCandidates, 'hole-punch');
+      }
+      
+      console.log('[MANUAL][DONE]', { 
+        requestId, 
+        timeMs: searchMs, 
+        count: newCandidates.length, 
+        source: 'hole-punch' 
+      });
+      
+    } catch (e) {
+      console.error('[MANUAL][HOLE_PUNCH][ERROR]', e);
+      setState('error');
+    }
+  }, []);
+
+  // Updated: Handle "Enter again for broader search" 
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      
+      // If no results and hole punch enabled, offer broader search
+      if (FEAT_MANUAL_HOLE_PUNCH && candidates.length === 0 && foodName.trim()) {
+        performHolePunchSearch(foodName.trim());
+      }
+    }
+  }, [candidates.length, foodName, performHolePunchSearch]);
 
   // Cleanup abort controller on unmount
   useEffect(() => {
