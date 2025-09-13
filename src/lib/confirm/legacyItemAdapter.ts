@@ -259,13 +259,13 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
   ) ?? [];
   
   const confidence = storeAnalysis?.confidence ?? pick<number>(raw.confidence, raw.analysis?.confidence);
-  const imageUrl = storeAnalysis?.imageUrl ?? pick<string>(
+  const imageUrl = pick<string>(
     raw.image, 
     raw.imageUrl, 
     raw.productImageUrl, 
     raw.photoUrl,
     raw.image_url
-  );
+  ) ?? storeAnalysis?.imageUrl; // ✅ Prefer raw imageUrl over storeAnalysis
 
   const dataSourceLabel = raw.analysis?.dataSourceLabel
     ?? raw.meta?.dataSourceLabel
