@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Trash2, Check, X } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useConfirmFlowActive } from '@/lib/confirmFlowState';
 
 interface FoodItem {
@@ -47,9 +47,6 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
       setCurrentIndex(0);
       setConfirmedItems([]);
       setEditedPortion(null);
-      
-      // Dispatch confirm:mounted event to signal the interstitial loader
-      window.dispatchEvent(new CustomEvent('confirm:mounted'));
       
       // Legacy modal assert
       if (import.meta.env.VITE_LOG_DEBUG === 'true') {
@@ -137,115 +134,109 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
           if (confirmFlowActive) { e.preventDefault(); e.stopPropagation(); }
         }}
       >
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-        >
-          <DialogHeader>
-            <DialogTitle>Confirm Food Items</DialogTitle>
-            <DialogDescription>
-              Confirm items and adjust portion sizes for logging to your diary
-            </DialogDescription>
-          </DialogHeader>
+        <VisuallyHidden>
+          <DialogTitle>Confirm Food Items</DialogTitle>
+          <DialogDescription>
+            Confirm items and adjust portion sizes for logging to your diary
+          </DialogDescription>
+        </VisuallyHidden>
 
-          {process.env.NODE_ENV === 'development' && (() => {
-            console.log('[LEGACY][ConfirmModal][MOUNT]', {
-              selectedIndex: currentIndex, totalItems: items?.length, timestamp: Date.now()
-            });
-            return null;
-          })()}
+        {process.env.NODE_ENV === 'development' && (() => {
+          console.log('[LEGACY][ConfirmModal][MOUNT]', {
+            selectedIndex: currentIndex, totalItems: items?.length, timestamp: Date.now()
+          });
+          return null;
+        })()}
 
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-semibold">Confirm Food Log</span>
-              <Badge variant="secondary">
-                {currentIndex + 1} of {items.length}
-              </Badge>
-            </div>
-          </DialogHeader>
-
-          <div className="space-y-6">
-            {/* Item Preview */}
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
-                {currentItem.image ? (
-                  <img 
-                    src={currentItem.image} 
-                    alt={currentItem.name}
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                ) : (
-                  <span className="text-2xl">🍽️</span>
-                )}
-              </div>
-              
-              <div className="flex-1">
-                <h3 className="font-semibold capitalize">{currentItem.name}</h3>
-                <div className="flex items-center space-x-2 mt-1">
-                  <Badge variant="outline" className="text-xs">
-                    {currentItem.category}
-                  </Badge>
-                  <Badge className={`text-xs ${confidenceColor}`}>
-                    {Math.round(currentItem.confidence * 100)}% confident
-                  </Badge>
-                </div>
-              </div>
-            </div>
-
-            {/* Portion Adjustment */}
-            <div className="space-y-3">
-              <Label htmlFor="portion">Portion Size</Label>
-              <div className="flex items-center space-x-2">
-                <Input
-                  id="portion"
-                  type="number"
-                  min="1"
-                  max="1000"
-                  value={editedPortion || currentItem.portion_estimate || 100}
-                  onChange={(e) => setEditedPortion(parseInt(e.target.value) || null)}
-                  className="flex-1"
-                />
-                <span className="text-sm text-muted-foreground">grams</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Original estimate: {portionText}
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                onClick={handleReject}
-                className="flex-1"
-              >
-                <X className="w-4 h-4 mr-2" />
-                Skip This Item
-              </Button>
-              
-              <Button
-                onClick={handleConfirm}
-                className="flex-1"
-              >
-                <Check className="w-4 h-4 mr-2" />
-                Confirm
-              </Button>
-            </div>
-
-            {/* Reject All Option */}
-            {currentIndex === 0 && items.length > 1 && (
-              <Button
-                variant="ghost"
-                onClick={handleRejectAll}
-                className="w-full text-destructive hover:text-destructive"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Cancel All Items
-              </Button>
-            )}
+        <DialogHeader>
+          <div className="flex items-center justify-between">
+            <span className="text-lg font-semibold">Confirm Food Log</span>
+            <Badge variant="secondary">
+              {currentIndex + 1} of {items.length}
+            </Badge>
           </div>
-        </motion.div>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Item Preview */}
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
+              {currentItem.image ? (
+                <img 
+                  src={currentItem.image} 
+                  alt={currentItem.name}
+                  className="w-full h-full object-cover rounded-lg"
+                />
+              ) : (
+                <span className="text-2xl">🍽️</span>
+              )}
+            </div>
+            
+            <div className="flex-1">
+              <h3 className="font-semibold capitalize">{currentItem.name}</h3>
+              <div className="flex items-center space-x-2 mt-1">
+                <Badge variant="outline" className="text-xs">
+                  {currentItem.category}
+                </Badge>
+                <Badge className={`text-xs ${confidenceColor}`}>
+                  {Math.round(currentItem.confidence * 100)}% confident
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          {/* Portion Adjustment */}
+          <div className="space-y-3">
+            <Label htmlFor="portion">Portion Size</Label>
+            <div className="flex items-center space-x-2">
+              <Input
+                id="portion"
+                type="number"
+                min="1"
+                max="1000"
+                value={editedPortion || currentItem.portion_estimate || 100}
+                onChange={(e) => setEditedPortion(parseInt(e.target.value) || null)}
+                className="flex-1"
+              />
+              <span className="text-sm text-muted-foreground">grams</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Original estimate: {portionText}
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              onClick={handleReject}
+              className="flex-1"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Skip This Item
+            </Button>
+            
+            <Button
+              onClick={handleConfirm}
+              className="flex-1"
+            >
+              <Check className="w-4 h-4 mr-2" />
+              Confirm
+            </Button>
+          </div>
+
+          {/* Reject All Option */}
+          {currentIndex === 0 && items.length > 1 && (
+            <Button
+              variant="ghost"
+              onClick={handleRejectAll}
+              className="w-full text-destructive hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Cancel All Items
+            </Button>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
