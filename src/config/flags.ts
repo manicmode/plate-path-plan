@@ -53,6 +53,9 @@ export const FEAT_MANUAL_ALIAS_LIMIT = getFlag('FEAT_MANUAL_ALIAS_LIMIT', false)
 
 export const FEAT_MANUAL_LOOSE_AND = getFlag('FEAT_MANUAL_LOOSE_AND', false);
 
+// UX enhancement flags
+export const MANUAL_PORTION_STEP = getFlag('MANUAL_PORTION_STEP', true);
+
 // Debug logging
 if (typeof window !== 'undefined') {
   console.log('[FLAGS] Manual search optimization flags:', {
@@ -62,6 +65,7 @@ if (typeof window !== 'undefined') {
     FEAT_MANUAL_KEEP_LAST,
     FEAT_MANUAL_ALIAS_LIMIT,
     FEAT_MANUAL_LOOSE_AND,
+    MANUAL_PORTION_STEP,
     isDev,
     overrides: Object.keys(flagOverrides)
   });
