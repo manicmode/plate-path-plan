@@ -79,7 +79,7 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="manual-entry-modal" onPointerDownOutside={(e) => e.preventDefault()}>
+        <DialogContent className="manual-entry-modal" showCloseButton={false} onPointerDownOutside={(e) => e.preventDefault()}>
           <div className="manual-modal-container">
             {/* Header */}
             <div className="manual-header">
