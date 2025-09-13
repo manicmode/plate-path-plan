@@ -33,6 +33,7 @@ import { inferPortion } from '@/lib/food/portion/inferPortion';
 import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR } from '@/lib/flags';
 import { extractName } from '@/lib/debug/extractName';
 import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
+import { resolveFoodImage, buildInitialsDataUrl } from "@/lib/food/getFoodImage";
 
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import confetti from 'canvas-confetti';
@@ -1754,30 +1755,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-              <div style={{position:'relative',height:64,width:64,borderRadius:14,overflow:'hidden',background:'rgba(0,0,0,.25)'}}>
-                {resolvedSrc && (
-                  <img
-                    src={resolvedSrc}
-                    alt=""
-                    aria-hidden="true"
-                    style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
-                    onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
-                    onError={() => {
-                      const next = imgIdx + 1;
-                      if (next < imageUrls.length) {
-                        console.log('[IMG][ERROR]', resolvedSrc);
-                        setImgIdx(next);
-                      } else if (resolvedSrc !== PLACEHOLDER) {
-                        console.log('[IMG][ERROR][FALLBACK]', resolvedSrc);
-                        setImgIdx(imageUrls.length > 0 ? imageUrls.length - 1 : 0);
-                      }
-                    }}
-                    referrerPolicy="no-referrer"
-                    loading="eager"
-                  />
-                )}
-                {!resolvedSrc && <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>}
-              </div>
+              <img
+                src={resolveFoodImage(currentFoodItem)}
+                alt={displayName}
+                loading="lazy"
+                decoding="async"
+                className="h-16 w-16 flex-none rounded-xl object-cover bg-neutral-900 ring-1 ring-white/10"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = buildInitialsDataUrl(displayName);
+                }}
+              />
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
