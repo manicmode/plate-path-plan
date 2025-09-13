@@ -93,7 +93,7 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Search for foods..."
+          placeholder="Search brand, restaurant, or food name…"
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyPress}
@@ -111,11 +111,23 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
         )}
       </div>
 
+      {/* Empty state */}
+      {!query.trim() && (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground text-sm">
+            Type a food name to search. Try brand or restaurant names for best matches.
+          </p>
+        </div>
+      )}
+
       {/* Results */}
       {query.trim() && (
         <div className="max-h-96 overflow-y-auto space-y-2">
           {isSearching ? (
             <div className="space-y-2">
+              <p className="text-xs text-muted-foreground mb-2">
+                Looking up items… brand and restaurant matches show first.
+              </p>
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex-1 space-y-2">
