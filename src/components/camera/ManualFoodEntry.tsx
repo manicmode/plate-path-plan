@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
-import { submitTextLookup, type TextLookupOptions } from '@/lib/food/textLookup';
 import { CandidateList } from '@/components/food/CandidateList';
 import { PortionUnitField } from '@/components/food/PortionUnitField';
 import { FOOD_TEXT_DEBUG } from '@/lib/flags';
@@ -37,7 +36,7 @@ import {
   FEAT_MANUAL_LRU_CACHE, 
   FEAT_MANUAL_KEEP_LAST 
 } from '@/config/flags';
-import * as manualSearchCache from '@/services/manualSearchCache';
+import { useManualSearch } from '@/hooks/useManualSearch';
 import { logManualAction } from '@/lib/analytics/manualLog';
 
 interface ManualFoodEntryProps {
@@ -150,17 +149,12 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const manualFlow = useManualFlowStatus();
   const [state, setState] = useState<ModalState>('idle');
   const [foodName, setFoodName] = useState('');
-  const [candidates, setCandidates] = useState<LocalCandidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<LocalCandidate | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [enriched, setEnriched] = useState<any>(null);
   const [handoff, setHandoff] = useState(false);
   
-  // Track loading & suggestion availability for button guarding
-  const isSearching = state === 'searching';
-  const hasSuggestions = candidates.length > 0;
-  const canAdd = !isSearching && selectedCandidate != null;
   const [portionAmount, setPortionAmount] = useState<number>(100);
   const [portionUnit, setPortionUnit] = useState('g');
   const [amountEaten, setAmountEaten] = useState([100]);
@@ -170,19 +164,38 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
   const [showMoreCandidates, setShowMoreCandidates] = useState(false);
   const [recentItems, setRecentItems] = useState<string[]>([]);
 
+  // P0: Use the new manual search hook
+  const manualSearch = useManualSearch({
+    allowNetwork: !FEAT_MANUAL_CHEAP_ONLY,
+    debounceMs: 150
+  });
+
+  // Map search results to local candidates format
+  const candidates = manualSearch.results.map((item: any, index: number): LocalCandidate => ({
+    id: item.id || `candidate-${index}`,
+    name: item.name || 'Unknown Item',
+    isGeneric: item.isGeneric || false,
+    portionHint: item.portionHint,
+    defaultPortion: item.defaultPortion,
+    provider: item.provider,
+    imageUrl: item.imageUrl,
+    data: item,
+    providerRef: item.providerRef,
+    canonicalKey: item.canonicalKey,
+    brand: item.brand,
+    classId: item.classId,
+    flags: item.flags
+  }));
+
+  // Derived state
+  const isSearching = manualSearch.isSearching;
+  const hasSuggestions = candidates.length > 0;
+  const canAdd = !isSearching && selectedCandidate != null;
+
   // Refs
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const inputRef = useRef<HTMLInputElement>(null);
-  const searchGenRef = useRef<number>(0);
   const searchLockedRef = useRef<boolean>(false);
   const wasOpenRef = useRef(false);
-  // P0: Manual Search Performance - refs and state
-  const searchRequestId = useRef(0);
-  const candidatesRef = useRef<LocalCandidate[]>([]);
-  const lastGoodResultsRef = useRef<LocalCandidate[]>([]);
-  const abortRef = useRef<AbortController | null>(null);
-  
-  useEffect(() => { candidatesRef.current = candidates; }, [candidates]);
 
   // Hooks
   const { enrichWithFallback, loading: enriching, error: enrichError } = useManualFoodEnrichment();
@@ -493,15 +506,10 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       
       // If no results and hole punch enabled, offer broader search
       if (FEAT_MANUAL_HOLE_PUNCH && candidates.length === 0 && foodName.trim()) {
-        performHolePunchSearch(foodName.trim());
+        // performHolePunchSearch(foodName.trim()); // TODO: Implement hole punch
       }
     }
-  }, [candidates.length, foodName, performHolePunchSearch]);
-      if (FEAT_MANUAL_HOLE_PUNCH && candidates.length === 0 && foodName.trim()) {
-        performHolePunchSearch(foodName.trim());
-      }
-    }
-  }, [candidates.length, foodName, performHolePunchSearch]);
+  }, [candidates.length, foodName]);
 
   // Add deduplication helpers
   const slug = (s: string) =>
