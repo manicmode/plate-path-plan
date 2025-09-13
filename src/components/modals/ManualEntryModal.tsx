@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import ManualFoodEntry from '@/components/camera/ManualFoodEntry';
 
 interface ManualEntryModalProps {
@@ -12,14 +11,6 @@ interface ManualEntryModalProps {
 
 export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntryModalProps) {
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
-
-  // Log legacy modal host mounting when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      console.log('[MODAL][HOST] legacy host mounted');
-      console.log('[MODAL][OPEN] manualEntry (legacy)');
-    }
-  }, [isOpen]);
 
   const handleFoodSelect = async (candidate: any) => {
     try {
@@ -55,29 +46,23 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
     }
   };
 
-  if (!isOpen) return null;
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl w-[92vw] p-0 overflow-hidden">
-        <DialogHeader className="p-4 border-b flex flex-row items-center justify-between space-y-0">
-          <div>
-            <DialogTitle className="text-lg font-semibold">Add Food Manually</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              Search and select foods to add to your log
-            </DialogDescription>
+      <DialogContent className="sm:max-w-md z-[600]">
+        <VisuallyHidden>
+          <DialogTitle>Add Food Manually</DialogTitle>
+          <DialogDescription>
+            Search and select foods to add to your log
+          </DialogDescription>
+        </VisuallyHidden>
+        
+        <DialogHeader>
+          <div className="flex items-center justify-between">
+            <span className="text-lg font-semibold">Add Food Manually</span>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            aria-label="Close"
-            className="h-6 w-6 p-0"
-          >
-            <X className="h-4 w-4" />
-          </Button>
         </DialogHeader>
-        <div className="p-4">
+
+        <div className="space-y-6">
           <ManualFoodEntry
             onFoodSelect={handleFoodSelect}
             onClose={onClose}

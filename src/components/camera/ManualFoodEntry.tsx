@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Search, X, Plus, Utensils } from 'lucide-react';
 import { useManualSearch } from '@/hooks/useManualSearch';
 import { FEAT_MANUAL_CHEAP_ONLY } from '@/config/flags';
@@ -89,15 +90,14 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
     <div className="space-y-4">
       {/* Search Input */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Type food name (e.g., apple, chicken breast)..."
+          placeholder="Search for foods..."
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyPress}
-          className="pl-9 pr-9"
+          className="w-full rounded-md"
         />
         {query && (
           <Button
@@ -111,122 +111,63 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
         )}
       </div>
 
-      {/* Loading indicator */}
-      {isSearching && (
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-sm text-muted-foreground">Searching...</span>
-        </div>
-      )}
-
       {/* Results */}
-      {!isSearching && query && (
-        <div className="space-y-2">
-          {results.length > 0 ? (
-            <>
-              <p className="text-sm text-muted-foreground">
-                Found {results.length} result{results.length !== 1 ? 's' : ''}
-              </p>
-              <div className="max-h-96 space-y-2 overflow-y-auto">
-                {results.map((food, index) => (
-                  <FoodResultCard
-                    key={`${food.id || food.name}-${index}`}
-                    food={food}
-                    onSelect={() => handleFoodSelect(food)}
-                    isEnriching={enrichingId === (food.id || food.name)}
-                  />
-                ))}
-              </div>
-            </>
-          ) : query.trim() ? (
-            <div className="py-8 text-center">
-              <Utensils className="mx-auto h-8 w-8 text-muted-foreground" />
-              <p className="mt-2 text-sm text-muted-foreground">
-                No foods found for "{query}"
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Try different keywords or check spelling
-              </p>
+      {query.trim() && (
+        <div className="max-h-96 overflow-y-auto space-y-2">
+          {isSearching ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                  <Skeleton className="h-8 w-8 rounded" />
+                </div>
+              ))}
             </div>
-          ) : null}
-        </div>
-      )}
-
-      {/* Instructions */}
-      {!query && (
-        <div className="py-8 text-center">
-          <Search className="mx-auto h-8 w-8 text-muted-foreground" />
-          <p className="mt-2 text-sm text-muted-foreground">
-            Start typing to search for foods
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Press Enter to select the first result, Escape to close
-          </p>
+          ) : results && results.length > 0 ? (
+            results.map((food, index) => {
+              const isEnriching = enrichingId === (food.id || food.name);
+              return (
+                <div
+                  key={food.id || `${food.name}-${index}`}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                  onClick={() => handleFoodSelect(food)}
+                >
+                  <div className="flex-1">
+                    <p className="font-medium">{food.name}</p>
+                    {food.brand && (
+                      <p className="text-sm text-muted-foreground">{food.brand}</p>
+                    )}
+                    {food.calories && (
+                      <p className="text-xs text-muted-foreground">
+                        {Math.round(food.calories)} cal
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={isEnriching}
+                    className="ml-2"
+                  >
+                    {isEnriching ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+              );
+            })
+          ) : (
+            <p className="text-center text-muted-foreground py-8">
+              No foods found. Try a different search term.
+            </p>
+          )}
         </div>
       )}
     </div>
-  );
-}
-
-interface FoodResultCardProps {
-  food: any;
-  onSelect: () => void;
-  isEnriching?: boolean;
-}
-
-function FoodResultCard({ food, onSelect, isEnriching }: FoodResultCardProps) {
-  const formatNutrition = (value: number | undefined, unit: string = 'g') => {
-    if (value === undefined || value === null) return '0' + unit;
-    return value.toFixed(unit === 'g' ? 1 : 0) + unit;
-  };
-
-  return (
-    <Card className="cursor-pointer transition-colors hover:bg-muted/50" onClick={onSelect}>
-      <CardContent className="p-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-medium truncate">{food.name}</h3>
-              {food.isGeneric && (
-                <Badge variant="secondary" className="text-xs">
-                  Generic
-                </Badge>
-              )}
-              {food.provider && food.provider !== 'generic' && (
-                <Badge variant="outline" className="text-xs">
-                  {food.provider}
-                </Badge>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>{formatNutrition(food.calories, ' cal')}</span>
-              <span>P: {formatNutrition(food.protein)}</span>
-              <span>C: {formatNutrition(food.carbs)}</span>
-              <span>F: {formatNutrition(food.fat)}</span>
-            </div>
-            
-            {food.servingGrams && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Per {food.servingGrams}g serving
-              </p>
-            )}
-          </div>
-          
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="ml-2 flex-shrink-0"
-            disabled={isEnriching}
-          >
-            {isEnriching ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
