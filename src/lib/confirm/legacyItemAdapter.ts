@@ -58,7 +58,6 @@ export type LegacyFoodItem = {
   // Additional FoodConfirmationCard properties
   image?: string;
   imageUrl?: string;
-  imageAttribution?: string;  // Add this field
   barcode?: string;
   ingredientsText?: string;
   ingredientsAvailable?: boolean;
@@ -100,8 +99,6 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
       factor: servingG / 100,
       source: 'manual',
       confidence: raw?.confidence,
-      imageUrl: raw?.imageUrl ?? null,
-      imageAttribution: raw?.imageAttribution ?? 'unknown',
       nutrition: {
         perServing: perServing,
         basis: 'perServing',
@@ -311,7 +308,6 @@ export function toLegacyFoodItem(raw: AnyItem, index: number | string, enableSST
     // Additional properties
     image: imageUrl,
     imageUrl,
-    imageAttribution: raw?.imageAttribution ?? 'unknown',
     barcode: raw.barcode,
     ingredientsText: ingredients.join(', '),
     ingredientsAvailable: ingredients.length > 0,

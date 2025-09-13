@@ -16,7 +16,6 @@ import { ReviewItemCard } from './ReviewItemCard';
 import { NumberWheelSheet } from '../inputs/NumberWheelSheet';
 import { SaveSetNameDialog } from './SaveSetNameDialog';
 import { FF } from '@/featureFlags';
-import { buildConfirmItem } from '@/domain/confirm/buildConfirmItem';
 import { createFoodLogsBatch } from '@/api/nutritionLogs';
 import { useAuth } from '@/contexts/auth';
 import { useNavigate } from 'react-router-dom';
@@ -142,26 +141,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     const initialModalItems = selectedItems.map((item, index) => {
       const canonicalId = item.id; // Use existing item.id as canonical
-      
-      // Use buildConfirmItem as single source of truth
-      const current = buildConfirmItem(item as any, undefined);
-      
-      // Convert to legacy format for compatibility
-      const converted = toLegacyFoodItem({ ...current, id: canonicalId }, index, true);
-      
-      // Ensure image fields are preserved from buildConfirmItem - ADD SURGICAL FIX
-      const anyConverted = converted as any;
-      anyConverted.imageUrl = current.imageUrl ?? (item as any)?.imageUrl ?? null;
-      anyConverted.imageAttribution = current.imageAttribution ?? (item as any)?.imageAttribution ?? null;
-      
-      // 1) Snapshot log before passing to confirm
-      console.log('[CONFIRM][OPEN][PAYLOAD_SNAPSHOT]', JSON.parse(JSON.stringify({
-        name: anyConverted?.name,
-        imageUrl: anyConverted?.imageUrl,
-        hasImage: !!anyConverted?.imageUrl,
-      })));
-      
-      return anyConverted;
+      return toLegacyFoodItem({ ...item, id: canonicalId }, index, true);
     });
     
     // Set modal items BEFORE async hydration
@@ -187,12 +167,7 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           
           const canonicalId = m.id; // Use same ID from modal item
           const enrichedInput = { ...m, nutrients: r.nutrients, serving: r.serving };
-          
-          // Use buildConfirmItem for consistent image handling
-          const enrichedCurrent = buildConfirmItem(m as any, enrichedInput as any);
-          console.debug('[CONFIRM][ENRICHED_ITEM][OUT]', { name: enrichedCurrent.name, imageUrl: enrichedCurrent.imageUrl, hasImageUrl: !!enrichedCurrent.imageUrl });
-          
-          const merged = toLegacyFoodItem(enrichedCurrent, i, true);
+          const merged = toLegacyFoodItem(enrichedInput, i, true);
           
           // Write to store using canonical ID - preserve ingredients from merged data
           storeUpdates[canonicalId] = {

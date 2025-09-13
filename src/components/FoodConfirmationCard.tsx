@@ -30,15 +30,9 @@ import { IMAGE_PROXY_OFF } from '@/lib/flags';
 // Add the FoodCandidate type import
 import type { Candidate } from '@/lib/food/search/getFoodCandidates';
 import { inferPortion } from '@/lib/food/portion/inferPortion';
-import { FEAT_MANUAL_CHEAP_ONLY, MANUAL_FX } from '@/config/flags';
 import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR } from '@/lib/flags';
 import { extractName } from '@/lib/debug/extractName';
 import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
-import { InitialsTile } from '@/components/ui/InitialsTile';
-import { resolveFoodImage, buildInitialsDataUrl } from "@/lib/food/getFoodImage";
-import { resolveImageUrl } from '@/lib/food/image';
-import ConfirmHeaderAvatar from '@/components/confirm/ConfirmHeaderAvatar';
-import '@/styles/confirm-avatar.css';
 
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import confetti from 'canvas-confetti';
@@ -65,7 +59,6 @@ interface FoodItem {
   sodium: number;
   image?: string;
   imageUrl?: string; // Add imageUrl property
-  imageAttribution?: 'nutritionix'|'off'|'usda'|'barcode'|'manual'|'unknown';
   barcode?: string;
   ingredientsText?: string;
   ingredientsAvailable?: boolean;
@@ -268,6 +261,52 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   const [reminderOpen, setReminderOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
+  
+  // 🧪 DEBUG INSTRUMENTATION
+  const __IMG_DEBUG = false; // keep instrumentation off in UI
+  
+  // Collect URLs: safe candidates for manual, enriched for photo/barcode
+  const PLACEHOLDER = '/images/food-placeholder.png';
+  const isManualImage = inputSource === 'manual';
+  
+  const ensureProxied = (u?: string) =>
+    u && u.startsWith('https://images.openfoodfacts.org')
+      ? `/api/image-proxy?url=${encodeURIComponent(u)}`
+      : u;
+
+  const imageUrls = useMemo(() => {
+    const candidates: string[] = [
+      (currentFoodItem as any)?.imageUrl,
+      (currentFoodItem as any)?.thumbnailUrl,
+      (currentFoodItem as any)?.photoUrl,
+    ].filter(Boolean) as string[];
+
+    // map all to proxied
+    const dedup = Array.from(new Set(candidates.map(ensureProxied)));
+    return dedup.length ? dedup : [PLACEHOLDER];
+  }, [
+    (currentFoodItem as any)?.imageUrl,
+    (currentFoodItem as any)?.thumbnailUrl,
+    (currentFoodItem as any)?.photoUrl,
+    (currentFoodItem as any)?.providerRef,
+    (currentFoodItem as any)?._provider,
+    isManualImage
+  ]);
+
+  useEffect(() => setImgIdx(0), [imageUrls.join('|')]);
+
+  const resolvedSrc = imageUrls[Math.min(imgIdx, imageUrls.length - 1)] || PLACEHOLDER;
+  useEffect(() => {
+    const fromEnrichment = isManualImage ? [] : ((currentFoodItem as any)?.image?.urls ?? []);
+    const fromBarcodeGuess = isManualImage ? [] : ((currentFoodItem as any)?.providerRef ? offImageCandidatesNew((currentFoodItem as any).providerRef) : []);
+    
+    console.log('[IMG][CARD][BIND]', {
+      providerRef: (currentFoodItem as any)?.providerRef,
+      fromEnrichment,
+      fromBarcodeGuess,
+      using: resolvedSrc,
+    });
+  }, [resolvedSrc, imageUrls, (currentFoodItem as any)?.providerRef, isManualImage]);
 
 
   // Derive a stable ID from props (not from transient state)
@@ -414,10 +453,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         perGram: result.perGram,
         perGramKeys: result.perGramKeys,
         pgSum: 1,
-        dataSource: result.dataSource,
-        // Preserve image fields from existing item
-        imageUrl: prev.imageUrl,
-        imageAttribution: prev.imageAttribution
+        dataSource: result.dataSource
       }) : null);
       
       console.log('[NUTRITION][READY]', {
@@ -831,64 +867,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const rawName = currentFoodItem?.name ?? 'Unknown Product';
   const normalizedName = extractName({ name: rawName }) || (isBarcodeItem ? `Product ${(currentFoodItem as any)?.barcode || 'Unknown'}` : 'Unknown Product');
   const title = sanitizeName(normalizedName);
-  
-  // Hard-bind imgSrc in the header (single source of truth - derive once)
-  const imgSrc = foodItem?.imageUrl ?? currentFoodItem?.imageUrl ?? null;
-  
-  console.debug('[IMG][CARD][BIND]', { url: imgSrc });
-  
-  // Store/selector proof
-  console.debug('[IMG][STORE]', currentFoodItem?.name, currentFoodItem?.imageUrl);
-  
-  // Prove it at the handoff - this item should have imageUrl preserved
-  console.debug('[CONFIRM][CURRENT_ITEM][OUT]', {
-    name: currentFoodItem?.name,
-    hasImageUrl: !!currentFoodItem?.imageUrl,
-    imageUrl: currentFoodItem?.imageUrl
-  });
-  
-  // Add runtime probe for easy testing
-  if (typeof window !== 'undefined') {
-    (window as any).__probe = () => {
-      const item = currentFoodItem;
-      console.log('[PROBE][CURRENT-ITEM]', {
-        name: item?.name,
-        hasImageUrl: !!item?.imageUrl,
-        imageUrl: item?.imageUrl,
-        imageAttribution: item?.imageAttribution
-      });
-      return {
-        name: item?.name,
-        hasImage: !!item?.imageUrl,
-        imageUrl: item?.imageUrl
-      };
-    };
-  }
-  
-  // Add layout check and feature flag logging
-  useEffect(() => {
-    console.debug('[FLAG][MANUAL_CHEAP_ONLY]', FEAT_MANUAL_CHEAP_ONLY);
-    console.debug('[IMG][LAYOUT]', { hasOverlay: !!document.querySelector('.image-overlay') });
-    
-    // Runtime self-test helper
-    (window as any).__probe = () => {
-      const el = document.querySelector('[data-test="confirm-food-img"]');
-      console.log('[PROBE][IMG-ELEM]', !!el, el?.getAttribute('src'));
-      
-      const s = (window as any).__stores?.nutrition?.getState?.() || {};
-      console.log('[PROBE][STATE]', {
-        current: s.currentFoodItem?.name,
-        url: s.currentFoodItem?.imageUrl,
-        attr: s.currentFoodItem?.imageAttribution
-      });
-    };
-  }, []);
-  
-  useEffect(() => {
-    if (currentFoodItem) {
-      console.debug('[confirm] food.imageUrl=', currentFoodItem?.imageUrl, 'resolved=', imgSrc, 'source=', currentFoodItem?.source, 'attribution=', currentFoodItem?.imageAttribution);
-    }
-  }, [currentFoodItem?.imageUrl, imgSrc, currentFoodItem?.source, currentFoodItem?.imageAttribution]);
 
   // Serving grams and label - use consistent gram-based labeling
   const servingG = preferItem
@@ -913,35 +891,43 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   
   // Legacy compatibility  
   const displayName = title;
+  
+  // Add image diagnostics logging
+  console.log('[CONFIRM][IMAGE]', {
+    has: !!resolvedSrc,
+    urls: imageUrls.length,
+    using: resolvedSrc,
+    providerRef: (currentFoodItem as any)?.providerRef
+  });
+
+  // Pre-load image to avoid flash
+  useEffect(() => {
+    if (resolvedSrc) {
+      const img = new Image();
+      img.src = resolvedSrc;
+    }
+  }, [resolvedSrc]);
 
   // Check if this is an unknown product that needs manual entry
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
   const hasBarcode = !!(currentFoodItem as any)?.barcode;
 
-  // 2) Card header: mount snapshot log
   useEffect(() => {
-    if (isOpen) {
-      console.log('[CONFIRM][MOUNT_SNAPSHOT]', JSON.parse(JSON.stringify({
-        hasImageUrl: !!(foodItem?.imageUrl ?? currentFoodItem?.imageUrl ?? null),
-        imageUrl: (foodItem?.imageUrl ?? currentFoodItem?.imageUrl ?? null),
-      })));
-    }
-  }, [isOpen, foodItem?.imageUrl, currentFoodItem?.imageUrl]);
-
-  useEffect(() => {
+    const url = resolvedSrc ?? '';
+    const imageUrlKind = /^https?:\/\//i.test(url) ? 'http' : 'none';
     const isBarcode = !!(currentFoodItem as any)?.barcode || !!(currentFoodItem as any)?._provider;
     console.log('[CONFIRM][MOUNT]', {
       rev: CONFIRM_FIX_REV,
       name: displayName,
-      nameType: typeof currentFoodItem?.name,
-      hasImageUrl: !!imgSrc,
-      imageUrl: imgSrc?.slice(0, 120),
+      nameType: typeof currentFoodItem?.name, // Add diagnostic logging
+      imageUrlKind: !!resolvedSrc ? "http" : "none",
+      url: (resolvedSrc || "").slice(0, 120),
     });
     
     if (isBarcode && isOpen) {
       console.log('[CONFIRM][MOUNT][BARCODE]', { id: currentFoodItem?.name, name: currentFoodItem?.name, nameType: typeof currentFoodItem?.name });
     }
-  }, [imgSrc, displayName, isOpen, currentFoodItem]);
+  }, [resolvedSrc, displayName, isOpen, currentFoodItem]);
 
   // Stabilize: directly sync from prop without null flip
   useEffect(() => {
@@ -979,7 +965,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     const isV3ManualVoice = ENABLE_FOOD_TEXT_V3_NUTR && isManualVoiceSource && !perGramReady;
     
     if (isV3ManualVoice) {
-      console.log('[NUTRITION][HYDRATE]', {
+      console.log('[NUTRITION][HYDRATE]', { 
         key: currentFoodItem?.nutritionKey, 
         ready: !!currentFoodItem?.perGram 
       });
@@ -993,20 +979,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       }).then(result => {
         if (controller.signal.aborted) return;
         
-        // Preserve imageUrl from current item (V3NutritionResult doesn't include images)
-        const imageUrl = currentFoodItem?.imageUrl ?? null;
-        const imageAttribution = currentFoodItem?.imageAttribution ?? 'unknown';
-        console.debug('[IMG][SELECT/HYDRATE]', currentFoodItem.name, { url: imageUrl, attr: imageAttribution });
-        
         // Update the current food item with hydrated nutrition
         setCurrentFoodItem(prev => prev ? ({
           ...prev,
           perGram: result.perGram,
           perGramKeys: result.perGramKeys,
           pgSum: 1, // Mark as hydrated
-          dataSource: result.dataSource,
-          imageUrl,
-          imageAttribution
+          dataSource: result.dataSource
         }) : null);
         
         console.log('[NUTRITION][V3][SUCCESS]', {
@@ -1088,8 +1067,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
         fiber: candidate.fiber,
         sugar: candidate.sugar,
         sodium: candidate.sodium,
-        imageUrl: candidate.imageUrl ?? currentFoodItem?.imageUrl ?? null,
-        imageAttribution: candidate.imageAttribution ?? currentFoodItem?.imageAttribution ?? 'unknown',
+        imageUrl: candidate.imageUrl,
         portionGrams: portionEstimate.grams
       });
     }
@@ -1774,19 +1752,32 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </div>
             )}
 
-            {/* Food Item Display with Clean Avatar */}
-            <div className="confirm-card-header flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl" style={{ position: 'relative' }}>
-              <ConfirmHeaderAvatar
-                data-scope="confirm-avatar"
-                name={displayName}
-                imageUrl={imgSrc}
-                brandPill={
-                  <DataSourceChip
-                    source={currentFoodItem?.enrichmentSource || currentFoodItem?.source || 'unknown'}
-                    confidence={currentFoodItem?.enrichmentConfidence || currentFoodItem?.confidence}
+            {/* Food Item Display */}
+            <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
+              <div style={{position:'relative',height:64,width:64,borderRadius:14,overflow:'hidden',background:'rgba(0,0,0,.25)'}}>
+                {resolvedSrc && (
+                  <img
+                    src={resolvedSrc}
+                    alt=""
+                    aria-hidden="true"
+                    style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
+                    onLoad={() => console.log('[IMG][LOAD]', resolvedSrc)}
+                    onError={() => {
+                      const next = imgIdx + 1;
+                      if (next < imageUrls.length) {
+                        console.log('[IMG][ERROR]', resolvedSrc);
+                        setImgIdx(next);
+                      } else if (resolvedSrc !== PLACEHOLDER) {
+                        console.log('[IMG][ERROR][FALLBACK]', resolvedSrc);
+                        setImgIdx(imageUrls.length > 0 ? imageUrls.length - 1 : 0);
+                      }
+                    }}
+                    referrerPolicy="no-referrer"
+                    loading="eager"
                   />
-                }
-              />
+                )}
+                {!resolvedSrc && <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>}
+              </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
@@ -1800,6 +1791,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     {Number.isFinite(headerKcal) ? headerKcal : 0} calories
                   </p>
+                 {((currentFoodItem as any)?.enrichmentSource === "ESTIMATED" || 
+                   ((currentFoodItem as any)?.enrichmentConfidence && (currentFoodItem as any).enrichmentConfidence < 0.7)) && (
+                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                     Estimated — tap to adjust if needed
+                   </p>
+                 )}
               </div>
             </div>
 

@@ -35,8 +35,6 @@ interface EnrichedFood {
   source: "FDC" | "EDAMAM" | "NUTRITIONIX" | "CURATED" | "ESTIMATED" | "GENERIC";
   source_id?: string;
   confidence: number;
-  imageUrl?: string;
-  imageAttribution?: 'nutritionix'|'off'|'usda'|'barcode'|'manual'|'unknown';
 }
 
 export type { EnrichedFood };
@@ -85,15 +83,7 @@ export function useManualFoodEnrichment() {
         }
       }
       
-      // Preserve image fields across enrichment merge - never clobber images
-      const pickImage = (a?: string, b?: string) => a ?? b ?? null;
-      const existing = { imageUrl: selectedCandidate?.imageUrl, imageAttribution: selectedCandidate?.imageAttribution };
-      const canonical = { imageUrl: null, imageAttribution: 'generic' };
-      const merged = { ...existing, ...canonical };
-      merged.imageUrl = pickImage(existing.imageUrl, canonical.imageUrl);
-      merged.imageAttribution = existing.imageAttribution ?? canonical.imageAttribution ?? 'unknown';
-      console.debug('[IMG][ENRICH]', selectedCandidate.name, { url: merged.imageUrl, from: merged.imageAttribution });
-      
+      // Convert to ingredient objects format
       const baseIngredients = ingredientsList.map(name => ({ name }));
       
       return {
@@ -106,8 +96,6 @@ export function useManualFoodEnrichment() {
         locale: locale || 'en',
         ingredients: baseIngredients, // Preserve canonical ingredients
         ingredientsList, // Add normalized list for adapter
-        imageUrl: merged.imageUrl,
-        imageAttribution: merged.imageAttribution as 'nutritionix'|'off'|'usda'|'barcode'|'manual'|'unknown',
         per100g: {
           calories: genericData.per100g.kcal,
           protein: genericData.per100g.protein_g,
@@ -159,30 +147,6 @@ export function useManualFoodEnrichment() {
 
       if (data) {
         console.log(`[ENRICH][SUCCESS] Source: ${data.source}, Confidence: ${data.confidence}`);
-        
-        // Preserve existing image fields during enrichment - never clobber
-        if (!data.imageUrl && selectedCandidate?.imageUrl) {
-          data.imageUrl = selectedCandidate.imageUrl;
-          data.imageAttribution = selectedCandidate.imageAttribution || 'unknown';
-          console.debug('[IMG][ENRICH]', data.name, { url: data.imageUrl, from: data.imageAttribution });
-        }
-        
-        // Handle OpenFoodFacts image mapping (check if source indicates OFF data)
-        if (selectedCandidate?.provider === 'openfoodfacts' || selectedCandidate?.source === 'off') {
-          const candidate = selectedCandidate as any; // Cast to access OFF properties
-          const offImageUrl = 
-            candidate?.image_url ||
-            candidate?.image_front_url ||
-            candidate?.image_small_url ||
-            candidate?.image_thumb_url ||
-            null;
-          
-          if (offImageUrl && !data.imageUrl) {
-            data.imageUrl = offImageUrl;
-            data.imageAttribution = 'off';
-            console.debug('[IMG][OFF][MAPPED]', data.name, { url: data.imageUrl });
-          }
-        }
         
         // NEW: Write-through to vault if enabled and from paid provider
         if (NV_WRITE_THROUGH && (data.source === 'EDAMAM' || data.source === 'NUTRITIONIX')) {
@@ -293,10 +257,9 @@ export function enrichedToFoodItem(enriched: EnrichedFood, portionGrams: number 
     confidence: enriched.confidence,
     enrichmentSource: enriched.source,
     ingredients: enriched.ingredients,
-    imageUrl: enriched.imageUrl ?? null,
-    imageAttribution: enriched.imageAttribution ?? 'unknown',
     
     // Compatibility fields
+    imageUrl: undefined,
     barcode: undefined,
     provider: enriched.source.toLowerCase()
   };

@@ -23,8 +23,7 @@ export interface NutritionAnalysis {
   
   // Product metadata
   ingredients?: string[];
-  imageUrl: string | null;              // not optional – present but null when absent
-  imageAttribution: string | null;      // not optional – present but null when absent
+  imageUrl?: string;
   source?: string;
   confidence?: number;
   
