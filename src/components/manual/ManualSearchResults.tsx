@@ -71,7 +71,7 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Search brand, restaurant, or food…"
+          placeholder="Search…"
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}

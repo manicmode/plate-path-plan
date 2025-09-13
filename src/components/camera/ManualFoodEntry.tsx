@@ -159,7 +159,7 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Search brand, restaurant, supermarket, or generic foods…"
+          placeholder="Search…"
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyPress}

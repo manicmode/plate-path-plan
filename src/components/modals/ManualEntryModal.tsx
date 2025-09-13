@@ -159,12 +159,6 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
                   </div>
                 )}
 
-                {/* Footer tip */}
-                <div className="manual-footer">
-                  <p className="manual-footer-tip">
-                    💡 Manual Entry is best for restaurant meals & branded items. Try brand names for best matches.
-                  </p>
-                </div>
               </div>
             )}
           </div>
