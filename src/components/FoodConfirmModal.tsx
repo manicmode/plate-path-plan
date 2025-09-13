@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Trash2, Check, X } from 'lucide-react';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useConfirmFlowActive } from '@/lib/confirmFlowState';
+import { motion } from 'framer-motion';
 
 interface FoodItem {
   name: string;
@@ -34,10 +35,15 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
   const currentItem = items[currentIndex];
   const isLastItem = currentIndex === items.length - 1;
 
-  // Dev breadcrumb when modal opens
+  // Dev breadcrumb when modal opens + emit confirm:mounted event
   useEffect(() => {
     if (process.env.NODE_ENV === 'development' && isOpen) {
       console.log('[CONFIRM][OPENED]', { ts: Date.now() });
+    }
+    
+    // Emit confirm:mounted event for interstitial loader
+    if (isOpen) {
+      window.dispatchEvent(new CustomEvent('confirm:mounted'));
     }
   }, [isOpen]);
 
@@ -122,8 +128,13 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
 
   return (
     <Dialog open={isOpen} onOpenChange={onReject}>
-      <DialogContent 
-        className="sm:max-w-md z-[600]"
+      <motion.div
+        initial={{ opacity: 0, y: 12, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <DialogContent 
+          className="sm:max-w-md z-[600]"
         onEscapeKeyDown={(e) => {
           if (confirmFlowActive) e.preventDefault();
         }}
@@ -237,7 +248,8 @@ export function FoodConfirmModal({ isOpen, items, onConfirm, onReject }: FoodCon
             </Button>
           )}
         </div>
-      </DialogContent>
+        </DialogContent>
+      </motion.div>
     </Dialog>
   );
 }
