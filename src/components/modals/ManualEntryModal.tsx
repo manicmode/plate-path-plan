@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import ManualFoodEntry from '@/components/camera/ManualFoodEntry';
-import { enrichCandidate } from '@/utils/enrichCandidate';
 
 interface ManualEntryModalProps {
   isOpen: boolean;
@@ -14,31 +13,28 @@ interface ManualEntryModalProps {
 export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntryModalProps) {
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
 
+  // Log legacy modal host mounting when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      console.log('[MODAL][HOST] legacy host mounted');
+      console.log('[MODAL][OPEN] manualEntry (legacy)');
+    }
+  }, [isOpen]);
+
   const handleFoodSelect = async (candidate: any) => {
     try {
-      console.log('[MODAL][OPEN] manualEntry (legacy host)');
       console.log('[MANUAL][SELECT]', candidate);
       
       const candidateId = candidate.id || candidate.name;
       setEnrichingId(candidateId);
+
+      console.log('[ROUTE][CALL]', { source: 'manual', id: candidate?.id || candidate?.name });
       
-      // Enrich the candidate with full data
-      const enriched = await enrichCandidate({ 
-        ...candidate, 
-        source: 'manual' 
-      });
-
-      console.log('[MANUAL][ENRICHED]', {
-        name: enriched.name,
-        hasIngredients: enriched.hasIngredients,
-        enrichmentSource: enriched.enrichmentSource
-      });
-
-      // Call parent with enriched item
-      onFoodSelected(enriched);
+      // Call parent with candidate for routing and enrichment
+      onFoodSelected(candidate);
       onClose();
     } catch (error) {
-      console.warn('[MANUAL][SELECT][FALLBACK]', error);
+      console.warn('[MANUAL][SELECT][ERROR]', error);
       
       // Create skeleton fallback
       const skeleton = {

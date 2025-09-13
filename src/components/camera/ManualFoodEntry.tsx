@@ -26,6 +26,17 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
     debounceMs: 150,
   });
 
+  // Log pipeline results when they arrive
+  useEffect(() => {
+    if (results.length > 0) {
+      console.log('[MANUAL][PIPE]', { 
+        final: results.length, 
+        vault: 0, // useManualSearch provides final merged results
+        cheap: 0  // useManualSearch provides final merged results
+      });
+    }
+  }, [results]);
+
   // Auto-focus input on mount
   useEffect(() => {
     inputRef.current?.focus();

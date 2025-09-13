@@ -35,6 +35,7 @@ import { cameraPool } from '@/lib/camera/cameraPool';
 import { installCameraDev } from '@/lib/camera/cameraDev';
 import '@/lib/camera/cameraVerify';
 import { withSafeCancel } from '@/lib/ui/withSafeCancel';
+import { enrichCandidate } from '@/utils/enrichCandidate';
 
 import { safeGetJSON } from '@/lib/safeStorage';
 
@@ -385,12 +386,12 @@ const CameraPage = () => {
     const isManual = sourceHint === 'manual';
     
     if (!allEnriched && !isManual) {
-      console.warn('[ROUTE][BLOCKED]', 'Items not fully enriched (non-manual)');
+      console.warn('[ROUTE][BLOCKED] Items not fully enriched (non-manual)');
       return; // keep user on dialog
     }
     
     if (isManual && !allEnriched) {
-      console.log('[ROUTE][SOFT]', 'Allowing manual items with enrichment attempt');
+      console.log('[ROUTE][SOFT] Opening confirm with skeleton while enrichment continues');
     }
 
     // Determine the source type
@@ -416,14 +417,16 @@ const CameraPage = () => {
           if (controller.signal.aborted) return;
           
           setRecognizedFoods([item]);
-          setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : 'photo');
+          // Make sure we set inputSource to 'manual' for manual entries
+          const finalInputSource = sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : 'photo';
+          setInputSource(finalInputSource);
           setShowConfirmation(true);
           setShowLogBarcodeScanner(false);
           setShowCamera(false);
           setForceConfirm(forceConfirm);
           
           console.log('[CONFIRM][OPEN]', {
-            inputSource: sourceHint,
+            inputSource: finalInputSource,
             forceConfirm,
             showConfirmation: true,
             itemName: item.name,
@@ -4102,9 +4105,34 @@ console.log('Global search enabled:', enableGlobalSearch);
         <ManualEntryModal
           isOpen={showManualFoodEntry}
           onClose={() => setShowManualFoodEntry(false)}
-          onFoodSelected={(food) => {
-            console.log('[ROUTE][MANUAL] items=1');
-            routeRecognizedItems([food], 'manual');
+          onFoodSelected={async (food) => {
+            // Enrich the candidate first, then route
+            try {
+              const enriched = await enrichCandidate({ 
+                ...food, 
+                source: 'manual' 
+              });
+              
+              console.log('[ROUTE][MANUAL] items=1');
+              routeRecognizedItems([enriched], 'manual');
+            } catch (error) {
+              console.warn('[ROUTE][MANUAL][FALLBACK]', error);
+              
+              // Create skeleton fallback
+              const skeleton = {
+                ...food,
+                source: 'manual',
+                enriched: false,
+                hasIngredients: false,
+                ingredientsList: [],
+                ingredientsText: '',
+                ingredientsUnavailable: true,
+                enrichmentSource: 'manual'
+              };
+              
+              console.log('[ROUTE][MANUAL] items=1 (fallback)');
+              routeRecognizedItems([skeleton], 'manual');
+            }
           }}
         />
       )}
