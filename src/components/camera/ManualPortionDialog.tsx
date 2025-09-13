@@ -119,7 +119,7 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
         <div className="space-y-6">
           {/* Header */}
           <div className="text-center">
-            <h3 className="text-xl font-semibold text-foreground">Confirm Portion Size</h3>
+            <h3 className="text-xl font-semibold text-foreground">Choose portion</h3>
             <p className="text-sm text-muted-foreground mt-1 truncate" title={candidate?.name}>
               {candidate?.name}
             </p>
@@ -181,7 +181,7 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
 
           {/* Quick Presets */}
           <div className="space-y-2">
-            <p className="text-sm font-medium text-center">Quick presets</p>
+            <p className="text-sm font-medium text-center text-muted-foreground">Quick presets</p>
             <div className="flex gap-2 justify-center">
               {[
                 { label: '¼×', multiplier: 0.25 },
@@ -206,6 +206,18 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
                 );
               })}
             </div>
+            
+            {/* Calorie Preview */}
+            {enrichedData?.calories && (
+              <div className="text-center mt-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-muted rounded-lg text-sm">
+                  <span className="text-muted-foreground">Preview:</span>
+                  <span className="font-medium">
+                    {Math.round((enrichedData.calories / (enrichedData.servingGrams || 100)) * portionGrams)} calories
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
 

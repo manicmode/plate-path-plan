@@ -20,6 +20,7 @@ interface ManualFoodEntryProps {
 export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: ManualFoodEntryProps) {
   const [query, setQuery] = useState('');
   const [clickedItems, setClickedItems] = useState<Set<string>>(new Set());
+  const [showExamples, setShowExamples] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -135,6 +136,7 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
             size="sm"
             onClick={handleClear}
             className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 p-0 rounded-full hover:bg-muted"
+            aria-label="Clear search"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -143,18 +145,61 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
 
       {/* Empty state */}
       {!query.trim() && (
-        <div className="text-center py-12">
+        <div className="text-center py-12 max-h-[70vh] overflow-y-auto pb-[env(safe-area-inset-bottom,16px)]">
           <div className="space-y-3">
-            <p className="text-muted-foreground">
-              Type a food name to search
+            <p className="text-muted-foreground font-medium">
+              No matches yet
             </p>
             <p className="text-sm text-muted-foreground/70">
-              Try brand or restaurant names for best matches
+              Try brand or restaurant names
             </p>
-            <div className="text-xs text-muted-foreground/60 space-y-1">
-              <p><span className="font-medium">Examples:</span></p>
-              <p>"Chipotle bowl" • "H-E-B tortillas" • "Costco hot dog"</p>
+            <div className="text-right mt-4">
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setShowExamples(!showExamples)}
+                className="text-xs text-muted-foreground hover:text-foreground focus:ring-2 focus:ring-primary/20 rounded-xl"
+                aria-label="Show search examples"
+              >
+                Examples
+              </Button>
             </div>
+            
+            {/* Examples sheet */}
+            <AnimatePresence>
+              {showExamples && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="mt-4 p-3 bg-muted/30 rounded-xl border border-border/50"
+                >
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      'Chipotle bowl',
+                      'HEB tortillas', 
+                      'Costco hot dog',
+                      'Starbucks sandwich',
+                      'Ben & Jerry\'s',
+                      'Trader Joe\'s dumplings'
+                    ].map((example, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          setQuery(example);
+                          search(example);
+                          setShowExamples(false);
+                        }}
+                        className="px-3 py-2 text-xs bg-background border border-border rounded-xl hover:bg-accent/50 focus:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-left"
+                      >
+                        {example}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       )}
@@ -206,11 +251,11 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
           ) : (
             <div className="text-center py-12">
               <div className="space-y-2">
-                <p className="text-muted-foreground">
-                  No matches found
+                <p className="text-muted-foreground font-medium">
+                  No matches yet
                 </p>
                 <p className="text-sm text-muted-foreground/70">
-                  Try brand or restaurant names for best results
+                  Try brand or restaurant names
                 </p>
               </div>
             </div>

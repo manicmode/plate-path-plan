@@ -369,6 +369,9 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Build and route sentinels on mount
   useEffect(() => {
     if (isOpen) {
+      // Emit confirm:mounted event to hide preparing overlay
+      window.dispatchEvent(new CustomEvent('confirm:mounted'));
+      
       console.info('[BUILD]', {
         sha: 'confirm-card-fix-v1', 
         time: new Date().toISOString(), 
@@ -406,10 +409,12 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     }
   }, [isOpen, currentFoodItem, useHydration, isNutritionReady, isManualVoiceSource]);
 
-  // Log when hydration completes
+  // Log when hydration completes and emit confirm:mounted for nutrition ready
   useEffect(() => {
     if (isNutritionReady && useHydration && isOpen) {
       console.log('[CONFIRM][HYDRATE:READY]');
+      // Also emit confirm:mounted when nutrition is ready
+      window.dispatchEvent(new CustomEvent('confirm:mounted'));
     }
   }, [isNutritionReady, useHydration, isOpen]);
 
