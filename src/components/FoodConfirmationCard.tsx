@@ -1584,7 +1584,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       >
         <DialogContent 
           className="food-confirm-card with-stable-panels max-w-md mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border-0 p-0 overflow-hidden max-h-[90vh] flex flex-col"
-          showCloseButton={!reminderOpen}
+          showCloseButton={false}
           data-dialog-root="confirm-food-log"
           onEscapeKeyDown={(e) => forceConfirm && e.preventDefault()}
           onInteractOutside={(e) => forceConfirm && e.preventDefault()}
