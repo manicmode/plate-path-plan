@@ -870,11 +870,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const normalizedName = extractName({ name: rawName }) || (isBarcodeItem ? `Product ${(currentFoodItem as any)?.barcode || 'Unknown'}` : 'Unknown Product');
   const title = sanitizeName(normalizedName);
   
-  // Diagnostic logging for images
+  // Resolve image URL with enhanced logging
   const imgSrc = resolveImageUrl(currentFoodItem);
   useEffect(() => {
-    console.debug('[confirm] food.imageUrl=', currentFoodItem?.imageUrl, 'resolved=', imgSrc);
-  }, [currentFoodItem?.imageUrl, imgSrc]);
+    if (currentFoodItem) {
+      console.debug('[confirm] food.imageUrl=', currentFoodItem?.imageUrl, 'resolved=', imgSrc, 'source=', currentFoodItem?.source);
+    }
+  }, [currentFoodItem?.imageUrl, imgSrc, currentFoodItem?.source]);
 
   // Serving grams and label - use consistent gram-based labeling
   const servingG = preferItem
