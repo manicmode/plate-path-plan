@@ -17,6 +17,14 @@ export function PortionPicker({ selectedFood, onCancel, onContinue, isLoading }:
   const [sliderPos, setSliderPos] = useState([50]); // 0-100 position, 50 = middle
   const [percent, setPercent] = useState(100); // actual portion percentage
 
+  // Check if weight information is available
+  const hasWeight = !!(
+    selectedFood?.servingWeightGrams ||
+    selectedFood?.defaultPortion?.grams ||
+    selectedFood?.portions?.some(p => typeof p.grams === 'number') ||
+    selectedFood?.nutrientsPer100g // per-100g nutrition implies gram-based UI is valid
+  );
+
   // Map slider position (0-100) to portion percentage (25-200%)
   const mapPosToPercent = (pos: number): number => {
     if (pos <= 50) {
@@ -45,7 +53,7 @@ export function PortionPicker({ selectedFood, onCancel, onContinue, isLoading }:
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fxEnabled = MANUAL_FX && !reducedMotion;
 
-  const hasGrams = selectedFood?.grams || selectedFood?.servingSize;
+  const hasGrams = selectedFood?.grams || selectedFood?.servingSize || selectedFood?.servingWeightGrams || selectedFood?.defaultPortion?.grams;
   const baseCalories = selectedFood?.calories || 250;
   const calculatedCalories = Math.round((baseCalories * servings * percent) / 100);
 
@@ -138,20 +146,16 @@ export function PortionPicker({ selectedFood, onCancel, onContinue, isLoading }:
           </div>
         </div>
 
-        {/* Weight Display */}
-        <div className="portion-control-group">
-          {hasGrams ? (
+        {/* Weight Display - Only show when weight data exists */}
+        {hasWeight && (
+          <div className="portion-control-group">
             <div className="portion-weight">
               <span className="portion-weight-value">
                 {Math.round((hasGrams * servings * percent) / 100)}g
               </span>
             </div>
-          ) : (
-            <div className="portion-weight-unavailable">
-              Weight information not available for this item
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Calorie Preview */}
         <div className="portion-preview">
