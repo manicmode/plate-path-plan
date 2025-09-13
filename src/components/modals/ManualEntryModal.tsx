@@ -4,10 +4,9 @@ import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MANUAL_PORTION_STEP, MANUAL_FX } from '@/config/flags';
-import ManualFoodEntry from '@/components/camera/ManualFoodEntry';
+import ManualSearchResults from '@/components/manual/ManualSearchResults';
 import { PortionPicker } from '@/components/manual/PortionPicker';
 import { ManualInterstitialLoader } from '@/components/manual/ManualInterstitialLoader';
-import { CloseButton } from '@/components/ui/close-button';
 
 interface ManualEntryModalProps {
   isOpen: boolean;
@@ -24,12 +23,22 @@ const ROTATING_HINTS = [
 export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntryModalProps) {
   const [selectedFood, setSelectedFood] = useState<any>(null);
   const [showInterstitial, setShowInterstitial] = useState(false);
+  const [hintIndex, setHintIndex] = useState(0);
+  const [showExamples, setShowExamples] = useState(false);
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fxEnabled = MANUAL_FX && !reducedMotion;
 
+  // Rotate hints every 3.5s
+  useEffect(() => {
+    if (!isOpen) return;
+    const interval = setInterval(() => {
+      setHintIndex(prev => (prev + 1) % ROTATING_HINTS.length);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [isOpen]);
 
-  // Listen for confirm:mounted event to hide loader and ensure overlay hides when confirmation opens
+  // Listen for confirm:mounted event to hide loader
   useEffect(() => {
     const onConfirmMounted = () => {
       setShowInterstitial(false);
@@ -38,18 +47,6 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
     window.addEventListener('confirm:mounted', onConfirmMounted);
     return () => window.removeEventListener('confirm:mounted', onConfirmMounted);
   }, [onClose]);
-
-  // Hide interstitial when any confirmation dialog opens
-  useEffect(() => {
-    const checkConfirmationOpen = () => {
-      if ((window as any).__confirmOpen || document.querySelector('[data-state="open"][role="dialog"]')) {
-        setShowInterstitial(false);
-      }
-    };
-    
-    const interval = setInterval(checkConfirmationOpen, 100);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleFoodSelect = (food: any) => {
     if (MANUAL_PORTION_STEP) {
@@ -75,39 +72,121 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
     setSelectedFood(null);
   };
 
+  const handleExampleSelect = (example: string) => {
+    setShowExamples(false);
+    // Trigger search with the example - this needs to be connected to the search component
+  };
+
+  const examples = [
+    "Chipotle bowl",
+    "HEB tortillas", 
+    "Costco hot dog",
+    "Starbucks sandwich",
+    "Ben & Jerry's",
+    "Trader Joe's dumplings"
+  ];
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-lg" onPointerDownOutside={(e) => e.preventDefault()}>
-          {/* Single Close Button */}
-          <CloseButton onClick={onClose} aria-label="Close" />
-          
-          {/* Header */}
-          <div className="text-center pb-4">
-            <DialogTitle className="text-xl font-semibold">
-              Add Food Manually
-            </DialogTitle>
-          </div>
-
-          {/* Content */}
-          {selectedFood ? (
-            <PortionPicker
-              selectedFood={selectedFood}
-              onCancel={handlePortionCancel}
-              onContinue={handlePortionContinue}
-            />
-          ) : (
-            <div className="px-1">
-              <ManualFoodEntry 
-                onFoodSelect={handleFoodSelect}
-                onClose={onClose}
-              />
+        <DialogContent className="manual-entry-modal" onPointerDownOutside={(e) => e.preventDefault()}>
+          <div className="manual-modal-container">
+            {/* Header */}
+            <div className="manual-header">
+              <div>
+                <DialogTitle className="manual-title">
+                  Add Food Manually
+                </DialogTitle>
+                <DialogDescription className="manual-subtitle">
+                  Search brand or restaurant items
+                </DialogDescription>
+              </div>
             </div>
-          )}
+
+            <div className="manual-divider" />
+
+            {/* Content */}
+            {selectedFood ? (
+              <PortionPicker
+                selectedFood={selectedFood}
+                onCancel={handlePortionCancel}
+                onContinue={handlePortionContinue}
+              />
+            ) : (
+              <div className="manual-content">
+                <ManualSearchResults onFoodSelect={handleFoodSelect} />
+                
+                {/* Rotating hint */}
+                <div className="manual-hint-container">
+                  <AnimatePresence mode="wait">
+                    <motion.p
+                      key={hintIndex}
+                      initial={fxEnabled ? { opacity: 0 } : undefined}
+                      animate={{ opacity: 1 }}
+                      exit={fxEnabled ? { opacity: 0 } : undefined}
+                      transition={{ duration: fxEnabled ? 0.18 : 0 }}
+                      className="manual-hint"
+                    >
+                      {ROTATING_HINTS[hintIndex]}
+                    </motion.p>
+                  </AnimatePresence>
+                  
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowExamples(!showExamples);
+                    }}
+                    className="manual-examples-btn"
+                  >
+                    Examples
+                  </Button>
+                </div>
+
+                {/* Examples sheet */}
+                <AnimatePresence>
+                  {showExamples && (
+                    <motion.div
+                      initial={fxEnabled ? { opacity: 0, height: 0 } : undefined}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={fxEnabled ? { opacity: 0, height: 0 } : undefined}
+                      transition={{ duration: fxEnabled ? 0.18 : 0 }}
+                      className="manual-examples-sheet"
+                    >
+                      <div className="manual-examples-grid">
+                        {examples.map((example, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleExampleSelect(example);
+                            }}
+                            className="manual-example-chip"
+                          >
+                            {example}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Footer tip */}
+                <div className="manual-footer">
+                  <p className="manual-footer-tip">
+                    💡 Manual Entry is best for restaurant meals & branded items. Try brand names for best matches.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
-      {/* Interstitial Loader - Hide when confirmation is showing */}
+      {/* Interstitial Loader */}
       <ManualInterstitialLoader isVisible={showInterstitial} />
     </>
   );
