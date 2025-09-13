@@ -55,9 +55,6 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
     search(value);
   }, [search]);
 
-  // Handle key presses - moved below handleFoodSelect to satisfy TS order
-  /* placeholder */
-
   // Handle food selection
   const handleFoodSelect = useCallback((food: any, event?: React.MouseEvent) => {
     event?.stopPropagation();
@@ -79,6 +76,20 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
     setQuery('');
     reset();
   }, [onFoodSelect, reset]);
+
+  // Handle key presses - prevent form submission
+  const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      reset();
+      onClose();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (results.length > 0) {
+        handleFoodSelect(results[0]);
+      }
+    }
+  }, [results, reset, onClose, handleFoodSelect]);
 
   // Handle clear
   const handleClear = useCallback(() => {
