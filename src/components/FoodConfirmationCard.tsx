@@ -837,8 +837,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     currentFoodItem?.imageUrl ??
     null;
   
-  console.debug('[IMG][CARD][BIND]', { name: currentFoodItem?.name, url: imgSrc });
-  console.debug('[CSP][IMG] ready', { src: imgSrc });
+  console.debug('[IMG][CARD][BIND]', { url: imgSrc });
   
   // Store/selector proof
   console.debug('[IMG][STORE]', currentFoodItem?.name, currentFoodItem?.imageUrl);
@@ -1770,6 +1769,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             {/* Food Item Display with Clean Avatar */}
             <div className="confirm-card-header flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl" style={{ position: 'relative' }}>
               <ConfirmHeaderAvatar
+                data-scope="confirm-avatar"
                 name={displayName}
                 imageUrl={imgSrc}
                 brandPill={
