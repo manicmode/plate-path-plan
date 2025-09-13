@@ -843,6 +843,13 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Store/selector proof
   console.debug('[IMG][STORE]', currentFoodItem?.name, currentFoodItem?.imageUrl);
   
+  // Prove it at the handoff - this item should have imageUrl preserved
+  console.debug('[CONFIRM][CURRENT_ITEM][OUT]', {
+    name: currentFoodItem?.name,
+    hasImageUrl: !!currentFoodItem?.imageUrl,
+    imageUrl: currentFoodItem?.imageUrl
+  });
+  
   // Add runtime probe for easy testing
   if (typeof window !== 'undefined') {
     (window as any).__probe = () => {
@@ -1763,6 +1770,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             {/* Food Item Display with Clean Avatar */}
             <div className="confirm-card-header flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl" style={{ position: 'relative' }}>
               <ConfirmHeaderAvatar
+                data-scope="confirm-avatar"
                 name={displayName}
                 imageUrl={imgSrc}
                 brandPill={

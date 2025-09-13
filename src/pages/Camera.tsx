@@ -323,14 +323,25 @@ const CameraPage = () => {
         if (signal?.aborted) return;
         
         if (legacy?.perGram) {
+          // Preserve existing image fields during legacy hydration
+          const existingImageUrl = item.imageUrl;
+          const existingImageAttribution = item.imageAttribution;
+          
           item.perGram = legacy.perGram;
           item.perGramKeys = Object.keys(legacy.perGram);
           item.pgSum = 1;
           item.dataSource = 'legacy_text_lookup';
+          
+          // Restore preserved image fields (legacy doesn't have image data)
+          item.imageUrl = existingImageUrl ?? null;
+          item.imageAttribution = existingImageAttribution ?? 'unknown';
+          
           console.log('[NUTRITION][LEGACY_SUCCESS]', { 
             name: item.name,
-            perGramKeys: item.perGramKeys
+            perGramKeys: item.perGramKeys,
+            imageUrl: item.imageUrl
           });
+          console.debug('[HYDRATE][LEGACY][OUT]', { name: item.name, imageUrl: item.imageUrl });
         }
       } catch (error) {
         console.warn('[NUTRITION][LEGACY_ERROR]', error);

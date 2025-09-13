@@ -33,3 +33,8 @@
 .confirm-card-header { 
   position: relative; 
 }
+
+/* Additional confirm-specific cleanup */
+.confirm-card-header .estimated-ribbon {
+  display: none !important;
+}

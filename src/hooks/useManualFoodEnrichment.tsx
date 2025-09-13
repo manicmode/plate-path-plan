@@ -167,6 +167,23 @@ export function useManualFoodEnrichment() {
           console.debug('[IMG][ENRICH]', data.name, { url: data.imageUrl, from: data.imageAttribution });
         }
         
+        // Handle OpenFoodFacts image mapping (check if source indicates OFF data)
+        if (selectedCandidate?.provider === 'openfoodfacts' || selectedCandidate?.source === 'off') {
+          const candidate = selectedCandidate as any; // Cast to access OFF properties
+          const offImageUrl = 
+            candidate?.image_url ||
+            candidate?.image_front_url ||
+            candidate?.image_small_url ||
+            candidate?.image_thumb_url ||
+            null;
+          
+          if (offImageUrl && !data.imageUrl) {
+            data.imageUrl = offImageUrl;
+            data.imageAttribution = 'off';
+            console.debug('[IMG][OFF][MAPPED]', data.name, { url: data.imageUrl });
+          }
+        }
+        
         // NEW: Write-through to vault if enabled and from paid provider
         if (NV_WRITE_THROUGH && (data.source === 'EDAMAM' || data.source === 'NUTRITIONIX')) {
           try {
@@ -276,10 +293,8 @@ export function enrichedToFoodItem(enriched: EnrichedFood, portionGrams: number 
     confidence: enriched.confidence,
     enrichmentSource: enriched.source,
     ingredients: enriched.ingredients,
-    
-    // Preserve image fields
-    imageUrl: enriched.imageUrl,
-    imageAttribution: enriched.imageAttribution,
+    imageUrl: enriched.imageUrl ?? null,
+    imageAttribution: enriched.imageAttribution ?? 'unknown',
     
     // Compatibility fields
     barcode: undefined,
