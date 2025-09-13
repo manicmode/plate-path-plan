@@ -167,8 +167,8 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
           onBlur={() => setTimeout(() => setIsTyping(false), 1000)}
           className={`w-full pr-10 h-12 rounded-xl border-2 transition-all duration-150 ${
             fxEnabled
-              ? 'focus:ring-2 focus:ring-primary/20 focus:-translate-y-0.5 focus:shadow-md focus:border-primary/30'
-              : 'focus:border-primary'
+              ? 'focus:outline-none focus:border-primary/30'
+              : 'focus:outline-none focus:border-primary'
           }`}
           autoFocus
           autoComplete="off"
@@ -218,7 +218,7 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
                     e.preventDefault();
                     setShowExamples(!showExamples);
                   }}
-                  className="text-xs text-muted-foreground hover:text-foreground focus:ring-2 focus:ring-primary/20 rounded-xl"
+                  className="text-xs text-muted-foreground hover:text-foreground focus:outline-none rounded-xl"
                   aria-label="Show search examples"
                 >
                   Examples
@@ -254,7 +254,7 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
                               search(example);
                               setShowExamples(false);
                             }}
-                            className="px-3 py-2 text-xs bg-background border border-border rounded-xl hover:bg-accent/50 focus:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-left"
+                            className="px-3 py-2 text-xs bg-background border border-border rounded-xl hover:bg-accent/50 focus:bg-accent/50 focus:outline-none transition-colors text-left"
                           >
                             {example}
                           </button>
