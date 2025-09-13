@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, X, Plus, Check, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { X, Plus, Check, Loader2 } from 'lucide-react';
+
 import { useManualSearch } from '@/hooks/useManualSearch';
 import { FEAT_MANUAL_CHEAP_ONLY, MANUAL_FX } from '@/config/flags';
 

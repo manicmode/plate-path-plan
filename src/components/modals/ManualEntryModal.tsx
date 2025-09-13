@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { MANUAL_PORTION_STEP, MANUAL_FX } from '@/config/flags';
+import { MANUAL_PORTION_STEP } from '@/config/flags';
 import ManualSearchResults from '@/components/manual/ManualSearchResults';
 import { PortionPicker } from '@/components/manual/PortionPicker';
 import { ManualInterstitialLoader } from '@/components/manual/ManualInterstitialLoader';
@@ -26,17 +25,8 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
   const [hintIndex, setHintIndex] = useState(0);
   const [showExamples, setShowExamples] = useState(false);
 
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const fxEnabled = MANUAL_FX && !reducedMotion;
+  // Disable any periodic UI effects to avoid focus flicker
 
-  // Rotate hints every 3.5s
-  useEffect(() => {
-    if (!isOpen) return;
-    const interval = setInterval(() => {
-      setHintIndex(prev => (prev + 1) % ROTATING_HINTS.length);
-    }, 3500);
-    return () => clearInterval(interval);
-  }, [isOpen]);
 
   // Listen for confirm:mounted event to hide loader
   useEffect(() => {
@@ -116,21 +106,9 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
               <div className="manual-content">
                 <ManualSearchResults onFoodSelect={handleFoodSelect} />
                 
-                {/* Rotating hint */}
+                {/* Static hint (no animations) */}
                 <div className="manual-hint-container">
-                  <AnimatePresence mode="wait">
-                    <motion.p
-                      key={hintIndex}
-                      initial={fxEnabled ? { opacity: 0 } : undefined}
-                      animate={{ opacity: 1 }}
-                      exit={fxEnabled ? { opacity: 0 } : undefined}
-                      transition={{ duration: fxEnabled ? 0.18 : 0 }}
-                      className="manual-hint"
-                    >
-                      {ROTATING_HINTS[hintIndex]}
-                    </motion.p>
-                  </AnimatePresence>
-                  
+                  <p className="manual-hint">{ROTATING_HINTS[0]}</p>
                   <Button
                     type="button"
                     variant="ghost"
@@ -146,33 +124,25 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
                 </div>
 
                 {/* Examples sheet */}
-                <AnimatePresence>
-                  {showExamples && (
-                    <motion.div
-                      initial={fxEnabled ? { opacity: 0, height: 0 } : undefined}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={fxEnabled ? { opacity: 0, height: 0 } : undefined}
-                      transition={{ duration: fxEnabled ? 0.18 : 0 }}
-                      className="manual-examples-sheet"
-                    >
-                      <div className="manual-examples-grid">
-                        {examples.map((example, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleExampleSelect(example);
-                            }}
-                            className="manual-example-chip"
-                          >
-                            {example}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {showExamples && (
+                  <div className="manual-examples-sheet">
+                    <div className="manual-examples-grid">
+                      {examples.map((example, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleExampleSelect(example);
+                          }}
+                          className="manual-example-chip"
+                        >
+                          {example}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Footer tip */}
                 <div className="manual-footer">
