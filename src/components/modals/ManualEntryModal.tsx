@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+
 import { Info, Minus, Plus, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MANUAL_PORTION_STEP, MANUAL_FX } from '@/config/flags';
@@ -297,80 +298,80 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md z-[600]" asChild>
-        <motion.div {...dialogMotionProps}>
-        <VisuallyHidden>
-          <DialogTitle>Add Food Manually</DialogTitle>
-          <DialogDescription>
-            Search and select foods to add to your log
-          </DialogDescription>
-        </VisuallyHidden>
-        
-        <DialogHeader>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-semibold">Manual Entry</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <p className="text-sm text-muted-foreground">
-                Best for restaurant meals, branded items, and supermarket foods.
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowInfoSheet(!showInfoSheet)}
-                className="h-6 w-6 p-0 rounded-full"
-              >
-                <Info className="h-3 w-3" />
-              </Button>
-            </div>
-          </div>
-        </DialogHeader>
+      <AccessibleDialogContent
+        className="sm:max-w-md z-[600]"
+        title="Manual Entry"
+        description="Best for restaurant meals, branded items, and supermarket foods."
+      >
+        <div role="document" className="p-4 sm:p-6">
+          <DialogHeader className="mb-3">
+            <DialogTitle>Add Food Manually</DialogTitle>
+            <DialogDescription>Search and select foods to add to your log.</DialogDescription>
+          </DialogHeader>
 
-        {showInfoSheet && (
-          <div className="bg-muted/50 rounded-lg p-4 space-y-3 border">
-            <ul className="space-y-2 text-sm">
-              <li className="flex items-start gap-2">
-                <span className="text-muted-foreground">•</span>
-                <span><strong>Manual Entry:</strong> best for restaurant meals, brand items, supermarket foods</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-muted-foreground">•</span>
-                <span><strong>Take a Photo:</strong> best for mixed plates and home-cooked meals</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-muted-foreground">•</span>
-                <span><strong>Speak to Log:</strong> fastest way to add simple items by voice</span>
-              </li>
-            </ul>
+          <div className="mb-2 flex items-center gap-2">
+            <p className="text-sm text-muted-foreground">
+              Best for restaurant meals, branded items, and supermarket foods.
+            </p>
             <Button
-              variant="secondary"
+              variant="ghost"
               size="sm"
-              onClick={() => setShowInfoSheet(false)}
-              className="w-full"
+              onClick={() => setShowInfoSheet(!showInfoSheet)}
+              className="h-6 w-6 p-0 rounded-full"
+              aria-label="Info"
             >
-              Got it
+              <Info className="h-3 w-3" />
             </Button>
           </div>
-        )}
 
-        <div className="space-y-6">
-          {selectedFood ? (
-            <PortionPicker
-              selectedFood={selectedFood}
-              onCancel={handlePortionCancel}
-              onContinue={handlePortionContinue}
-            />
-          ) : (
-            <ManualFoodEntry
-              onFoodSelect={handleFoodSelect}
-              onClose={onClose}
-              enrichingId={enrichingId}
-            />
+          {showInfoSheet && (
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3 border">
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-start gap-2">
+                  <span className="text-muted-foreground">•</span>
+                  <span><strong>Manual Entry:</strong> best for restaurant meals, brand items, supermarket foods</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-muted-foreground">•</span>
+                  <span><strong>Take a Photo:</strong> best for mixed plates and home-cooked meals</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-muted-foreground">•</span>
+                  <span><strong>Speak to Log:</strong> fastest way to add simple items by voice</span>
+                </li>
+              </ul>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowInfoSheet(false)}
+                className="w-full"
+              >
+                Got it
+              </Button>
+            </div>
           )}
+
+          <div className="space-y-6">
+            {selectedFood ? (
+              <PortionPicker
+                selectedFood={selectedFood}
+                onCancel={handlePortionCancel}
+                onContinue={handlePortionContinue}
+              />
+            ) : (
+              <ManualFoodEntry
+                onFoodSelect={handleFoodSelect}
+                onClose={onClose}
+                enrichingId={enrichingId}
+              />
+            )}
+          </div>
+
+          <p className="mt-4 text-xs text-muted-foreground">
+            Tip: Manual Entry works best for restaurant meals, brand & supermarket items.
+          </p>
         </div>
-        </motion.div>
-      </DialogContent>
+      </AccessibleDialogContent>
     </Dialog>
   );
 }
