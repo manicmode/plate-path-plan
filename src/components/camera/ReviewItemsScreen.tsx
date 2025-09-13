@@ -141,7 +141,16 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     const initialModalItems = selectedItems.map((item, index) => {
       const canonicalId = item.id; // Use existing item.id as canonical
-      return toLegacyFoodItem({ ...item, id: canonicalId }, index, true);
+      const converted = toLegacyFoodItem({ ...item, id: canonicalId }, index, true);
+      
+      // 3-LINE FIX: PRESERVE-FIRST image handoff (cast to handle dynamic properties)
+      const anyItem = item as any;
+      const anyConverted = converted as any;
+      anyConverted.imageUrl = anyItem?.imageUrl ?? anyConverted?.imageUrl ?? null;
+      anyConverted.imageAttribution = anyItem?.imageAttribution ?? anyConverted?.imageAttribution ?? 'unknown';
+      console.debug('[CONFIRM][CURRENT_ITEM][OUT]', { name: converted.name, imageUrl: anyConverted.imageUrl, hasImageUrl: !!anyConverted.imageUrl });
+      
+      return anyConverted;
     });
     
     // Set modal items BEFORE async hydration
@@ -168,6 +177,14 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           const canonicalId = m.id; // Use same ID from modal item
           const enrichedInput = { ...m, nutrients: r.nutrients, serving: r.serving };
           const merged = toLegacyFoodItem(enrichedInput, i, true);
+          
+          // Preserve image fields during enrichment merge (cast to handle dynamic properties)
+          const anyM = m as any;
+          const anyEnriched = enrichedInput as any;
+          const anyMerged = merged as any;
+          anyMerged.imageUrl = anyM.imageUrl ?? anyEnriched.imageUrl ?? anyMerged.imageUrl ?? null;
+          anyMerged.imageAttribution = anyM.imageAttribution ?? anyEnriched.imageAttribution ?? anyMerged.imageAttribution ?? 'unknown';
+          console.debug('[CONFIRM][ENRICHED_ITEM][OUT]', { name: merged.name, imageUrl: anyMerged.imageUrl, hasImageUrl: !!anyMerged.imageUrl });
           
           // Write to store using canonical ID - preserve ingredients from merged data
           storeUpdates[canonicalId] = {

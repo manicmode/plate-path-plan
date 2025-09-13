@@ -38,3 +38,11 @@
 .confirm-card-header .estimated-ribbon {
   display: none !important;
 }
+
+/* Confirm card avatar should be clean */
+[data-scope="confirm-avatar"] .estimated-ribbon,
+[data-scope="confirm-avatar"]::before,
+[data-scope="confirm-avatar"]::after {
+  display: none !important;
+  content: none !important;
+}

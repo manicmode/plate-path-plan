@@ -1770,7 +1770,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             {/* Food Item Display with Clean Avatar */}
             <div className="confirm-card-header flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl" style={{ position: 'relative' }}>
               <ConfirmHeaderAvatar
-                data-scope="confirm-avatar"
                 name={displayName}
                 imageUrl={imgSrc}
                 brandPill={
