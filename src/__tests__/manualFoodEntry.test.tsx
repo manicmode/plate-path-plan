@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react';
-import { ManualFoodEntry } from '@/components/camera/ManualFoodEntry';
+import ManualFoodEntry from '@/components/camera/ManualFoodEntry';
 import { describe, it, expect, vi } from 'vitest';
 
 // Mock all external dependencies
@@ -10,9 +10,8 @@ vi.mock('@/components/camera/ManualPortionDialog');
 describe('ManualFoodEntry Hook Order Stability', () => {
   it('should not crash with hook order error on re-renders', () => {
     const mockProps = {
-      isOpen: true,
-      onClose: vi.fn(),
-      onResults: vi.fn()
+      onFoodSelect: vi.fn(),
+      onClose: vi.fn()
     };
 
     // Mount component
@@ -29,9 +28,8 @@ describe('ManualFoodEntry Hook Order Stability', () => {
 
   it('should render without throwing on initial mount', () => {
     const mockProps = {
-      isOpen: true,
-      onClose: vi.fn(),
-      onResults: vi.fn()
+      onFoodSelect: vi.fn(),
+      onClose: vi.fn()
     };
 
     expect(() => {
@@ -41,9 +39,8 @@ describe('ManualFoodEntry Hook Order Stability', () => {
 
   it('should handle multiple candidate selections without hook errors', () => {
     const mockProps = {
-      isOpen: true,
-      onClose: vi.fn(),
-      onResults: vi.fn()
+      onFoodSelect: vi.fn(),
+      onClose: vi.fn()
     };
 
     const { rerender } = render(<ManualFoodEntry {...mockProps} />);

@@ -1,9 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
-import { submitTextLookup, type TextLookupOptions } from '@/lib/food/textLookup';
+import { getFoodCandidates } from '@/lib/food/search/getFoodCandidates';
+import type { TextLookupOptions } from '@/lib/food/textLookup';
 import { logManualAction } from '@/lib/analytics/manualLog';
 import { 
   FEAT_MANUAL_LRU_CACHE, 
-  FEAT_MANUAL_KEEP_LAST 
+  FEAT_MANUAL_KEEP_LAST,
+  FEAT_MANUAL_CHEAP_ONLY
 } from '@/config/flags';
 import * as manualSearchCache from '@/services/manualSearchCache';
 
@@ -72,17 +74,21 @@ export function useManualSearch(config: ManualSearchConfig = {}) {
     try {
       const t0 = performance.now();
       
-      const opts: TextLookupOptions = {
-        source: 'manual',
-        skipEdge: !allowNetwork,
+      const facets = { core: [query], prep: [], cuisine: [], form: [], protein: [] };
+      const searchOpts = {
         allowNetwork,
-        signal: ctrl.signal
+        preferGeneric: true,
+        requireCoreToken: false,
+        maxPerFamily: 3,
+        disableBrandInterleave: true,
+        allowMoreBrands: true,
+        allowPrefix: true,
+        minPrefixLen: 2
       };
-      
-      const fallback = await submitTextLookup(query, opts);
+      const fallback = await getFoodCandidates(query, facets, searchOpts, 'manual');
       
       const searchMs = Math.round(performance.now() - t0);
-      const items = fallback?.items || fallback?.rankedTop3 || fallback?.rankedAll || [];
+      const items = fallback || [];
       const newCandidates = processCandidates(items, query);
 
       // Check if request is still valid

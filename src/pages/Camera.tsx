@@ -20,7 +20,7 @@ import { SoundGate } from '@/lib/soundGate';
 import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
 import { BarcodeScanner } from '@/components/camera/BarcodeScanner';
 import { ManualBarcodeEntry } from '@/components/camera/ManualBarcodeEntry';
-import { ManualFoodEntry } from '@/components/camera/ManualFoodEntry';
+import ManualFoodEntry from '@/components/camera/ManualFoodEntry';
 import { SpeakToLogModal } from '@/components/camera/SpeakToLogModal';
 import { LogBarcodeScannerModal } from '@/components/camera/LogBarcodeScannerModal';
 import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
@@ -4088,25 +4088,28 @@ console.log('Global search enabled:', enableGlobalSearch);
       />
 
       {/* Manual Food Entry Modal */}
-      <ManualFoodEntry
-        isOpen={showManualFoodEntry}
-        onClose={() => {
-          setShowManualFoodEntry(false);
-          // Ensure main "Log Your Food" interface is visible when closing manual entry
-          setActiveTab('main');
-          setSelectedImage(null);
-          setShowConfirmation(false);
-          setShowError(false);
-          setShowManualEdit(false);
-          setShowVoiceAnalyzing(false);
-          setShowProcessingNextItem(false);
-          setShowVoiceEntry(false);
-          setShowTransition(false);
-          setShowSmartLoader(false); // Make sure loader doesn't hide the main UI
-        }}
-        onResults={(items) => routeRecognizedItems(items, 'manual')}
-        onHandoffStart={handoffStart}
-      />
+      {showManualFoodEntry && (
+        <ManualFoodEntry
+          onFoodSelect={async (food: any) => {
+            // Handle the selected food - this replaces onResults
+            await routeRecognizedItems([food], 'manual');
+          }}
+          onClose={() => {
+            setShowManualFoodEntry(false);
+            // Ensure main "Log Your Food" interface is visible when closing manual entry
+            setActiveTab('main');
+            setSelectedImage(null);
+            setShowConfirmation(false);
+            setShowError(false);
+            setShowManualEdit(false);
+            setShowVoiceAnalyzing(false);
+            setShowProcessingNextItem(false);
+            setShowVoiceEntry(false);
+            setShowTransition(false);
+            setShowSmartLoader(false); // Make sure loader doesn't hide the main UI
+          }}
+        />
+      )}
 
       {/* Speak to Log Modal */}
       <SpeakToLogModal
