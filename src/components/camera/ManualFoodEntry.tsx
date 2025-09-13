@@ -9,6 +9,8 @@ import { FEAT_MANUAL_CHEAP_ONLY, MANUAL_FX } from '@/config/flags';
 import { logManualAction } from '@/lib/analytics/manualLog';
 import { useToast } from '@/hooks/use-toast';
 import { ManualSearchResultCard } from '@/components/manual/ManualSearchResultCard';
+import { useTextRotator } from '@/hooks/useTextRotator';
+import { cn } from '@/lib/utils';
 import '@/styles/animations.css';
 
 interface ManualFoodEntryProps {
@@ -118,7 +120,12 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fxEnabled = MANUAL_FX && !reducedMotion;
 
-  // Rotating subtitles
+  // Rotating subtitles (synced with bottom tip)
+  const subtitle = useTextRotator([
+    "Search brand or restaurant items",
+    "Also supports supermarket & generic foods",
+  ], 3000);
+
   const subtitles = [
     "Search brand or restaurant items",
     "Also works for supermarket products", 
@@ -138,26 +145,17 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
   }, [isTyping, subtitles.length]);
 
   return (
-    <div className="space-y-6">
-      {/* Rotating Subtitle */}
-      <div className="text-center" aria-live="polite">
-        <AnimatePresence mode="wait">
-          <motion.p
-            key={subtitleIndex}
-            initial={fxEnabled && !reducedMotion ? { opacity: 0, y: -10 } : undefined}
-            animate={{ opacity: 1, y: 0 }}
-            exit={fxEnabled && !reducedMotion ? { opacity: 0, y: 10 } : undefined}
-            transition={{ duration: fxEnabled ? 0.3 : 0 }}
-            className="text-sm text-muted-foreground"
-          >
-            {subtitles[subtitleIndex]}
-          </motion.p>
-        </AnimatePresence>
+    <div className="max-h-[min(90svh,720px)] min-h-[70svh] flex flex-col overflow-hidden space-y-6">
+      {/* Header with rotating subtitle */}
+      <div className="space-y-3 flex-shrink-0">
+        <div className="text-center">
+          <h2 className="text-lg font-semibold">Add Food Manually</h2>
+          <p className="text-sm text-muted-foreground" aria-live="polite">{subtitle}</p>
+        </div>
       </div>
 
       {/* Search Input */}
-      <div className="relative">
-        
+      <div className="relative flex-shrink-0">
         <Input
           ref={inputRef}
           type="text"
@@ -193,128 +191,13 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
         )}
       </div>
 
-      {/* Empty state with scrollable container */}
-      {!query.trim() && (
-        <div className="space-y-4 max-h-[70vh] overflow-y-auto pb-6">
-          <div className="text-center py-8">
-            <div className="space-y-3">
-              <p className="text-muted-foreground font-medium">
-                No matches yet
-              </p>
-              <p className="text-sm text-muted-foreground/70">
-                Try brand or restaurant names
-              </p>
-            </div>
-          </div>
-          
-          {/* Examples section with dedicated spacing */}
-          <div className="space-y-3">
-            <div className="text-center">
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowExamples(!showExamples);
-                }}
-                className="text-xs text-muted-foreground hover:text-foreground focus:ring-2 focus:ring-primary/20 rounded-xl"
-                aria-label="Show search examples"
-              >
-                Examples
-              </Button>
-            </div>
-            
-            {/* Examples sheet with scrollable grid */}
-            <AnimatePresence>
-              {showExamples && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="p-3 bg-muted/30 rounded-xl border border-border/50"
-                >
-                  <div className="max-h-[40vh] overflow-y-auto">
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        'Chipotle bowl',
-                        'HEB tortillas', 
-                        'Costco hot dog',
-                        'Starbucks sandwich',
-                        'Ben & Jerry\'s',
-                        'Trader Joe\'s dumplings'
-                      ].map((example, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setQuery(example);
-                            search(example);
-                            setShowExamples(false);
-                          }}
-                          className="px-3 py-2 text-xs bg-background border border-border rounded-xl hover:bg-accent/50 focus:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-left"
-                        >
-                          {example}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      )}
-
-      {/* Results */}
-      {query.trim() && (
-        <div className="space-y-4">
-          {isSearching ? (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Searching for matches…
-              </p>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className={`p-4 border rounded-xl ${
-                  fxEnabled ? 'shimmer-effect' : ''
-                }`}>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-5 w-3/4" />
-                      <Skeleton className="h-4 w-1/2" />
-                      <Skeleton className="h-3 w-16" />
-                    </div>
-                    <Skeleton className="h-9 w-9 rounded-full" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : results && results.length > 0 ? (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                {results.length} result{results.length !== 1 ? 's' : ''} found
-              </p>
-              
-              <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
-                <AnimatePresence mode="popLayout">
-                  {results.map((food, index) => (
-                    <ManualSearchResultCard
-                      key={food.id || `${food.name}-${index}`}
-                      food={food}
-                      index={index}
-                      isEnriching={enrichingId === (food.id || food.name)}
-                      isClicked={clickedItems.has(food.id || food.name)}
-                      onSelect={handleFoodSelect}
-                    />
-                  ))}
-                </AnimatePresence>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="space-y-2">
+      {/* Scrollable content area */}
+      <div className={cn("flex-1 overflow-y-auto", showExamples ? "pb-28" : "pb-24")}>
+        {/* Empty state */}
+        {!query.trim() && (
+          <div className="space-y-4">
+            <div className="text-center py-8">
+              <div className="space-y-3">
                 <p className="text-muted-foreground font-medium">
                   No matches yet
                 </p>
@@ -323,9 +206,143 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
                 </p>
               </div>
             </div>
-          )}
-        </div>
-      )}
+            
+            {/* Examples section with dedicated spacing */}
+            <div className="space-y-3">
+              <div className="text-center">
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowExamples(!showExamples);
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground focus:ring-2 focus:ring-primary/20 rounded-xl"
+                  aria-label="Show search examples"
+                >
+                  Examples
+                </Button>
+              </div>
+              
+              {/* Examples sheet with scrollable grid */}
+              <AnimatePresence>
+                {showExamples && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.18 }}
+                    className="p-3 bg-muted/30 rounded-xl border border-border/50"
+                  >
+                    <div className="max-h-[40vh] overflow-y-auto">
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          'Chipotle bowl',
+                          'HEB tortillas', 
+                          'Costco hot dog',
+                          'Starbucks sandwich',
+                          'Ben & Jerry\'s',
+                          'Trader Joe\'s dumplings'
+                        ].map((example, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setQuery(example);
+                              search(example);
+                              setShowExamples(false);
+                            }}
+                            className="px-3 py-2 text-xs bg-background border border-border rounded-xl hover:bg-accent/50 focus:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-left"
+                          >
+                            {example}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              
+              {/* Rotating hint at bottom */}
+              <div className="text-center pt-4">
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={subtitleIndex}
+                    initial={fxEnabled && !reducedMotion ? { opacity: 0, y: -10 } : undefined}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={fxEnabled && !reducedMotion ? { opacity: 0, y: 10 } : undefined}
+                    transition={{ duration: fxEnabled ? 0.3 : 0 }}
+                    className="text-xs text-muted-foreground/70"
+                  >
+                    {subtitles[subtitleIndex]}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Results */}
+        {query.trim() && (
+          <div className="space-y-4">
+            {isSearching ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Searching for matches…
+                </p>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className={`p-4 border rounded-xl ${
+                    fxEnabled ? 'shimmer-effect' : ''
+                  }`}>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-5 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                      <Skeleton className="h-9 w-9 rounded-full" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : results && results.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  {results.length} result{results.length !== 1 ? 's' : ''} found
+                </p>
+                
+                <div className="space-y-2">
+                  <AnimatePresence mode="popLayout">
+                    {results.map((food, index) => (
+                      <ManualSearchResultCard
+                        key={food.id || `${food.name}-${index}`}
+                        food={food}
+                        index={index}
+                        isEnriching={enrichingId === (food.id || food.name)}
+                        isClicked={clickedItems.has(food.id || food.name)}
+                        onSelect={handleFoodSelect}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="space-y-2">
+                  <p className="text-muted-foreground font-medium">
+                    No matches yet
+                  </p>
+                  <p className="text-sm text-muted-foreground/70">
+                    Try brand or restaurant names
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
