@@ -563,10 +563,10 @@ body {
     --slider-range-color: rgb(20, 184, 166);
   }
 
-  /* Minimal header for portion picker */
+  /* Minimal header for portion picker - match main header positioning */
   .manual-header-minimal {
-    display: flex;
-    justify-content: flex-end;
+    position: relative;
+    height: 24px; /* Ensure consistent height for absolute positioning */
     margin-bottom: 8px;
   }
 
