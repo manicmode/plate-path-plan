@@ -25,6 +25,10 @@ export interface TextLookupOptions {
   bypassCache?: boolean;
   portionOverrideGrams?: number;
   skipEdge?: boolean;
+  /** When false, skip any network/edge lookups. Default: true */
+  allowNetwork?: boolean;
+  /** Optional signal for cancellation/timeboxing */
+  signal?: AbortSignal;
 }
 
 // Telemetry counters
@@ -40,8 +44,9 @@ const telemetry = {
  * Main text lookup function with v3 support for manual/voice
  */
 export async function submitTextLookup(query: string, options: TextLookupOptions): Promise<any> {
-  const { source, bypassCache = false, portionOverrideGrams, skipEdge } = options;
+  const { source, bypassCache = false, portionOverrideGrams, skipEdge, allowNetwork } = options;
   const shouldSkipEdge = skipEdge ?? (source === 'manual' || ENABLE_CHEAP_FIRST_SWR);
+  const shouldAllowNetwork = allowNetwork !== false; // default true
 
   if (!query?.trim()) {
     throw new Error('Query cannot be empty');
@@ -53,18 +58,18 @@ export async function submitTextLookup(query: string, options: TextLookupOptions
 
   // Use v3 pipeline for manual/voice when enabled
   if (ENABLE_FOOD_TEXT_V3 && (source === 'manual' || source === 'speech')) {
-    return await submitTextLookupV3(query, { ...options, skipEdge: shouldSkipEdge });
+    return await submitTextLookupV3(query, { ...options, skipEdge: shouldSkipEdge, allowNetwork: shouldAllowNetwork });
   }
 
   // Fallback to legacy for all other cases or when v3 disabled
-  return await submitTextLookupLegacy(query, { ...options, skipEdge: shouldSkipEdge });
+  return await submitTextLookupLegacy(query, { ...options, skipEdge: shouldSkipEdge, allowNetwork: shouldAllowNetwork });
 }
 
 /**
  * New v3 text lookup with generic-first results and realistic portions
  */
 async function submitTextLookupV3(query: string, options: TextLookupOptions): Promise<any> {
-  const { source } = options;
+  const { source, allowNetwork } = options;
   
   try {
     if (FOOD_TEXT_DEBUG) {
@@ -99,7 +104,8 @@ async function submitTextLookupV3(query: string, options: TextLookupOptions): Pr
       disableBrandInterleave: isManual, // keep all brands for manual typing
       allowMoreBrands: isManual,
       allowPrefix: isManual,
-      minPrefixLen: MIN_PREFIX_LEN
+      minPrefixLen: MIN_PREFIX_LEN,
+      allowNetwork
     }, source);
 
     if (FOOD_TEXT_DEBUG) {

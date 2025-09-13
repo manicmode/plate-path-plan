@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
-import { submitTextLookup } from '@/lib/food/textLookup';
+import { submitTextLookup, type TextLookupOptions } from '@/lib/food/textLookup';
 import { CandidateList } from '@/components/food/CandidateList';
 import { PortionUnitField } from '@/components/food/PortionUnitField';
 import { FOOD_TEXT_DEBUG } from '@/lib/flags';
@@ -38,6 +38,7 @@ import {
   FEAT_MANUAL_KEEP_LAST 
 } from '@/config/flags';
 import * as manualSearchCache from '@/services/manualSearchCache';
+import { logManualAction } from '@/lib/analytics/manualLog';
 
 interface ManualFoodEntryProps {
   isOpen: boolean;
@@ -496,15 +497,11 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
       }
     }
   }, [candidates.length, foodName, performHolePunchSearch]);
-
-  // Cleanup abort controller on unmount
-  useEffect(() => {
-    return () => {
-      if (abortRef.current) {
-        abortRef.current.abort();
+      if (FEAT_MANUAL_HOLE_PUNCH && candidates.length === 0 && foodName.trim()) {
+        performHolePunchSearch(foodName.trim());
       }
-    };
-  }, []);
+    }
+  }, [candidates.length, foodName, performHolePunchSearch]);
 
   // Add deduplication helpers
   const slug = (s: string) =>
@@ -605,7 +602,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
     }
   }, [isOpen]);
 
-  // Handle input changes with debouncing
+  // Handle input changes with debouncing (P0: reduced to 150ms)
   useEffect(() => {
     if (!manualFlow.selectedCandidate && foodName.length > 2) {
       if (searchTimeoutRef.current) {
@@ -614,7 +611,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
 
       searchTimeoutRef.current = setTimeout(() => {
         debouncedSearch(foodName);
-      }, 300);
+      }, 150); // P0: Reduced from 300ms to 150ms
 
       return () => {
         if (searchTimeoutRef.current) {
@@ -1002,6 +999,7 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
                 ref={inputRef}
                 value={foodName}
                 onChange={(e) => setFoodName(e.target.value)}
+                onKeyPress={handleKeyPress}
                 placeholder="What did you eat?"
                 className="text-lg h-14 pl-4 pr-12 bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:bg-white/15 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/50 rounded-xl"
                 disabled={state === 'loading'}
@@ -1017,9 +1015,11 @@ export const ManualFoodEntry: React.FC<ManualFoodEntryProps> = ({
               </div>
             </div>
 
-            {/* Helper text */}
+            {/* Helper text with hole punch hint */}
             <p className="text-xs text-slate-400 mt-2 text-center">
-              Press Enter to search • Esc to close
+              {FEAT_MANUAL_HOLE_PUNCH && candidates.length === 0 && foodName.trim() 
+                ? 'Press Enter again to search broader sources' 
+                : 'Press Enter to search • Esc to close'}
             </p>
           </div>
 
