@@ -22,7 +22,6 @@ import { BarcodeScanner } from '@/components/camera/BarcodeScanner';
 import { ManualBarcodeEntry } from '@/components/camera/ManualBarcodeEntry';
 import { SpeakToLogModal } from '@/components/camera/SpeakToLogModal';
 import { ManualEntryModal } from '@/components/modals/ManualEntryModal';
-import { useUiStore } from '@/state/ui/useUiStore';
 import { LogBarcodeScannerModal } from '@/components/camera/LogBarcodeScannerModal';
 import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
 import { useBarcodeHistory } from '@/hooks/useBarcodeHistory';
@@ -270,11 +269,12 @@ const CameraPage = () => {
   const [isMultiAILoading, setIsMultiAILoading] = useState(false);
   
   // UI State management
-  const { openManualEntry } = useUiStore();
+  // Removed useUiStore in favor of local state for consistency with other modals
   
   // Manual entry states
   const [showManualBarcodeEntry, setShowManualBarcodeEntry] = useState(false);
   const [showSpeakToLog, setShowSpeakToLog] = useState(false);
+  const [showManualFoodEntry, setShowManualFoodEntry] = useState(false);
   const [bypassHydration, setBypassHydration] = useState(false);
   
   // Tab navigation state
@@ -382,18 +382,15 @@ const CameraPage = () => {
 
     // Check if items are fully enriched (route guard) - use normalized items
     const allEnriched = normalizedItems.every(i => i?.enrichmentSource && Array.isArray(i?.ingredientsList));
-    if (!allEnriched && (sourceHint === 'manual' || sourceHint === 'speech')) {
-      // Allow manual items to proceed if they have basic enrichment attempt
-      const manualWithAttempt = normalizedItems.every(i => 
-        i?.source === 'manual' && (i?.enriched === false || i?.enrichmentSource === 'manual')
-      );
-      
-      if (!manualWithAttempt) {
-        console.warn('[ROUTE][BLOCKED]', 'Items not fully enriched');
-        return; // keep user on dialog
-      } else {
-        console.log('[ROUTE][SOFT]', 'Allowing manual items with enrichment attempt');
-      }
+    const isManual = sourceHint === 'manual';
+    
+    if (!allEnriched && !isManual) {
+      console.warn('[ROUTE][BLOCKED]', 'Items not fully enriched (non-manual)');
+      return; // keep user on dialog
+    }
+    
+    if (isManual && !allEnriched) {
+      console.log('[ROUTE][SOFT]', 'Allowing manual items with enrichment attempt');
     }
 
     // Determine the source type
@@ -462,7 +459,7 @@ const CameraPage = () => {
       
       setInputSource(sourceHint === 'speech' ? 'voice' : sourceHint === 'manual' ? 'manual' : sourceHint === 'barcode' ? 'barcode' : 'photo');
       
-      // Set showConfirmation state - but forceConfirm will override downstream
+      // Set showConfirmation state and ensure proper source tracking
       setShowConfirmation(true);
       setShowLogBarcodeScanner(false);
       setShowCamera(false);
@@ -474,7 +471,8 @@ const CameraPage = () => {
         inputSource: sourceHint,
         forceConfirm,
         showConfirmation: true,
-        itemName: item.name
+        itemName: item.name,
+        source: sourceHint
       });
     } else {
       // Transform to ReviewItem format for multiple items
@@ -1245,7 +1243,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     if (typeof imageForAnalysis !== 'string' || !imageForAnalysis.includes(',')) {
       console.error('[ANALYZE][BAD_SOURCE] expected data URL string');
       toast.error('Invalid image format. Please try again.');
-      openManualEntry();
+      setShowManualFoodEntry(true);
       setShowSmartLoader(false);
       setShowCamera(false); // Close camera modal on error path
       return;
@@ -1257,7 +1255,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         hasComma: imageForAnalysis.includes(',')
       });
       toast.error('Invalid image format. Please try again.');
-      openManualEntry();
+          setShowManualFoodEntry(true);
       setShowSmartLoader(false);
       setShowCamera(false); // Close camera modal on error path
       return;
@@ -1353,7 +1351,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           if (!items || !Array.isArray(items) || items.length === 0) {
             console.warn('[FLOW][ZERO_ITEMS_FALLBACK]');
             toast.error('No foods detected in this image. Try a clearer photo or add foods manually.');
-            openManualEntry();
+            setShowManualFoodEntry(true);
             setShowSmartLoader(false);
             setShowCamera(false); // Close camera modal on error path
             return;
@@ -1382,7 +1380,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         } catch (error) {
           console.error('[FLOW][ANALYZE:ERROR]', error);
           toast.error('Failed to analyze image. Please try again.');
-          openManualEntry();
+          setShowManualFoodEntry(true);
           setShowSmartLoader(false);
           setShowCamera(false); // Close camera modal on error path
           return;
@@ -3689,7 +3687,7 @@ console.log('Global search enabled:', enableGlobalSearch);
                   
                    {/* Manual Entry Tab */}
                     <Button
-                      onClick={() => useUiStore.getState().openManualEntry()}
+                      onClick={() => setShowManualFoodEntry(true)}
                       className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
                      size="lg"
                    >
@@ -4082,7 +4080,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         barcode={failedBarcode}
         onManualEntry={() => {
           setShowBarcodeNotFound(false);
-          openManualEntry();
+          setShowManualFoodEntry(true);
         }}
         onTryAgain={() => {
           setShowBarcodeNotFound(false);
@@ -4099,10 +4097,17 @@ console.log('Global search enabled:', enableGlobalSearch);
         isProcessing={isAnalyzing}
       />
 
-      {/* Manual Entry Modal - Now handled by ManualEntryModal */}
-      <ManualEntryModal 
-        onFoodSelected={(food) => routeRecognizedItems([food], 'manual')}
-      />
+      {/* Manual Entry Modal - Using legacy pattern like confirm modal */}
+      {showManualFoodEntry && (
+        <ManualEntryModal
+          isOpen={showManualFoodEntry}
+          onClose={() => setShowManualFoodEntry(false)}
+          onFoodSelected={(food) => {
+            console.log('[ROUTE][MANUAL] items=1');
+            routeRecognizedItems([food], 'manual');
+          }}
+        />
+      )}
 
       {/* Speak to Log Modal */}
       <SpeakToLogModal
@@ -4190,7 +4195,7 @@ console.log('Global search enabled:', enableGlobalSearch);
           }}
           onManualFallback={() => {
             console.log('[CAMERA][PHOTO] Manual fallback requested');
-            openManualEntry();
+            setShowManualFoodEntry(true);
             setShowCamera(false); // Close camera modal on manual fallback
           }}
         />

@@ -2,67 +2,68 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useUiStore } from '@/state/ui/useUiStore';
 import ManualFoodEntry from '@/components/camera/ManualFoodEntry';
-import { enrichManualCandidate } from '@/lib/food/enrich/enrichManualCandidate';
+import { enrichCandidate } from '@/utils/enrichCandidate';
 
 interface ManualEntryModalProps {
-  onFoodSelected?: (food: any) => void;
+  isOpen: boolean;
+  onClose: () => void;
+  onFoodSelected: (food: any) => void;
 }
 
-export function ManualEntryModal({ onFoodSelected }: ManualEntryModalProps = {}) {
-  const { manualEntryOpen, openManualEntry, closeManualEntry } = useUiStore();
+export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntryModalProps) {
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
 
   const handleFoodSelect = async (candidate: any) => {
     try {
-      setEnrichingId(candidate.id || candidate.name);
+      console.log('[MODAL][OPEN] manualEntry (legacy host)');
+      console.log('[MANUAL][SELECT]', candidate);
       
-      const controller = new AbortController();
-      const enriched = await enrichManualCandidate(candidate, controller.signal);
+      const candidateId = candidate.id || candidate.name;
+      setEnrichingId(candidateId);
+      
+      // Enrich the candidate with full data
+      const enriched = await enrichCandidate({ 
+        ...candidate, 
+        source: 'manual' 
+      });
 
-      // Call the parent callback with enriched item
-      if (onFoodSelected) {
-        onFoodSelected(enriched);
-      }
+      console.log('[MANUAL][ENRICHED]', {
+        name: enriched.name,
+        hasIngredients: enriched.hasIngredients,
+        enrichmentSource: enriched.enrichmentSource
+      });
 
-      closeManualEntry();
+      // Call parent with enriched item
+      onFoodSelected(enriched);
+      onClose();
     } catch (error) {
-      console.warn('[MANUAL][ENRICH][ERROR]', error);
+      console.warn('[MANUAL][SELECT][FALLBACK]', error);
       
-      // If not aborted, create a basic skeleton and proceed
-      if (!error?.message?.includes('aborted')) {
-        const skeleton = {
-          ...candidate,
-          source: 'manual',
-          enriched: false,
-          hasIngredients: false,
-          ingredientsList: [],
-          ingredientsText: '',
-          ingredientsUnavailable: true,
-          enrichmentSource: 'manual'
-        };
+      // Create skeleton fallback
+      const skeleton = {
+        ...candidate,
+        source: 'manual',
+        enriched: false,
+        hasIngredients: false,
+        ingredientsList: [],
+        ingredientsText: '',
+        ingredientsUnavailable: true,
+        enrichmentSource: 'manual'
+      };
 
-        if (onFoodSelected) {
-          onFoodSelected(skeleton);
-        }
-        closeManualEntry();
-      }
+      onFoodSelected(skeleton);
+      onClose();
     } finally {
       setEnrichingId(null);
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Dialog 
-      open={manualEntryOpen} 
-      onOpenChange={(open) => open ? openManualEntry() : closeManualEntry()}
-    >
-      <DialogContent 
-        className="max-w-xl w-[92vw] p-0 overflow-hidden z-[500]"
-        onPointerDownOutside={() => closeManualEntry()}
-        onInteractOutside={() => closeManualEntry()}
-      >
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-xl w-[92vw] p-0 overflow-hidden">
         <DialogHeader className="p-4 border-b flex flex-row items-center justify-between space-y-0">
           <div>
             <DialogTitle className="text-lg font-semibold">Add Food Manually</DialogTitle>
@@ -73,7 +74,7 @@ export function ManualEntryModal({ onFoodSelected }: ManualEntryModalProps = {})
           <Button
             variant="ghost"
             size="sm"
-            onClick={closeManualEntry}
+            onClick={onClose}
             aria-label="Close"
             className="h-6 w-6 p-0"
           >
@@ -83,7 +84,7 @@ export function ManualEntryModal({ onFoodSelected }: ManualEntryModalProps = {})
         <div className="p-4">
           <ManualFoodEntry
             onFoodSelect={handleFoodSelect}
-            onClose={closeManualEntry}
+            onClose={onClose}
             enrichingId={enrichingId}
           />
         </div>
