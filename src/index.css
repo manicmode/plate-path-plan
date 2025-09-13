@@ -547,9 +547,20 @@ body {
     height: 4px;
   }
 
-  /* Fix slider positioning to center 100% value properly */
+  /* Fix slider positioning - 100% should be visually centered between 25% and 200% */
   .portion-slider [data-radix-slider-thumb] {
     transform: translateX(-50%);
+  }
+  
+  /* Ensure the slider range is properly positioned */
+  .portion-slider [data-radix-slider-range] {
+    background: rgb(20, 184, 166);
+  }
+  
+  /* Custom positioning for centered 100% default */
+  .portion-slider {
+    --slider-track-color: rgba(255, 255, 255, 0.1);
+    --slider-range-color: rgb(20, 184, 166);
   }
 
   /* Minimal header for portion picker */
@@ -569,6 +580,14 @@ body {
     justify-content: space-between;
     font-size: 10px;
     color: rgba(255, 255, 255, 0.4);
+    position: relative;
+  }
+
+  /* Center the 100% tick mark */
+  .portion-tick-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
   }
 
   .portion-weight {

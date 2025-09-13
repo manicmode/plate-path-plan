@@ -100,7 +100,7 @@ export function PortionPicker({ selectedFood, onCancel, onContinue, isLoading }:
             />
             <div className="portion-slider-ticks">
               <span className="portion-tick">25%</span>
-              <span className="portion-tick">100%</span>
+              <span className="portion-tick portion-tick-center">100%</span>
               <span className="portion-tick">200%</span>
             </div>
           </div>
