@@ -128,7 +128,7 @@ const Layout = ({ children }: LayoutProps) => {
       const target = e.target as HTMLElement;
       if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.isContentEditable) {
         e.preventDefault();
-        navigate('/voice-agent');
+        navigate('/coach');
       }
     }
   }, [navigate, voiceCoachAllowed, isAuthenticated]);
@@ -241,7 +241,7 @@ const Layout = ({ children }: LayoutProps) => {
                       size="icon"
                       aria-label="Speak to Coach (Press M)"
                       data-testid="header-mic"
-                      onClick={() => navigate('/voice-agent')}
+                      onClick={() => navigate('/coach')}
                       className="relative hover:bg-gray-100/50 dark:hover:bg-gray-800/50"
                     >
                       <span className={`${isMobile ? 'text-3xl' : 'text-4xl'} leading-none`}>🎙️</span>

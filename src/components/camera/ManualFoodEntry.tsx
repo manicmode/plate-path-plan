@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useManualSearch } from '@/hooks/useManualSearch';
 import { FEAT_MANUAL_CHEAP_ONLY, MANUAL_FX } from '@/config/flags';
@@ -157,9 +157,6 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
 
       {/* Search Input */}
       <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2">
-          <Search className="h-4 w-4 text-muted-foreground" />
-        </div>
         
         <Input
           ref={inputRef}
@@ -170,7 +167,7 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
           onKeyDown={handleKeyPress}
           onFocus={() => setIsTyping(true)}
           onBlur={() => setTimeout(() => setIsTyping(false), 1000)}
-          className={`w-full pl-10 pr-10 h-12 rounded-xl border-2 transition-all duration-150 ${
+          className={`w-full pr-10 h-12 rounded-xl border-2 transition-all duration-150 ${
             fxEnabled
               ? 'focus:ring-2 focus:ring-primary/20 focus:-translate-y-0.5 focus:shadow-md focus:border-primary/30'
               : 'focus:border-primary'
