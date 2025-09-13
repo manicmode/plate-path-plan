@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import AccessibleDialogContent from '@/components/a11y/AccessibleDialogContent';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Info, HelpCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MANUAL_PORTION_STEP, MANUAL_FX, MANUAL_INTERSTITIAL, MANUAL_HINTS } from '@/config/flags';
 import ManualFoodEntry from '@/components/camera/ManualFoodEntry';
 import { PortionPicker } from '@/components/manual/PortionPicker';
@@ -17,10 +18,11 @@ interface ManualEntryModalProps {
 
 export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntryModalProps) {
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
-  const [showInfoSheet, setShowInfoSheet] = useState(false);
+  const [showExamplesSheet, setShowExamplesSheet] = useState(false);
   const [selectedFood, setSelectedFood] = useState<any>(null);
   const [showInterstitial, setShowInterstitial] = useState(false);
   const [isPortionLoading, setIsPortionLoading] = useState(false);
+  const [isRouting, setIsRouting] = useState(false);
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fxEnabled = MANUAL_FX && !reducedMotion;
@@ -79,7 +81,7 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
     }
   };
 
-  const handlePortionContinue = (food: any, portion: any) => {
+  const handlePortionContinue = async (food: any, portion: any) => {
     setIsPortionLoading(true);
     
     const itemWithPortion = {
@@ -88,19 +90,43 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
       inputSource: 'manual'
     };
 
-    // Show interstitial if enabled
+    // Show interstitial if enabled and wait for confirm:mounted
     if (MANUAL_INTERSTITIAL) {
+      setIsRouting(true);
       setShowInterstitial(true);
       
-      // Simulate processing time, then hide interstitial and route
-      setTimeout(() => {
-        console.log('[ROUTE][CALL]', { source: 'manual', itemId: food?.id || food?.name });
-        onFoodSelected(itemWithPortion);
+      console.log('[INTERSTITIAL][SHOW]', { 
+        source: 'manual', 
+        itemId: food?.id || food?.name,
+        serving: portion?.servings,
+        sliderPct: portion?.percent
+      });
+      
+      // Listen for confirm:mounted event
+      const onConfirmMounted = () => {
+        console.log('[INTERSTITIAL][HIDE]', { ready: true, elapsedMs: Date.now() - startTime });
         setShowInterstitial(false);
+        setIsRouting(false);
         setSelectedFood(null);
         setIsPortionLoading(false);
         onClose();
-      }, 600); // Short delay to show interstitial
+      };
+      
+      const startTime = Date.now();
+      window.addEventListener('confirm:mounted', onConfirmMounted, { once: true });
+      
+      // Auto-hide after 800ms as fallback
+      setTimeout(() => {
+        if (showInterstitial) {
+          console.log('[INTERSTITIAL][TIMEOUT]');
+          window.removeEventListener('confirm:mounted', onConfirmMounted);
+          onConfirmMounted();
+        }
+      }, 800);
+      
+      // Call the routing function
+      console.log('[ROUTE][CALL]', { source: 'manual', itemId: food?.id || food?.name });
+      onFoodSelected(itemWithPortion);
     } else {
       console.log('[ROUTE][CALL]', { source: 'manual', itemId: food?.id || food?.name });
       onFoodSelected(itemWithPortion);
@@ -119,83 +145,56 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
     setShowInterstitial(false);
   };
 
+  // Examples for the sheet
+  const examples = [
+    "Chipotle bowl", "HEB tortillas", "Costco hot dog", 
+    "Starbucks sandwich", "Ben & Jerry's", "Trader Joe's dumplings"
+  ];
+
+  const handleExampleClick = (example: string) => {
+    // This will be handled by the ManualFoodEntry component
+    setShowExamplesSheet(false);
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <AccessibleDialogContent
-          className="sm:max-w-lg z-[600]"
-          title="Manual Entry"
-          description="Search for foods to add to your log"
+          className="max-w-[420px] z-[600]"
+          title="Add Food Manually"
+          description="Search brand or restaurant items"
         >
           <motion.div 
             role="document" 
-            className="p-6"
-            initial={fxEnabled ? { opacity: 0, scale: 0.97 } : undefined}
+            className="p-6 space-y-6"
+            initial={fxEnabled ? { opacity: 0, scale: 0.98 } : undefined}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.12 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
           >
             {/* Header */}
-            <div className="space-y-4 mb-6">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-semibold">
-                  Add Food Manually
-                </DialogTitle>
-                <DialogDescription className="text-base">
-                  Search and select foods to add to your log.
+            <div className="space-y-2">
+              <div>
+                <DialogTitle className="text-xl font-semibold">Add Food Manually</DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground">
+                  Search brand or restaurant items
                 </DialogDescription>
-              </DialogHeader>
-
-              {/* Usage hints */}
-              {MANUAL_HINTS && (
-                <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg border">
-                  <HelpCircle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-muted-foreground">
-                    <p className="font-medium mb-1">Best for restaurant meals, branded items, and supermarket foods</p>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      onClick={() => setShowInfoSheet(!showInfoSheet)}
-                      className="h-auto p-0 text-xs underline"
-                    >
-                      {showInfoSheet ? 'Hide examples' : 'Show examples'}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Info sheet */}
-              {showInfoSheet && (
-                <motion.div 
-                  className="space-y-3 p-4 bg-card border rounded-lg"
-                  initial={fxEnabled ? { opacity: 0, height: 0 } : undefined}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={fxEnabled ? { opacity: 0, height: 0 } : undefined}
-                  transition={{ duration: 0.2 }}
-                >
-                  <h4 className="font-medium">When to use Manual Entry</h4>
-                  <div className="text-sm text-muted-foreground space-y-2">
-                    <p>
-                      Manual Entry works best for restaurant meals, branded items, and supermarket foods. 
-                      Try typing a brand (e.g., 'Costco', 'Tesco'), a restaurant (e.g., 'Chipotle', 'Subway'), 
-                      or a specific product name.
-                    </p>
-                    <div className="space-y-1">
-                      <p className="font-medium">Examples:</p>
-                      <ul className="list-disc list-inside space-y-0.5 text-xs">
-                        <li>"Chipotle burrito bowl"</li>
-                        <li>"McDonald's Big Mac"</li>
-                        <li>"Costco rotisserie chicken"</li>
-                        <li>"Ben & Jerry's ice cream"</li>
-                      </ul>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
+              </div>
             </div>
 
+            {/* Divider */}
+            <div className="w-full h-px bg-border/20" />
+
             {/* Content */}
-            <div className="space-y-6">
-              {selectedFood ? (
+            <div className="space-y-4">
+              {showInterstitial ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                  <div className="text-center space-y-1">
+                    <p className="text-sm font-medium">Preparing your item…</p>
+                    <p className="text-xs text-muted-foreground">Fetching nutrition & ingredients</p>
+                  </div>
+                </div>
+              ) : selectedFood ? (
                 <PortionPicker
                   selectedFood={selectedFood}
                   onCancel={handlePortionCancel}
@@ -207,25 +206,42 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
                   onFoodSelect={handleFoodSelect}
                   onClose={onClose}
                   enrichingId={enrichingId}
+                  onShowExamples={() => setShowExamplesSheet(true)}
                 />
               )}
             </div>
-
-            {/* Footer tip - only show if not in portion step */}
-            {!selectedFood && (
-              <div className="mt-6 pt-4 border-t">
-                <p className="text-xs text-muted-foreground text-center">
-                  💡 Manual Entry works best for restaurant meals, brand & supermarket items
-                </p>
-              </div>
-            )}
           </motion.div>
         </AccessibleDialogContent>
       </Dialog>
 
+      {/* Examples Sheet */}
+      <Sheet open={showExamplesSheet} onOpenChange={setShowExamplesSheet}>
+        <SheetContent side="bottom" className="max-h-[40vh]">
+          <SheetHeader>
+            <SheetTitle>Search Examples</SheetTitle>
+            <SheetDescription>
+              Tap an example to search for it
+            </SheetDescription>
+          </SheetHeader>
+          
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            {examples.map((example) => (
+              <Button
+                key={example}
+                variant="outline"
+                className="h-auto py-3 text-sm"
+                onClick={() => handleExampleClick(example)}
+              >
+                {example}
+              </Button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
+
       {/* Interstitial Loader */}
       <InterstitialLoader 
-        isVisible={showInterstitial}
+        isVisible={showInterstitial && !isRouting}
         onComplete={handleInterstitialComplete}
         maxDuration={800}
       />
