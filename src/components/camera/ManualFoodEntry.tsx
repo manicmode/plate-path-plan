@@ -55,15 +55,8 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
     search(value);
   }, [search]);
 
-  // Handle key presses
-  const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape') {
-      reset();
-      onClose();
-    } else if (e.key === 'Enter' && results.length > 0) {
-      handleFoodSelect(results[0]);
-    }
-  }, [results, reset, onClose]);
+  // Handle key presses - moved below handleFoodSelect to satisfy TS order
+  /* placeholder */
 
   // Handle food selection
   const handleFoodSelect = useCallback((food: any, event?: React.MouseEvent) => {
@@ -128,13 +121,18 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
               : 'focus:border-primary'
           }`}
           autoFocus
+          autoComplete="off"
         />
         
         {query && (
           <Button
+            type="button"
             variant="ghost"
             size="sm"
-            onClick={handleClear}
+            onClick={(e) => {
+              e.preventDefault();
+              handleClear();
+            }}
             className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 p-0 rounded-full hover:bg-muted"
             aria-label="Clear search"
           >
@@ -143,63 +141,71 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
         )}
       </div>
 
-      {/* Empty state */}
+      {/* Empty state with scrollable container */}
       {!query.trim() && (
-        <div className="text-center py-12 max-h-[70vh] overflow-y-auto pb-[env(safe-area-inset-bottom,16px)]">
-          <div className="space-y-3">
-            <p className="text-muted-foreground font-medium">
-              No matches yet
-            </p>
-            <p className="text-sm text-muted-foreground/70">
-              Try brand or restaurant names
-            </p>
-            <div className="text-right mt-4">
-              <Button
-                variant="link"
-                size="sm"
-                onClick={() => setShowExamples(!showExamples)}
-                className="text-xs text-muted-foreground hover:text-foreground focus:ring-2 focus:ring-primary/20 rounded-xl"
-                aria-label="Show search examples"
-              >
-                Examples
-              </Button>
-            </div>
-            
-            {/* Examples sheet */}
-            <AnimatePresence>
-              {showExamples && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="mt-4 p-3 bg-muted/30 rounded-xl border border-border/50"
+        <div className="max-h-[70vh] overflow-y-auto pb-[env(safe-area-inset-bottom,16px)]">
+          <div className="text-center py-12">
+            <div className="space-y-3">
+              <p className="text-muted-foreground font-medium">
+                No matches yet
+              </p>
+              <p className="text-sm text-muted-foreground/70">
+                Try brand or restaurant names
+              </p>
+              <div className="text-right mt-4">
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowExamples(!showExamples);
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground focus:ring-2 focus:ring-primary/20 rounded-xl"
+                  aria-label="Show search examples"
                 >
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      'Chipotle bowl',
-                      'HEB tortillas', 
-                      'Costco hot dog',
-                      'Starbucks sandwich',
-                      'Ben & Jerry\'s',
-                      'Trader Joe\'s dumplings'
-                    ].map((example, index) => (
-                      <button
-                        key={index}
-                        onClick={() => {
-                          setQuery(example);
-                          search(example);
-                          setShowExamples(false);
-                        }}
-                        className="px-3 py-2 text-xs bg-background border border-border rounded-xl hover:bg-accent/50 focus:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-left"
-                      >
-                        {example}
-                      </button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  Examples
+                </Button>
+              </div>
+              
+              {/* Examples sheet */}
+              <AnimatePresence>
+                {showExamples && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.18 }}
+                    className="mt-4 p-3 bg-muted/30 rounded-xl border border-border/50"
+                  >
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {[
+                        'Chipotle bowl',
+                        'HEB tortillas', 
+                        'Costco hot dog',
+                        'Starbucks sandwich',
+                        'Ben & Jerry\'s',
+                        'Trader Joe\'s dumplings'
+                      ].map((example, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setQuery(example);
+                            search(example);
+                            setShowExamples(false);
+                          }}
+                          className="px-3 py-2 text-xs bg-background border border-border rounded-xl hover:bg-accent/50 focus:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors text-left"
+                        >
+                          {example}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       )}

@@ -74,8 +74,7 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
 
   const handleExampleSelect = (example: string) => {
     setShowExamples(false);
-    // This would trigger search with the example
-    // For now, just close examples
+    // Trigger search with the example - this needs to be connected to the search component
   };
 
   const examples = [
@@ -133,9 +132,13 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
                   </AnimatePresence>
                   
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => setShowExamples(!showExamples)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowExamples(!showExamples);
+                    }}
                     className="manual-examples-btn"
                   >
                     Examples
@@ -156,7 +159,11 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
                         {examples.map((example, index) => (
                           <button
                             key={index}
-                            onClick={() => handleExampleSelect(example)}
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleExampleSelect(example);
+                            }}
                             className="manual-example-chip"
                           >
                             {example}

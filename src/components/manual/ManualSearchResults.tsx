@@ -34,16 +34,9 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
     search(value);
   }, [search]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && results.length > 0) {
-      handleFoodSelect(results[0]);
-    }
-  }, [results]);
-
   const handleFoodSelect = useCallback((food: any) => {
     const itemId = food.id || food.name;
     setClickedItems(prev => new Set([...prev, itemId]));
-    
     setTimeout(() => {
       setClickedItems(prev => {
         const next = new Set(prev);
@@ -51,9 +44,17 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
         return next;
       });
     }, 300);
-    
     onFoodSelect(food);
   }, [onFoodSelect]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (results.length > 0) {
+        handleFoodSelect(results[0]);
+      }
+    }
+  }, [results, handleFoodSelect]);
 
   const handleClear = useCallback(() => {
     setQuery('');
@@ -76,14 +77,20 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           className="manual-search-input"
+          autoComplete="off"
         />
         
         {query && (
           <Button
+            type="button"
             variant="ghost"
             size="sm"
-            onClick={handleClear}
+            onClick={(e) => {
+              e.preventDefault();
+              handleClear();
+            }}
             className="manual-search-clear"
+            aria-label="Clear search"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -143,9 +150,11 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
                       </div>
                       
                       <Button
+                        type="button"
                         size="sm"
                         className="manual-result-button"
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
                           handleFoodSelect(food);
                         }}
