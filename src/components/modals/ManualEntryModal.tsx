@@ -89,23 +89,26 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="manual-entry-modal" onPointerDownOutside={(e) => e.preventDefault()}>
-          <div className="manual-modal-container">
-            {/* Header */}
-            <div className="manual-header">
-              <div>
-                <DialogTitle className="manual-title">
-                  Add Food Manually
-                </DialogTitle>
-                <DialogDescription className="manual-subtitle">
-                  Search brand or restaurant items
-                </DialogDescription>
-              </div>
+        <DialogContent 
+          className="manual-entry-modal p-0 gap-0 max-w-[420px] w-[92vw]" 
+          onPointerDownOutside={(e) => e.preventDefault()}
+        >
+          {/* Header with integrated close button */}
+          <div className="manual-header">
+            <div>
+              <DialogTitle className="manual-title">
+                Add Food Manually
+              </DialogTitle>
+              <DialogDescription className="manual-subtitle">
+                Search brand or restaurant items
+              </DialogDescription>
             </div>
+          </div>
 
-            <div className="manual-divider" />
+          <div className="manual-divider" />
 
-            {/* Content */}
+          {/* Content */}
+          <div className="manual-content">
             {selectedFood ? (
               <PortionPicker
                 selectedFood={selectedFood}
@@ -113,7 +116,7 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
                 onContinue={handlePortionContinue}
               />
             ) : (
-              <div className="manual-content">
+              <>
                 <ManualSearchResults onFoodSelect={handleFoodSelect} />
                 
                 {/* Rotating hint */}
@@ -180,7 +183,7 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
                     💡 Manual Entry is best for restaurant meals & branded items. Try brand names for best matches.
                   </p>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </DialogContent>
