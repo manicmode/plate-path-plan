@@ -170,28 +170,14 @@ body {
 
   /* Manual Entry Modal Dark Theme Styles */
   .manual-entry-modal {
+    width: min(420px, 92vw);
+    max-height: 80vh;
     background: linear-gradient(to bottom, #121a22, #0d141a);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 1rem;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-    max-height: 80vh;
-    padding: 20px 18px;
+    padding: 0;
     overflow: hidden;
-    position: relative;
-  }
-
-  .manual-entry-modal [data-radix-dialog-close] {
-    position: absolute;
-    right: 16px;
-    top: 16px;
-    opacity: 0.7;
-    transition: opacity 0.2s;
-    color: white;
-    z-index: 10;
-  }
-
-  .manual-entry-modal [data-radix-dialog-close]:hover {
-    opacity: 1;
   }
 
   .manual-modal-container {
@@ -203,7 +189,6 @@ body {
     align-items: flex-start;
     justify-content: space-between;
     margin-bottom: 16px;
-    position: relative;
   }
 
   .manual-title {
@@ -236,10 +221,7 @@ body {
   }
 
   .manual-content {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    min-height: 0; /* Allow proper scrolling */
+    space-y: 24px;
   }
 
   .manual-hint-container {
@@ -2163,14 +2145,26 @@ body[data-immersive="true"] .app-content {
   animation: hero-default-jump 260ms ease-out 1;
 }
 
-/* Manual Entry Modal Polish Styles - Remove duplicate */
-/* Moved to main manual-entry-modal section above */
+/* Manual Entry Modal Polish Styles */
+
+/* Modal container fixes */
+.manual-entry-modal {
+  width: min(420px, 92vw);
+  max-height: 80vh;
+  padding: 20px 18px;
+}
+
+.manual-modal-container {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, #121a22 0%, #0d141a 100%);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+}
 
 .manual-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  position: relative;
 }
 
 .manual-title {
