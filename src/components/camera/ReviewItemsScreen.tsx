@@ -195,6 +195,17 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           return { ...merged, id: canonicalId, __hydrated: true };
         });
         
+        // ✅ Log payload snapshot for verification
+        console.debug('[CONFIRM][OPEN][PAYLOAD_SNAPSHOT]', {
+          hasImage: !!enrichedItems[0]?.imageUrl,
+          imageUrl: enrichedItems[0]?.imageUrl,
+        });
+        
+        if (storeUpdates && Object.keys(storeUpdates).length) {
+          useNutritionStore.getState().upsertMany(storeUpdates);
+          console.log('[HYDRATE][WROTE]', { ids: Object.keys(storeUpdates) });
+        }
+        
         setConfirmModalItems(enrichedItems);
         console.log('[HYDRATE][END]', { hydratedCount: enrichedItems.filter(i => i.__hydrated).length });
         

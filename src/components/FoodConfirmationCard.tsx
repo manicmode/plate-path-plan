@@ -329,6 +329,15 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     });
   }, [foodItem]);
 
+  // ✅ Mount snapshot for verification
+  useEffect(() => {
+    console.debug('[CONFIRM][MOUNT_SNAPSHOT]', {
+      hasImageUrl: !!foodItem?.imageUrl,
+      imageUrl: foodItem?.imageUrl ?? null,
+      name: foodItem?.name,
+    });
+  }, [foodItem]);
+
   // Zustand selector MUST run unconditionally on every render
   const storeAnalysis = useNutritionStore(
     s => (foodId ? s.byId[foodId] : undefined)
