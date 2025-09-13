@@ -55,6 +55,7 @@ export const FEAT_MANUAL_LOOSE_AND = getFlag('FEAT_MANUAL_LOOSE_AND', false);
 
 // UX enhancement flags
 export const MANUAL_PORTION_STEP = getFlag('MANUAL_PORTION_STEP', true);
+export const MANUAL_FX = getFlag('MANUAL_FX', true);
 
 // Debug logging
 if (typeof window !== 'undefined') {
@@ -66,6 +67,7 @@ if (typeof window !== 'undefined') {
     FEAT_MANUAL_ALIAS_LIMIT,
     FEAT_MANUAL_LOOSE_AND,
     MANUAL_PORTION_STEP,
+    MANUAL_FX,
     isDev,
     overrides: Object.keys(flagOverrides)
   });

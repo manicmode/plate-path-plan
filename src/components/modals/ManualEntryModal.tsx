@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import { Info, Minus, Plus } from 'lucide-react';
-import { MANUAL_PORTION_STEP } from '@/config/flags';
+import { Info, Minus, Plus, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MANUAL_PORTION_STEP, MANUAL_FX } from '@/config/flags';
 import ManualFoodEntry from '@/components/camera/ManualFoodEntry';
 
 interface ManualEntryModalProps {
@@ -24,6 +25,7 @@ function PortionPicker({ selectedFood, onCancel, onContinue }: PortionPickerProp
   const [servings, setServings] = useState(1.0);
   const [grams, setGrams] = useState(selectedFood?.grams || selectedFood?.servingSize || 100);
   const [percent, setPercent] = useState([100]);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const hasGrams = selectedFood?.grams || selectedFood?.servingSize;
   const servingUnit = selectedFood?.servingUnit || 'serving';
@@ -35,7 +37,13 @@ function PortionPicker({ selectedFood, onCancel, onContinue }: PortionPickerProp
       percent: percent[0]
     };
 
-    console.log('[PORTION][APPLY]', { servings, grams, percent: percent[0] });
+    console.log('[FX][PORTION] apply', { servings, grams, percent: percent[0] });
+    
+    // Show confetti if FX enabled
+    if (MANUAL_FX && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 400);
+    }
     
     const itemWithPortion = {
       ...selectedFood,
@@ -43,7 +51,11 @@ function PortionPicker({ selectedFood, onCancel, onContinue }: PortionPickerProp
       inputSource: 'manual'
     };
 
-    onContinue(selectedFood, portion);
+    // Small delay for confetti if enabled
+    const delay = MANUAL_FX && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 120 : 0;
+    setTimeout(() => {
+      onContinue(selectedFood, portion);
+    }, delay);
   };
 
   const adjustServings = (delta: number) => {
@@ -55,8 +67,17 @@ function PortionPicker({ selectedFood, onCancel, onContinue }: PortionPickerProp
     ? Math.round((selectedFood.calories * servings * percent[0]) / 100)
     : null;
 
+  const motionProps = MANUAL_FX && !window.matchMedia('(prefers-reduced-motion: reduce)').matches 
+    ? {
+        initial: { opacity: 0, y: 6 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: 6 },
+        transition: { duration: 0.14 }
+      }
+    : {};
+
   return (
-    <div className="space-y-4 border-t pt-4">
+    <motion.div className="space-y-4 border-t pt-4" {...motionProps}>
       <div className="space-y-2">
         <h3 className="font-medium">Choose portion</h3>
         <p className="text-xs text-muted-foreground">
@@ -68,25 +89,35 @@ function PortionPicker({ selectedFood, onCancel, onContinue }: PortionPickerProp
       <div className="space-y-2">
         <label className="text-sm font-medium">Serving count</label>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => adjustServings(-0.5)}
-            className="h-8 w-8 p-0"
+          <motion.div
+            whileTap={MANUAL_FX && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? { scale: 0.97 } : undefined}
+            transition={{ duration: 0.06 }}
           >
-            <Minus className="h-3 w-3" />
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => adjustServings(-0.5)}
+              className="h-8 w-8 p-0"
+            >
+              <Minus className="h-3 w-3" />
+            </Button>
+          </motion.div>
           <div className="flex-1 text-center font-medium">
             {servings.toFixed(1)} {servingUnit}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => adjustServings(0.5)}
-            className="h-8 w-8 p-0"
+          <motion.div
+            whileTap={MANUAL_FX && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? { scale: 0.97 } : undefined}
+            transition={{ duration: 0.06 }}
           >
-            <Plus className="h-3 w-3" />
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => adjustServings(0.5)}
+              className="h-8 w-8 p-0"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          </motion.div>
         </div>
       </div>
 
@@ -135,11 +166,47 @@ function PortionPicker({ selectedFood, onCancel, onContinue }: PortionPickerProp
         <Button variant="ghost" onClick={onCancel} className="flex-1">
           Cancel
         </Button>
-        <Button onClick={handleContinue} className="flex-1">
-          Continue
-        </Button>
+        <div className="relative flex-1">
+          <Button onClick={handleContinue} className="w-full">
+            Continue
+          </Button>
+          <AnimatePresence>
+            {showConfetti && MANUAL_FX && (
+              <motion.div 
+                className="absolute inset-0 pointer-events-none flex items-center justify-center"
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute w-1 h-1 bg-primary rounded-full"
+                    initial={{ 
+                      x: 0, 
+                      y: 0,
+                      opacity: 1,
+                      scale: 1
+                    }}
+                    animate={{
+                      x: (Math.random() - 0.5) * 60,
+                      y: (Math.random() - 0.5) * 60,
+                      opacity: 0,
+                      scale: 0
+                    }}
+                    transition={{
+                      duration: 0.4,
+                      delay: i * 0.02,
+                      ease: "easeOut"
+                    }}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -153,6 +220,7 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
     if (isOpen) {
       console.log('[MANUAL][UX] helper_copy=enabled');
       console.log('[MANUAL][UX] info_sheet=available');
+      console.log('[FX][MODAL] open');
     }
   }, [isOpen]);
 
@@ -165,7 +233,7 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
 
       // Show portion picker if flag is enabled
       if (MANUAL_PORTION_STEP) {
-        console.log('[PORTION][OPEN]', { source: 'manual', itemId: candidateId });
+        console.log('[FX][PORTION] open', { source: 'manual', itemId: candidateId });
         setSelectedFood(candidate);
         setEnrichingId(null);
         return;
@@ -218,9 +286,19 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
     setSelectedFood(null);
   };
 
+  const dialogMotionProps = MANUAL_FX && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ? {
+        initial: { opacity: 0, scale: 0.97 },
+        animate: { opacity: 1, scale: 1 },
+        exit: { opacity: 0, scale: 0.97 },
+        transition: { duration: 0.12 }
+      }
+    : {};
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md z-[600]">
+      <DialogContent className="sm:max-w-md z-[600]" asChild>
+        <motion.div {...dialogMotionProps}>
         <VisuallyHidden>
           <DialogTitle>Add Food Manually</DialogTitle>
           <DialogDescription>
@@ -291,6 +369,7 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
             />
           )}
         </div>
+        </motion.div>
       </DialogContent>
     </Dialog>
   );
