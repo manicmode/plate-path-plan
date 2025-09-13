@@ -91,6 +91,19 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
                   Search brand or restaurant items
                 </DialogDescription>
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Close modal"
+                className="manual-close-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onClose();
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
 
             <div className="manual-divider" />
