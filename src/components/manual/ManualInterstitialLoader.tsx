@@ -14,26 +14,45 @@ const LOADER_MESSAGES = [
 
 export function ManualInterstitialLoader({ isVisible }: ManualInterstitialLoaderProps) {
   const [showFallback, setShowFallback] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fxEnabled = MANUAL_FX && !reducedMotion;
 
+  // Listen for confirm:mounted event to hide immediately
   useEffect(() => {
-    if (!isVisible) {
-      setShowFallback(false);
-      return;
-    }
+    if (!isVisible) return;
 
+    const onConfirmMounted = () => {
+      setIsReady(true);
+    };
+    
+    window.addEventListener('confirm:mounted', onConfirmMounted);
+    
     const timeout = setTimeout(() => {
       setShowFallback(true);
     }, 9000);
 
-    return () => clearTimeout(timeout);
+    return () => {
+      window.removeEventListener('confirm:mounted', onConfirmMounted);
+      clearTimeout(timeout);
+    };
   }, [isVisible]);
+
+  // Reset ready state when visibility changes
+  useEffect(() => {
+    if (!isVisible) {
+      setShowFallback(false);
+      setIsReady(false);
+    }
+  }, [isVisible]);
+
+  // Hide immediately when confirm card mounts
+  const shouldShow = isVisible && !isReady;
 
   return (
     <AnimatePresence>
-      {isVisible && (
+      {shouldShow && (
         <motion.div
           className="manual-loader-overlay"
           initial={{ opacity: 0 }}
