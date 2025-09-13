@@ -141,7 +141,13 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
     const selectedItems = items.filter(item => item.selected && item.name.trim());
     const initialModalItems = selectedItems.map((item, index) => {
       const canonicalId = item.id; // Use existing item.id as canonical
-      return toLegacyFoodItem({ ...item, id: canonicalId }, index, true);
+      // ✅ Preserve imageUrl from any source before toLegacyFoodItem
+      const enrichedInput = {
+        ...item,
+        imageUrl: (item as any).enriched?.imageUrl || (item as any).candidate?.imageUrl || (item as any).imageUrl || null,
+        imageAttribution: (item as any).enriched?.imageAttribution || (item as any).candidate?.imageAttribution || (item as any).imageAttribution || null,
+      };
+      return toLegacyFoodItem(enrichedInput, canonicalId, true);
     });
     
     // Set modal items BEFORE async hydration
@@ -166,8 +172,15 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           if (!r) return { ...m, __hydrated: false };
           
           const canonicalId = m.id; // Use same ID from modal item
-          const enrichedInput = { ...m, nutrients: r.nutrients, serving: r.serving };
-          const merged = toLegacyFoodItem(enrichedInput, i, true);
+          // ✅ Preserve imageUrl from enrichment and original item (safe access)
+          const enrichedInput = {
+            ...m,
+            nutrients: r.nutrients,
+            serving: r.serving,
+            imageUrl: (r as any)?.imageUrl || m?.imageUrl || null,
+            imageAttribution: (r as any)?.imageAttribution || (m as any)?.imageAttribution || null,
+          };
+          const merged = toLegacyFoodItem(enrichedInput, canonicalId, true);
           
           // Write to store using canonical ID - preserve ingredients from merged data
           storeUpdates[canonicalId] = {
@@ -180,6 +193,12 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
           };
           
           return { ...merged, id: canonicalId, __hydrated: true };
+        });
+        
+        // ✅ Log payload snapshot for verification
+        console.debug('[CONFIRM][OPEN][PAYLOAD_SNAPSHOT]', {
+          hasImage: !!enrichedItems[0]?.imageUrl,
+          imageUrl: enrichedItems[0]?.imageUrl,
         });
         
         if (storeUpdates && Object.keys(storeUpdates).length) {

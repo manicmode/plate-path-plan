@@ -1768,28 +1768,23 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
               <div style={{position:'relative',height:64,width:64,borderRadius:14,overflow:'hidden',background:'rgba(0,0,0,.25)'}}>
-                {resolvedSrc && resolvedSrc !== PLACEHOLDER ? (
-                  <img
-                    data-test="confirm-food-img"
-                    src={resolvedSrc}
-                    alt={currentFoodItem?.name ?? 'Food'}
-                    style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
-                    onLoad={() => console.debug('[CONFIRM][IMG_LOADED]', resolvedSrc)}
-                    onError={() => {
-                      console.debug('[CONFIRM][IMG_ERROR]', resolvedSrc);
-                      const next = imgIdx + 1;
-                      if (next < imageUrls.length) {
-                        setImgIdx(next);
-                      } else if (resolvedSrc !== PLACEHOLDER) {
-                        setImgIdx(imageUrls.length > 0 ? imageUrls.length - 1 : 0);
-                      }
-                    }}
-                    referrerPolicy="no-referrer"
-                    loading="eager"
-                  />
-                ) : (
-                  <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>
-                )}
+                {(() => {
+                  const imgSrc = foodItem?.imageUrl ?? null;
+                  return imgSrc ? (
+                    <img 
+                      data-test="confirm-food-img"
+                      src={imgSrc}
+                      alt={foodItem?.name ?? 'Food'}
+                      style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:1}}
+                      onLoad={() => console.debug('[CONFIRM][IMG_LOADED]', imgSrc)}
+                      onError={() => console.debug('[CONFIRM][IMG_ERROR]', imgSrc)}
+                      referrerPolicy="no-referrer"
+                      loading="eager"
+                    />
+                  ) : (
+                    <div data-test="confirm-food-initials" style={{position:'absolute',inset:0,display:'grid',placeItems:'center',color:'#fff8'}}>🍽️</div>
+                  );
+                })()}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
