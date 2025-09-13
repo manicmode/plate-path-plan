@@ -34,10 +34,10 @@ import { FEAT_MANUAL_CHEAP_ONLY, MANUAL_FX } from '@/config/flags';
 import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR } from '@/lib/flags';
 import { extractName } from '@/lib/debug/extractName';
 import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
+import { InitialsTile } from '@/components/ui/InitialsTile';
 import { resolveFoodImage, buildInitialsDataUrl } from "@/lib/food/getFoodImage";
 import { resolveImageUrl } from '@/lib/food/image';
 
-import './styles/confirm-avatar.css';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import confetti from 'canvas-confetti';
 import { labelFromFlags } from '@/lib/food/search/getFoodCandidates';
@@ -266,52 +266,6 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
 
   const [reminderOpen, setReminderOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
-  
-  // 🧪 DEBUG INSTRUMENTATION
-  const __IMG_DEBUG = false; // keep instrumentation off in UI
-  
-  // Collect URLs: safe candidates for manual, enriched for photo/barcode
-  const PLACEHOLDER = '/images/food-placeholder.png';
-  const isManualImage = inputSource === 'manual';
-  
-  const ensureProxied = (u?: string) =>
-    u && u.startsWith('https://images.openfoodfacts.org')
-      ? `/api/image-proxy?url=${encodeURIComponent(u)}`
-      : u;
-
-  const imageUrls = useMemo(() => {
-    const candidates: string[] = [
-      (currentFoodItem as any)?.imageUrl,
-      (currentFoodItem as any)?.thumbnailUrl,
-      (currentFoodItem as any)?.photoUrl,
-    ].filter(Boolean) as string[];
-
-    // map all to proxied
-    const dedup = Array.from(new Set(candidates.map(ensureProxied)));
-    return dedup.length ? dedup : [PLACEHOLDER];
-  }, [
-    (currentFoodItem as any)?.imageUrl,
-    (currentFoodItem as any)?.thumbnailUrl,
-    (currentFoodItem as any)?.photoUrl,
-    (currentFoodItem as any)?.providerRef,
-    (currentFoodItem as any)?._provider,
-    isManualImage
-  ]);
-
-  useEffect(() => setImgIdx(0), [imageUrls.join('|')]);
-
-  const resolvedSrc = imageUrls[Math.min(imgIdx, imageUrls.length - 1)] || PLACEHOLDER;
-  useEffect(() => {
-    const fromEnrichment = isManualImage ? [] : ((currentFoodItem as any)?.image?.urls ?? []);
-    const fromBarcodeGuess = isManualImage ? [] : ((currentFoodItem as any)?.providerRef ? offImageCandidatesNew((currentFoodItem as any).providerRef) : []);
-    
-    console.log('[IMG][CARD][BIND]', {
-      providerRef: (currentFoodItem as any)?.providerRef,
-      fromEnrichment,
-      fromBarcodeGuess,
-      using: resolvedSrc,
-    });
-  }, [resolvedSrc, imageUrls, (currentFoodItem as any)?.providerRef, isManualImage]);
 
 
   // Derive a stable ID from props (not from transient state)
@@ -873,7 +827,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const normalizedName = extractName({ name: rawName }) || (isBarcodeItem ? `Product ${(currentFoodItem as any)?.barcode || 'Unknown'}` : 'Unknown Product');
   const title = sanitizeName(normalizedName);
   
-  // Hard-bind imgSrc in the header (derive once)
+  // Hard-bind imgSrc in the header (single source of truth - derive once)
   const imgSrc =
     currentFoodItem?.imageUrl ??
     null;
@@ -932,43 +886,25 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   
   // Legacy compatibility  
   const displayName = title;
-  
-  // Add image diagnostics logging
-  console.log('[CONFIRM][IMAGE]', {
-    has: !!resolvedSrc,
-    urls: imageUrls.length,
-    using: resolvedSrc,
-    providerRef: (currentFoodItem as any)?.providerRef
-  });
-
-  // Pre-load image to avoid flash
-  useEffect(() => {
-    if (resolvedSrc) {
-      const img = new Image();
-      img.src = resolvedSrc;
-    }
-  }, [resolvedSrc]);
 
   // Check if this is an unknown product that needs manual entry
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
   const hasBarcode = !!(currentFoodItem as any)?.barcode;
 
   useEffect(() => {
-    const url = resolvedSrc ?? '';
-    const imageUrlKind = /^https?:\/\//i.test(url) ? 'http' : 'none';
     const isBarcode = !!(currentFoodItem as any)?.barcode || !!(currentFoodItem as any)?._provider;
     console.log('[CONFIRM][MOUNT]', {
       rev: CONFIRM_FIX_REV,
       name: displayName,
-      nameType: typeof currentFoodItem?.name, // Add diagnostic logging
-      imageUrlKind: !!resolvedSrc ? "http" : "none",
-      url: (resolvedSrc || "").slice(0, 120),
+      nameType: typeof currentFoodItem?.name,
+      hasImageUrl: !!imgSrc,
+      imageUrl: imgSrc?.slice(0, 120),
     });
     
     if (isBarcode && isOpen) {
       console.log('[CONFIRM][MOUNT][BARCODE]', { id: currentFoodItem?.name, name: currentFoodItem?.name, nameType: typeof currentFoodItem?.name });
     }
-  }, [resolvedSrc, displayName, isOpen, currentFoodItem]);
+  }, [imgSrc, displayName, isOpen, currentFoodItem]);
 
   // Stabilize: directly sync from prop without null flip
   useEffect(() => {
@@ -1006,7 +942,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
     const isV3ManualVoice = ENABLE_FOOD_TEXT_V3_NUTR && isManualVoiceSource && !perGramReady;
     
     if (isV3ManualVoice) {
-      console.log('[NUTRITION][HYDRATE]', { 
+      console.log('[NUTRITION][HYDRATE]', {
         key: currentFoodItem?.nutritionKey, 
         ready: !!currentFoodItem?.perGram 
       });
@@ -1020,13 +956,20 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       }).then(result => {
         if (controller.signal.aborted) return;
         
+        // Preserve imageUrl from current item (V3NutritionResult doesn't include images)
+        const imageUrl = currentFoodItem?.imageUrl ?? null;
+        const imageAttribution = currentFoodItem?.imageAttribution ?? 'unknown';
+        console.debug('[IMG][SELECT/HYDRATE]', currentFoodItem.name, { url: imageUrl, attr: imageAttribution });
+        
         // Update the current food item with hydrated nutrition
         setCurrentFoodItem(prev => prev ? ({
           ...prev,
           perGram: result.perGram,
           perGramKeys: result.perGramKeys,
           pgSum: 1, // Mark as hydrated
-          dataSource: result.dataSource
+          dataSource: result.dataSource,
+          imageUrl,
+          imageAttribution
         }) : null);
         
         console.log('[NUTRITION][V3][SUCCESS]', {

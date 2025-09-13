@@ -24,6 +24,7 @@ export interface NutritionAnalysis {
   // Product metadata
   ingredients?: string[];
   imageUrl?: string;
+  imageAttribution?: 'nutritionix'|'off'|'usda'|'barcode'|'manual'|'unknown';
   source?: string;
   confidence?: number;
   
