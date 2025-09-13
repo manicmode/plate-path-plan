@@ -224,7 +224,7 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
               </div>
               
               {/* Examples sheet with scrollable grid */}
-              <AnimatePresence>
+              <AnimatePresence initial={false} presenceAffectsLayout={false}>
                 {showExamples && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
@@ -265,18 +265,9 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
               
               {/* Rotating hint at bottom */}
               <div className="text-center pt-4">
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={subtitleIndex}
-                    initial={fxEnabled && !reducedMotion ? { opacity: 0, y: -10 } : undefined}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={fxEnabled && !reducedMotion ? { opacity: 0, y: 10 } : undefined}
-                    transition={{ duration: fxEnabled ? 0.3 : 0 }}
-                    className="text-xs text-muted-foreground/70"
-                  >
-                    {subtitles[subtitleIndex]}
-                  </motion.p>
-                </AnimatePresence>
+                <div aria-live="polite" className="text-xs text-muted-foreground/70 min-h-[20px]">
+                  {subtitles[subtitleIndex]}
+                </div>
               </div>
             </div>
           </div>
@@ -312,7 +303,7 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
                 </p>
                 
                 <div className="space-y-2">
-                  <AnimatePresence mode="popLayout">
+                  <AnimatePresence mode="popLayout" initial={false} presenceAffectsLayout={false}>
                     {results.map((food, index) => (
                       <ManualSearchResultCard
                         key={food.id || `${food.name}-${index}`}

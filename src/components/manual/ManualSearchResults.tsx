@@ -67,7 +67,7 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
       {/* Search Input */}
       <div className="manual-search-input-wrapper">
         <div className="manual-search-icon">
-          <SearchIcon className="h-4 w-4" />
+          <SearchIcon className="pointer-events-none h-4 w-4 opacity-60" />
         </div>
         
         <Input
@@ -77,8 +77,9 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          className="manual-search-input"
+          className="manual-search-input focus:outline-none focus:ring-0"
           autoComplete="off"
+          autoFocus
         />
         
         {query && (
@@ -122,7 +123,7 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
           </div>
         ) : results.length > 0 ? (
           <div className="manual-results-list">
-            <AnimatePresence mode="popLayout">
+            <AnimatePresence mode="popLayout" initial={false} presenceAffectsLayout={false}>
               {results.map((food, index) => {
                 const itemId = food.id || food.name;
                 const isClicked = clickedItems.has(itemId);
