@@ -547,6 +547,23 @@ body {
     height: 4px;
   }
 
+  /* Fix slider positioning to center 100% value properly */
+  .portion-slider [data-radix-slider-thumb] {
+    transform: translateX(-50%);
+  }
+
+  /* Minimal header for portion picker */
+  .manual-header-minimal {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 8px;
+  }
+
+  /* Adjust container spacing when in portion picker mode */
+  .manual-modal-container:has(.portion-picker-container) {
+    padding-top: 16px;
+  }
+
   .portion-slider-ticks {
     display: flex;
     justify-content: space-between;

@@ -96,6 +96,7 @@ export function PortionPicker({ selectedFood, onCancel, onContinue, isLoading }:
               max={200}
               step={5}
               className="portion-slider"
+              defaultValue={[100]}
             />
             <div className="portion-slider-ticks">
               <span className="portion-tick">25%</span>

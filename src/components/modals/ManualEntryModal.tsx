@@ -103,32 +103,55 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
         <DialogOverlay className="manual-entry-overlay" />
         <DialogContent className="manual-entry-modal" showCloseButton={false} onPointerDownOutside={(e) => e.preventDefault()}>
           <div className="manual-modal-container">
-            {/* Header */}
-            <div className="manual-header">
-              <div>
-                <DialogTitle className="manual-title">
-                  Add Food Manually
-                </DialogTitle>
-                <DialogDescription className="manual-subtitle">
-                  {HEADER_ROTATING_TEXTS[headerTextIndex]}
-                </DialogDescription>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="Close modal"
-                className="manual-close-btn"
-                onClick={(e) => {
-                  e.preventDefault();
-                  onClose();
-                }}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            {/* Header - Hide when in portion picker mode */}
+            {!selectedFood && (
+              <>
+                <div className="manual-header">
+                  <div>
+                    <DialogTitle className="manual-title">
+                      Add Food Manually
+                    </DialogTitle>
+                    <DialogDescription className="manual-subtitle">
+                      {HEADER_ROTATING_TEXTS[headerTextIndex]}
+                    </DialogDescription>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Close modal"
+                    className="manual-close-btn"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onClose();
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
 
-            <div className="manual-divider" />
+                <div className="manual-divider" />
+              </>
+            )}
+
+            {/* Close button for portion picker mode */}
+            {selectedFood && (
+              <div className="manual-header-minimal">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Close modal"
+                  className="manual-close-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onClose();
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
 
             {/* Content */}
             {selectedFood ? (
