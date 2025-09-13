@@ -10,6 +10,50 @@ import { searchFoodByName, CanonicalSearchResult } from '@/lib/foodSearch';
 import { significantTokens } from './lexical';
 import { FEAT_MANUAL_CHEAP_ONLY } from '@/config/flags';
 
+// Image extraction helpers for different providers
+function pickImageFromOpenFoodFacts(r: any): string | null {
+  return (
+    r.image_url ||
+    r.image_front_url ||
+    r.image_small_url ||
+    r.selected_images?.front?.display?.[0] ||
+    r.selected_images?.front?.small?.[0] ||
+    null
+  );
+}
+
+function pickImageFromNutritionix(r: any): string | null {
+  return r.photo?.highres || r.photo?.thumb || null;
+}
+
+function pickImageFromUSDA(r: any): string | null {
+  // USDA often lacks direct photos; keep loose, extend if your code already has one.
+  return r.labelImage || r.foreignSourceImages?.[0]?.url || null;
+}
+
+function normalizeImageUrl(raw: any, provider?: string): string | null {
+  let imageUrl: string | null = null;
+  
+  if (provider === 'openfoodfacts' || provider === 'off') {
+    imageUrl = pickImageFromOpenFoodFacts(raw);
+  } else if (provider === 'nutritionix') {
+    imageUrl = pickImageFromNutritionix(raw);
+  } else if (provider === 'usda' || provider === 'fdc') {
+    imageUrl = pickImageFromUSDA(raw);
+  }
+
+  // Fallback to common image field names
+  return imageUrl || 
+         raw.imageUrl || 
+         raw.photoUrl || 
+         raw.images?.[0]?.url || 
+         raw.image?.url || 
+         raw.brandLogoUrl ||
+         raw.brand?.logoUrl ||
+         raw.restaurant?.logoUrl ||
+         null;
+}
+
 // Helper for badge labeling
 export function labelFromFlags(f?: {generic?:boolean; brand?:boolean; restaurant?:boolean}) {
   if (f?.brand || f?.restaurant) return 'Brand';
@@ -589,7 +633,7 @@ export async function getFoodCandidates(
       confidence,
       explanation,
       source: 'lexical',
-      imageUrl: result.imageUrl,
+      imageUrl: normalizeImageUrl(result, (result as any).provider || (result as any).source),
       servingGrams: (result as any).servingGrams || 100,
       grams: (result as any).servingGrams || (result as any).grams || 0,
       calories: result.caloriesPer100g || 0,

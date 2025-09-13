@@ -868,6 +868,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const rawName = currentFoodItem?.name ?? 'Unknown Product';
   const normalizedName = extractName({ name: rawName }) || (isBarcodeItem ? `Product ${(currentFoodItem as any)?.barcode || 'Unknown'}` : 'Unknown Product');
   const title = sanitizeName(normalizedName);
+  
+  // Diagnostic logging for images
+  useEffect(() => {
+    console.debug('[ConfirmFood] imageUrl:', currentFoodItem?.imageUrl, 'source:', (currentFoodItem as any)?.source || (currentFoodItem as any)?.provider);
+  }, [currentFoodItem?.imageUrl, currentFoodItem]);
 
   // Serving grams and label - use consistent gram-based labeling
   const servingG = preferItem
@@ -1760,9 +1765,15 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 alt={displayName}
                 loading="lazy"
                 decoding="async"
+                referrerPolicy="no-referrer"
+                crossOrigin="anonymous"
                 className="h-16 w-16 flex-none rounded-xl object-cover bg-neutral-900 ring-1 ring-white/10"
                 onError={(e) => {
+                  console.debug('[ConfirmFood] Image error, falling back to initials:', resolveFoodImage(currentFoodItem));
                   (e.currentTarget as HTMLImageElement).src = buildInitialsDataUrl(displayName);
+                }}
+                onLoad={() => {
+                  console.debug('[ConfirmFood] Image loaded successfully:', resolveFoodImage(currentFoodItem));
                 }}
               />
               <div className="flex-1">
