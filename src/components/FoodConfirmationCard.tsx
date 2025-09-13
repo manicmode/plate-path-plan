@@ -34,6 +34,7 @@ import { FOOD_TEXT_DEBUG, ENABLE_FOOD_TEXT_V3_NUTR } from '@/lib/flags';
 import { extractName } from '@/lib/debug/extractName';
 import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
 import { resolveFoodImage, buildInitialsDataUrl } from "@/lib/food/getFoodImage";
+import { resolveImageUrl } from '@/lib/food/image';
 
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import confetti from 'canvas-confetti';
@@ -870,9 +871,10 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const title = sanitizeName(normalizedName);
   
   // Diagnostic logging for images
+  const imgSrc = resolveImageUrl(currentFoodItem);
   useEffect(() => {
-    console.debug('[ConfirmFood] imageUrl:', currentFoodItem?.imageUrl, 'source:', (currentFoodItem as any)?.source || (currentFoodItem as any)?.provider);
-  }, [currentFoodItem?.imageUrl, currentFoodItem]);
+    console.debug('[confirm] food.imageUrl=', currentFoodItem?.imageUrl, 'resolved=', imgSrc);
+  }, [currentFoodItem?.imageUrl, imgSrc]);
 
   // Serving grams and label - use consistent gram-based labeling
   const servingG = preferItem
@@ -1761,7 +1763,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
             {/* Food Item Display */}
             <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
               <img
-                src={resolveFoodImage(currentFoodItem)}
+                src={imgSrc ?? ''}
                 alt={displayName}
                 loading="lazy"
                 decoding="async"
@@ -1769,11 +1771,11 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
                 crossOrigin="anonymous"
                 className="h-16 w-16 flex-none rounded-xl object-cover bg-neutral-900 ring-1 ring-white/10"
                 onError={(e) => {
-                  console.debug('[ConfirmFood] Image error, falling back to initials:', resolveFoodImage(currentFoodItem));
+                  console.debug('[confirm] Image error, falling back to initials:', imgSrc);
                   (e.currentTarget as HTMLImageElement).src = buildInitialsDataUrl(displayName);
                 }}
                 onLoad={() => {
-                  console.debug('[ConfirmFood] Image loaded successfully:', resolveFoodImage(currentFoodItem));
+                  console.debug('[confirm] Image loaded successfully:', imgSrc);
                 }}
               />
               <div className="flex-1">

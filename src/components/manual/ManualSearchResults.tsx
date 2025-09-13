@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search as SearchIcon, X, Plus, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { resolveImageUrl } from '@/lib/food/image';
 
 import { useManualSearch } from '@/hooks/useManualSearch';
 import { FEAT_MANUAL_CHEAP_ONLY, MANUAL_FX } from '@/config/flags';
@@ -45,7 +46,13 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
         return next;
       });
     }, 300);
-    onFoodSelect(food);
+
+    // Preserve imageUrl and add diagnostic logging
+    const candidateImg = resolveImageUrl(food);
+    const selected = { ...food, imageUrl: candidateImg };
+    console.debug('[select] candidate=', candidateImg, 'detail=', candidateImg, 'final=', selected.imageUrl);
+    
+    onFoodSelect(selected);
   }, [onFoodSelect]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {

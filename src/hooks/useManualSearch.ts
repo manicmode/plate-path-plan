@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { getFoodCandidates } from '@/lib/food/search/getFoodCandidates';
 import type { TextLookupOptions } from '@/lib/food/textLookup';
 import { logManualAction } from '@/lib/analytics/manualLog';
+import { resolveImageUrl } from '@/lib/food/image';
 import { 
   FEAT_MANUAL_LRU_CACHE, 
   FEAT_MANUAL_KEEP_LAST,
