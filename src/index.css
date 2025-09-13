@@ -2156,8 +2156,14 @@ body[data-immersive="true"] .app-content {
 /* Modal container fixes */
 .manual-entry-modal {
   width: min(420px, 92vw);
-  max-height: 80vh;
+  max-height: 85vh;
   padding: 20px 18px;
+  overflow-y: auto;
+}
+
+/* Adjust modal height when examples are shown */
+.manual-entry-modal:has(.manual-examples-sheet) {
+  max-height: 90vh;
 }
 
 .manual-modal-container {
