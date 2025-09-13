@@ -96,7 +96,7 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
                   Add Food Manually
                 </DialogTitle>
                 <DialogDescription className="manual-subtitle">
-                  {ROTATING_HINTS[hintIndex]}
+                  Search brand or restaurant items
                 </DialogDescription>
               </div>
               <Button
@@ -129,7 +129,7 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
                 
                 {/* Static hint (no animations) */}
                 <div className="manual-hint-container">
-                  <p className="manual-hint">💡 Manual Entry is best for restaurant meals & branded items. Try brand names for best matches.</p>
+                  <p className="manual-hint">{ROTATING_HINTS[hintIndex]}</p>
                   <Button
                     type="button"
                     variant="ghost"
