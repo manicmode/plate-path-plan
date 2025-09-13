@@ -166,9 +166,7 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
           onFocus={() => setIsTyping(true)}
           onBlur={() => setTimeout(() => setIsTyping(false), 1000)}
           className={`w-full pr-10 h-12 rounded-xl border-2 transition-all duration-150 ring-0 ring-offset-0 focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none ${
-            fxEnabled
-              ? 'focus:border-primary/30'
-              : 'focus:border-primary'
+            'focus:border-border'
           }`}
           autoFocus
           autoComplete="off"
