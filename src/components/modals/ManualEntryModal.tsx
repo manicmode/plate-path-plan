@@ -20,16 +20,30 @@ const ROTATING_HINTS = [
   "Use voice in 'Speak to log' for homemade meals"
 ];
 
+const HEADER_ROTATING_TEXTS = [
+  "Search brand or restaurant items",
+  "Groceries, supermarkets or generic"
+];
+
 export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntryModalProps) {
   const [selectedFood, setSelectedFood] = useState<any>(null);
   const [showInterstitial, setShowInterstitial] = useState(false);
   const [hintIndex, setHintIndex] = useState(0);
+  const [headerTextIndex, setHeaderTextIndex] = useState(0);
   const [showExamples, setShowExamples] = useState(false);
 
   // Rotate hints every 3 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setHintIndex(prev => (prev + 1) % ROTATING_HINTS.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Rotate header text every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHeaderTextIndex(prev => (prev + 1) % HEADER_ROTATING_TEXTS.length);
     }, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -96,7 +110,7 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
                   Add Food Manually
                 </DialogTitle>
                 <DialogDescription className="manual-subtitle">
-                  Search brand or restaurant items
+                  {HEADER_ROTATING_TEXTS[headerTextIndex]}
                 </DialogDescription>
               </div>
               <Button
