@@ -547,9 +547,9 @@ body {
     height: 4px;
   }
 
-  /* Fix slider positioning - 100% should be visually centered between 25% and 200% */
+  /* Fix slider positioning - remove transform that interferes with centering */
   .portion-slider [data-radix-slider-thumb] {
-    transform: translateX(-50%);
+    /* Remove translateX that prevents proper centering */
   }
   
   /* Ensure the slider range is properly positioned */
