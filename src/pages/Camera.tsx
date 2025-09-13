@@ -20,8 +20,9 @@ import { SoundGate } from '@/lib/soundGate';
 import { ProcessingStatus } from '@/components/camera/ProcessingStatus';
 import { BarcodeScanner } from '@/components/camera/BarcodeScanner';
 import { ManualBarcodeEntry } from '@/components/camera/ManualBarcodeEntry';
-import ManualFoodEntry from '@/components/camera/ManualFoodEntry';
 import { SpeakToLogModal } from '@/components/camera/SpeakToLogModal';
+import { ManualEntryModal } from '@/components/modals/ManualEntryModal';
+import { useUiStore } from '@/state/ui/useUiStore';
 import { LogBarcodeScannerModal } from '@/components/camera/LogBarcodeScannerModal';
 import { useRecentBarcodes } from '@/hooks/useRecentBarcodes';
 import { useBarcodeHistory } from '@/hooks/useBarcodeHistory';
@@ -268,9 +269,11 @@ const CameraPage = () => {
   const [multiAIResults, setMultiAIResults] = useState<Array<{name: string; confidence: number; sources: string[]; calories?: number; portion?: string; isEstimate?: boolean}>>([]);
   const [isMultiAILoading, setIsMultiAILoading] = useState(false);
   
+  // UI State management
+  const { openManualEntry } = useUiStore();
+  
   // Manual entry states
   const [showManualBarcodeEntry, setShowManualBarcodeEntry] = useState(false);
-  const [showManualFoodEntry, setShowManualFoodEntry] = useState(false);
   const [showSpeakToLog, setShowSpeakToLog] = useState(false);
   const [bypassHydration, setBypassHydration] = useState(false);
   
@@ -1233,7 +1236,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
     if (typeof imageForAnalysis !== 'string' || !imageForAnalysis.includes(',')) {
       console.error('[ANALYZE][BAD_SOURCE] expected data URL string');
       toast.error('Invalid image format. Please try again.');
-      setShowManualFoodEntry(true);
+      openManualEntry();
       setShowSmartLoader(false);
       setShowCamera(false); // Close camera modal on error path
       return;
@@ -1245,7 +1248,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         hasComma: imageForAnalysis.includes(',')
       });
       toast.error('Invalid image format. Please try again.');
-      setShowManualFoodEntry(true);
+      openManualEntry();
       setShowSmartLoader(false);
       setShowCamera(false); // Close camera modal on error path
       return;
@@ -1341,7 +1344,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
           if (!items || !Array.isArray(items) || items.length === 0) {
             console.warn('[FLOW][ZERO_ITEMS_FALLBACK]');
             toast.error('No foods detected in this image. Try a clearer photo or add foods manually.');
-            setShowManualFoodEntry(true);
+            openManualEntry();
             setShowSmartLoader(false);
             setShowCamera(false); // Close camera modal on error path
             return;
@@ -1370,7 +1373,7 @@ const CONFIRM_FIX_REV = "2025-08-31T13:36Z-r7";
         } catch (error) {
           console.error('[FLOW][ANALYZE:ERROR]', error);
           toast.error('Failed to analyze image. Please try again.');
-          setShowManualFoodEntry(true);
+          openManualEntry();
           setShowSmartLoader(false);
           setShowCamera(false); // Close camera modal on error path
           return;
@@ -3675,15 +3678,15 @@ console.log('Global search enabled:', enableGlobalSearch);
                    </Button>
                   
                   
-                  {/* Manual Entry Tab */}
-                   <Button
-                     onClick={() => setShowManualFoodEntry(true)}
-                     className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
-                    size="lg"
-                  >
-                    <Edit3 className="h-6 w-6" />
-                    <span className="text-sm font-medium">Manual Entry</span>
-                  </Button>
+                   {/* Manual Entry Tab */}
+                    <Button
+                      onClick={() => useUiStore.getState().openManualEntry()}
+                      className="h-24 w-full gradient-primary flex flex-col items-center justify-center space-y-2 shadow-lg hover:shadow-xl transition-shadow duration-300"
+                     size="lg"
+                   >
+                     <Edit3 className="h-6 w-6" />
+                     <span className="text-sm font-medium">Manual Entry</span>
+                   </Button>
                   
                   
                   {/* Saved Logs Tab */}
@@ -4070,7 +4073,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         barcode={failedBarcode}
         onManualEntry={() => {
           setShowBarcodeNotFound(false);
-          setShowManualFoodEntry(true);
+          openManualEntry();
         }}
         onTryAgain={() => {
           setShowBarcodeNotFound(false);
@@ -4087,29 +4090,10 @@ console.log('Global search enabled:', enableGlobalSearch);
         isProcessing={isAnalyzing}
       />
 
-      {/* Manual Food Entry Modal */}
-      {showManualFoodEntry && (
-        <ManualFoodEntry
-          onFoodSelect={async (food: any) => {
-            // Handle the selected food - this replaces onResults
-            await routeRecognizedItems([food], 'manual');
-          }}
-          onClose={() => {
-            setShowManualFoodEntry(false);
-            // Ensure main "Log Your Food" interface is visible when closing manual entry
-            setActiveTab('main');
-            setSelectedImage(null);
-            setShowConfirmation(false);
-            setShowError(false);
-            setShowManualEdit(false);
-            setShowVoiceAnalyzing(false);
-            setShowProcessingNextItem(false);
-            setShowVoiceEntry(false);
-            setShowTransition(false);
-            setShowSmartLoader(false); // Make sure loader doesn't hide the main UI
-          }}
-        />
-      )}
+      {/* Manual Entry Modal - Now handled by ManualEntryModal */}
+      <ManualEntryModal 
+        onFoodSelected={(food) => routeRecognizedItems([food], 'manual')}
+      />
 
       {/* Speak to Log Modal */}
       <SpeakToLogModal
@@ -4197,7 +4181,7 @@ console.log('Global search enabled:', enableGlobalSearch);
           }}
           onManualFallback={() => {
             console.log('[CAMERA][PHOTO] Manual fallback requested');
-            setShowManualFoodEntry(true);
+            openManualEntry();
             setShowCamera(false); // Close camera modal on manual fallback
           }}
         />
