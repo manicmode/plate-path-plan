@@ -65,10 +65,8 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
   return (
     <div className="manual-search-container">
       {/* Search Input */}
-      <div className="manual-search-input-wrapper">
-        <div className="manual-search-icon">
-          <SearchIcon className="pointer-events-none h-4 w-4 opacity-60" />
-        </div>
+      <div className="manual-search-input-wrapper relative">
+        <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-60" />
         
         <Input
           ref={inputRef}
@@ -77,7 +75,7 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          className="manual-search-input focus:outline-none focus:ring-0"
+          className="manual-search-input manual-input pl-9 focus:outline-none focus:ring-0"
           autoComplete="off"
           autoFocus
         />

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogOverlay } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { MANUAL_PORTION_STEP } from '@/config/flags';
 import ManualSearchResults from '@/components/manual/ManualSearchResults';
 import { PortionPicker } from '@/components/manual/PortionPicker';
 import { ManualInterstitialLoader } from '@/components/manual/ManualInterstitialLoader';
+import './manualEntryOverrides.css';
 
 interface ManualEntryModalProps {
   isOpen: boolean;
@@ -79,6 +80,7 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogOverlay className="manual-entry-overlay" />
         <DialogContent className="manual-entry-modal" showCloseButton={false} onPointerDownOutside={(e) => e.preventDefault()}>
           <div className="manual-modal-container">
             {/* Header */}

@@ -1,0 +1,32 @@
+/* Manual Entry modal: kill radix/shadcn open/close animations & focus rings */
+.manual-entry-overlay {
+  animation: none !important;
+  transition: none !important;
+}
+
+.manual-entry-modal {
+  /* keep layout & look, but stable */
+  animation: none !important;
+  transition: none !important;
+  outline: none !important;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.manual-entry-modal:focus,
+.manual-entry-modal:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Inputs/buttons inside manual modal: neutral focus (no glow/ring) */
+.manual-entry-modal .manual-input:focus,
+.manual-entry-modal .manual-input:focus-visible,
+.manual-entry-modal .manual-example-chip:focus,
+.manual-entry-modal .manual-example-chip:focus-visible,
+.manual-entry-modal .manual-examples-btn:focus,
+.manual-entry-modal .manual-examples-btn:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: rgba(255,255,255,0.12) !important; /* neutral */
+}
