@@ -21,6 +21,8 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
   const [query, setQuery] = useState('');
   const [clickedItems, setClickedItems] = useState<Set<string>>(new Set());
   const [showExamples, setShowExamples] = useState(false);
+  const [subtitleIndex, setSubtitleIndex] = useState(0);
+  const [isTyping, setIsTyping] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -52,7 +54,12 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
+    setIsTyping(true);
     search(value);
+    
+    // Clear typing state after 2s of no input
+    const timeout = setTimeout(() => setIsTyping(false), 2000);
+    return () => clearTimeout(timeout);
   }, [search]);
 
   // Handle food selection
@@ -111,8 +118,43 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fxEnabled = MANUAL_FX && !reducedMotion;
 
+  // Rotating subtitles
+  const subtitles = [
+    "Search brand or restaurant items",
+    "Also works for supermarket products", 
+    "Try generic foods: '2 chicken legs', 'plain yogurt'",
+    "Dishes too: 'egg fried rice', 'grilled salmon'"
+  ];
+
+  // Rotate subtitles every 3s, pause when typing
+  useEffect(() => {
+    if (isTyping) return;
+    
+    const interval = setInterval(() => {
+      setSubtitleIndex(prev => (prev + 1) % subtitles.length);
+    }, 3000);
+    
+    return () => clearInterval(interval);
+  }, [isTyping, subtitles.length]);
+
   return (
     <div className="space-y-6">
+      {/* Rotating Subtitle */}
+      <div className="text-center" aria-live="polite">
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={subtitleIndex}
+            initial={fxEnabled && !reducedMotion ? { opacity: 0, y: -10 } : undefined}
+            animate={{ opacity: 1, y: 0 }}
+            exit={fxEnabled && !reducedMotion ? { opacity: 0, y: 10 } : undefined}
+            transition={{ duration: fxEnabled ? 0.3 : 0 }}
+            className="text-sm text-muted-foreground"
+          >
+            {subtitles[subtitleIndex]}
+          </motion.p>
+        </AnimatePresence>
+      </div>
+
       {/* Search Input */}
       <div className="relative">
         <div className="absolute left-3 top-1/2 -translate-y-1/2">
@@ -122,10 +164,12 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Search brand, restaurant, or food name"
+          placeholder="Search brand, restaurant, supermarket, or generic foods…"
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyPress}
+          onFocus={() => setIsTyping(true)}
+          onBlur={() => setTimeout(() => setIsTyping(false), 1000)}
           className={`w-full pl-10 pr-10 h-12 rounded-xl border-2 transition-all duration-150 ${
             fxEnabled
               ? 'focus:ring-2 focus:ring-primary/20 focus:-translate-y-0.5 focus:shadow-md focus:border-primary/30'
@@ -154,8 +198,8 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
 
       {/* Empty state with scrollable container */}
       {!query.trim() && (
-        <div className="max-h-[70vh] overflow-y-auto pb-[env(safe-area-inset-bottom,16px)]">
-          <div className="text-center py-12">
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto pb-6">
+          <div className="text-center py-8">
             <div className="space-y-3">
               <p className="text-muted-foreground font-medium">
                 No matches yet
@@ -163,33 +207,39 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
               <p className="text-sm text-muted-foreground/70">
                 Try brand or restaurant names
               </p>
-              <div className="text-right mt-4">
-                <Button
-                  type="button"
-                  variant="link"
-                  size="sm"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowExamples(!showExamples);
-                  }}
-                  className="text-xs text-muted-foreground hover:text-foreground focus:ring-2 focus:ring-primary/20 rounded-xl"
-                  aria-label="Show search examples"
+            </div>
+          </div>
+          
+          {/* Examples section with dedicated spacing */}
+          <div className="space-y-3">
+            <div className="text-center">
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowExamples(!showExamples);
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground focus:ring-2 focus:ring-primary/20 rounded-xl"
+                aria-label="Show search examples"
+              >
+                Examples
+              </Button>
+            </div>
+            
+            {/* Examples sheet with scrollable grid */}
+            <AnimatePresence>
+              {showExamples && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="p-3 bg-muted/30 rounded-xl border border-border/50"
                 >
-                  Examples
-                </Button>
-              </div>
-              
-              {/* Examples sheet */}
-              <AnimatePresence>
-                {showExamples && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.18 }}
-                    className="mt-4 p-3 bg-muted/30 rounded-xl border border-border/50"
-                  >
-                    <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div className="max-h-[40vh] overflow-y-auto">
+                    <div className="grid grid-cols-2 gap-2">
                       {[
                         'Chipotle bowl',
                         'HEB tortillas', 
@@ -213,10 +263,10 @@ export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: 
                         </button>
                       ))}
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       )}

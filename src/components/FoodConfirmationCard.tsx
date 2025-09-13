@@ -372,6 +372,17 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
       // Emit confirm:mounted event to hide preparing overlay
       window.dispatchEvent(new CustomEvent('confirm:mounted'));
       
+      // Hide any preparing overlays when confirmation opens
+      if (typeof window !== 'undefined') {
+        // Hide voice analyzing overlay
+        const voiceEvent = new CustomEvent('hide:voice-analyzing');
+        window.dispatchEvent(voiceEvent);
+        
+        // Hide processing overlays
+        const processingEvent = new CustomEvent('hide:processing-overlay');
+        window.dispatchEvent(processingEvent);
+      }
+      
       console.info('[BUILD]', {
         sha: 'confirm-card-fix-v1', 
         time: new Date().toISOString(), 

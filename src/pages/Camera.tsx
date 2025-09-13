@@ -2784,10 +2784,14 @@ console.log('Global search enabled:', enableGlobalSearch);
   const handoffStart = useCallback(() => setHandoffOpen(true), []);
   const handoffEnd = useCallback(() => setHandoffOpen(false), []);
 
-  // Auto-clear overlay when confirm card opens with an item
+  // Auto-clear overlays when confirm card opens with an item
   useEffect(() => {
     if (showConfirmation && recognizedFoods[0]) {
       handoffEnd();
+      setShowVoiceAnalyzing(false);
+      setShowProcessingNextItem(false);
+      setIsProcessingVoice(false);
+      setIsManualAnalyzing(false);
     }
   }, [showConfirmation, recognizedFoods, handoffEnd]);
 
@@ -3553,7 +3557,7 @@ console.log('Global search enabled:', enableGlobalSearch);
       )}
 
       {/* Voice Analyzing Overlay */}
-      {showVoiceAnalyzing && (
+      {showVoiceAnalyzing && !showConfirmation && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <Card className="w-full max-w-md animate-slide-up">
             <CardHeader>
@@ -3584,7 +3588,7 @@ console.log('Global search enabled:', enableGlobalSearch);
       )}
 
       {/* Processing Next Item Overlay */}
-      {showProcessingNextItem && (
+      {showProcessingNextItem && !showConfirmation && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <Card className="w-full max-w-md animate-slide-up">
             <CardHeader>
@@ -4242,7 +4246,7 @@ console.log('Global search enabled:', enableGlobalSearch);
         )}
       
       {/* Handoff overlay for smooth transitions */}
-      <MagicHandoffOverlay active={handoffOpen} />
+      <MagicHandoffOverlay active={handoffOpen && !showConfirmation} />
       
       </div>
     );

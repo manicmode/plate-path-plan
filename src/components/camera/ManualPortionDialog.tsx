@@ -12,12 +12,34 @@ interface Props {
 }
 
 export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCancel }: Props) {
-  // ✅ Always call hooks first
-  const [portionGrams, setPortionGrams] = useState(() => enrichedData?.servingGrams || 100);
+  // ✅ Always call hooks first - using piecewise mapping for centered 100%
+  const [sliderValue, setSliderValue] = useState(0.5); // Default to center (100%)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const stepperIntervalRef = useRef<NodeJS.Timeout>();
   
   const ready = Boolean(candidate && enrichedData);
+
+  // Piecewise mapping functions
+  const sliderToPercent = (t: number): number => {
+    if (t <= 0.5) {
+      return 25 + 150 * t; // 25% to 100% for t: 0 to 0.5
+    } else {
+      return 200 * t; // 100% to 200% for t: 0.5 to 1
+    }
+  };
+
+  const percentToSlider = (p: number): number => {
+    if (p <= 100) {
+      return (p - 25) / 150; // Inverse of first piece
+    } else {
+      return p / 200; // Inverse of second piece
+    }
+  };
+
+  // Calculate current portion percentage and grams
+  const portionPercent = sliderToPercent(sliderValue);
+  const defaultGrams = enrichedData?.servingGrams || 100;
+  const portionGrams = Math.round((portionPercent / 100) * defaultGrams);
   
   // Close safely if data is missing, but after hooks are set up
   useEffect(() => {
@@ -26,8 +48,6 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
       return () => cancelAnimationFrame(id);
     }
   }, [ready, onCancel]);
-  
-  const defaultGrams = enrichedData?.servingGrams || 100;
 
   // Log when dialog actually mounts
   console.log('[PORTION][OPEN]', { name: candidate?.name, defaultG: defaultGrams });
@@ -36,18 +56,20 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
   if (!ready) return null;
 
   // Helper functions
-  const setGrams = (newGrams: number) => {
-    const clamped = Math.max(25, Math.min(500, Math.round(newGrams)));
-    setPortionGrams(clamped);
+  const setPercent = (newPercent: number) => {
+    const clamped = Math.max(25, Math.min(200, newPercent));
+    setSliderValue(percentToSlider(clamped));
   };
 
   const handlePreset = (multiplier: number) => {
-    const newGrams = Math.round(defaultGrams * multiplier);
-    setGrams(newGrams);
+    const newPercent = multiplier * 100;
+    setPercent(newPercent);
   };
 
   const handleStepper = (delta: number) => {
-    setGrams(portionGrams + delta);
+    const currentPercent = sliderToPercent(sliderValue);
+    const newPercent = currentPercent + (delta / defaultGrams) * 100;
+    setPercent(newPercent);
   };
 
   const handleStepperMouseDown = (delta: number) => {
@@ -120,8 +142,8 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
           {/* Header */}
           <div className="text-center">
             <h3 className="text-xl font-semibold text-foreground">Choose portion</h3>
-            <p className="text-sm text-muted-foreground mt-1 truncate" title={candidate?.name}>
-              {candidate?.name}
+            <p className="text-sm text-muted-foreground mt-1 truncate" title={`${candidate?.name}${enrichedData?.brand ? ` • ${enrichedData.brand}` : ''}`}>
+              {candidate?.name}{enrichedData?.brand ? ` • ${enrichedData.brand}` : ''}
             </p>
           </div>
           
@@ -133,7 +155,7 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
               onMouseDown={() => handleStepperMouseDown(-5)}
               onMouseUp={handleStepperMouseUp}
               onMouseLeave={handleStepperMouseUp}
-              disabled={isSubmitting || portionGrams <= 25}
+              disabled={isSubmitting || portionPercent <= 25}
               className="h-10 w-10 rounded-full"
             >
               <Minus className="h-4 w-4" />
@@ -155,27 +177,28 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
               onMouseDown={() => handleStepperMouseDown(5)}
               onMouseUp={handleStepperMouseUp}
               onMouseLeave={handleStepperMouseUp}
-              disabled={isSubmitting || portionGrams >= 500}
+              disabled={isSubmitting || portionPercent >= 200}
               className="h-10 w-10 rounded-full"
             >
               <Plus className="h-4 w-4" />
             </Button>
           </div>
 
-          {/* Slider */}
+          {/* Slider with centered 100% */}
           <div className="space-y-3">
             <Slider
-              value={[portionGrams]}
-              onValueChange={(values) => setGrams(values[0])}
-              min={25}
-              max={500}
-              step={5}
+              value={[sliderValue]}
+              onValueChange={(values) => setSliderValue(values[0])}
+              min={0}
+              max={1}
+              step={0.01}
               disabled={isSubmitting}
               className="w-full"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>25g</span>
-              <span>500g</span>
+              <span>25%</span>
+              <span>100%</span>
+              <span>200%</span>
             </div>
           </div>
 
@@ -190,15 +213,15 @@ export function ManualPortionDialog({ candidate, enrichedData, onContinue, onCan
                 { label: '1.5×', multiplier: 1.5 },
                 { label: '2×', multiplier: 2 }
               ].map(({ label, multiplier }) => {
-                const presetGrams = Math.round(defaultGrams * multiplier);
-                const isSelected = Math.abs(portionGrams - presetGrams) <= 2;
+                const presetPercent = multiplier * 100;
+                const isSelected = Math.abs(portionPercent - presetPercent) <= 5;
                 return (
                   <Button
                     key={label}
                     variant={isSelected ? "default" : "outline"}
                     size="sm"
                     onClick={() => handlePreset(multiplier)}
-                    disabled={isSubmitting || presetGrams < 25 || presetGrams > 500}
+                    disabled={isSubmitting || presetPercent < 25 || presetPercent > 200}
                     className="min-w-[50px] text-xs"
                   >
                     {label}
