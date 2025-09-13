@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { X, Plus, Check, Loader2 } from 'lucide-react';
+import { Search as SearchIcon, X, Plus, Check, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { useManualSearch } from '@/hooks/useManualSearch';
 import { FEAT_MANUAL_CHEAP_ONLY, MANUAL_FX } from '@/config/flags';
@@ -66,7 +67,7 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
       {/* Search Input */}
       <div className="manual-search-input-wrapper">
         <div className="manual-search-icon">
-          <Search className="h-4 w-4" />
+          <SearchIcon className="h-4 w-4" />
         </div>
         
         <Input
@@ -101,7 +102,7 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
       <div className="manual-results-container">
         {!query.trim() ? (
           <div className="manual-empty-state">
-            <Search className="h-12 w-12 text-white/20 mb-4" />
+            <SearchIcon className="h-12 w-12 text-white/20 mb-4" />
             <h3 className="text-white/60 text-base font-medium mb-2">No matches yet</h3>
             <p className="text-white/45 text-sm">Try brand or restaurant names</p>
           </div>
@@ -173,7 +174,7 @@ export default function ManualSearchResults({ onFoodSelect }: ManualSearchResult
           </div>
         ) : (
           <div className="manual-empty-state">
-            <Search className="h-12 w-12 text-white/20 mb-4" />
+            <SearchIcon className="h-12 w-12 text-white/20 mb-4" />
             <h3 className="text-white/60 text-base font-medium mb-2">No matches yet</h3>
             <p className="text-white/45 text-sm">Try brand or restaurant names</p>
           </div>
