@@ -833,9 +833,7 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const title = sanitizeName(normalizedName);
   
   // Hard-bind imgSrc in the header (single source of truth - derive once)
-  const imgSrc =
-    currentFoodItem?.imageUrl ??
-    null;
+  const imgSrc = foodItem?.imageUrl ?? currentFoodItem?.imageUrl ?? null;
   
   console.debug('[IMG][CARD][BIND]', { url: imgSrc });
   
@@ -919,6 +917,16 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   // Check if this is an unknown product that needs manual entry
   const isUnknownProduct = (currentFoodItem as any)?.isUnknownProduct;
   const hasBarcode = !!(currentFoodItem as any)?.barcode;
+
+  // 2) Card header: mount snapshot log
+  useEffect(() => {
+    if (isOpen) {
+      console.log('[CONFIRM][MOUNT_SNAPSHOT]', JSON.parse(JSON.stringify({
+        hasImageUrl: !!(foodItem?.imageUrl ?? currentFoodItem?.imageUrl ?? null),
+        imageUrl: (foodItem?.imageUrl ?? currentFoodItem?.imageUrl ?? null),
+      })));
+    }
+  }, [isOpen, foodItem?.imageUrl, currentFoodItem?.imageUrl]);
 
   useEffect(() => {
     const isBarcode = !!(currentFoodItem as any)?.barcode || !!(currentFoodItem as any)?._provider;

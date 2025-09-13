@@ -145,15 +145,21 @@ export const ReviewItemsScreen: React.FC<ReviewItemsScreenProps> = ({
       
       // Use buildConfirmItem as single source of truth
       const current = buildConfirmItem(item as any, undefined);
-      console.debug('[CONFIRM][CURRENT_ITEM][OUT]', { name: current.name, imageUrl: current.imageUrl, hasImageUrl: !!current.imageUrl });
       
       // Convert to legacy format for compatibility
       const converted = toLegacyFoodItem({ ...current, id: canonicalId }, index, true);
       
-      // Ensure image fields are preserved from buildConfirmItem
+      // Ensure image fields are preserved from buildConfirmItem - ADD SURGICAL FIX
       const anyConverted = converted as any;
-      anyConverted.imageUrl = current.imageUrl;
-      anyConverted.imageAttribution = current.imageAttribution;
+      anyConverted.imageUrl = current.imageUrl ?? (item as any)?.imageUrl ?? null;
+      anyConverted.imageAttribution = current.imageAttribution ?? (item as any)?.imageAttribution ?? null;
+      
+      // 1) Snapshot log before passing to confirm
+      console.log('[CONFIRM][OPEN][PAYLOAD_SNAPSHOT]', JSON.parse(JSON.stringify({
+        name: anyConverted?.name,
+        imageUrl: anyConverted?.imageUrl,
+        hasImage: !!anyConverted?.imageUrl,
+      })));
       
       return anyConverted;
     });
