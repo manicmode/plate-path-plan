@@ -56,6 +56,8 @@ export const FEAT_MANUAL_LOOSE_AND = getFlag('FEAT_MANUAL_LOOSE_AND', false);
 // UX enhancement flags
 export const MANUAL_PORTION_STEP = getFlag('MANUAL_PORTION_STEP', true);
 export const MANUAL_FX = getFlag('MANUAL_FX', true);
+export const MANUAL_INTERSTITIAL = getFlag('MANUAL_INTERSTITIAL', true);
+export const MANUAL_HINTS = getFlag('MANUAL_HINTS', true);
 
 // Debug logging
 if (typeof window !== 'undefined') {
