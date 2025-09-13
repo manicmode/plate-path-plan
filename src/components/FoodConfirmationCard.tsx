@@ -37,6 +37,7 @@ import { hydrateNutritionV3 } from '@/lib/nutrition/hydrateV3';
 import { resolveFoodImage, buildInitialsDataUrl } from "@/lib/food/getFoodImage";
 import { resolveImageUrl } from '@/lib/food/image';
 
+import './styles/confirm-avatar.css';
 import { sanitizeName } from '@/utils/helpers/sanitizeName';
 import confetti from 'canvas-confetti';
 import { labelFromFlags } from '@/lib/food/search/getFoodCandidates';
@@ -872,18 +873,27 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
   const normalizedName = extractName({ name: rawName }) || (isBarcodeItem ? `Product ${(currentFoodItem as any)?.barcode || 'Unknown'}` : 'Unknown Product');
   const title = sanitizeName(normalizedName);
   
-  // Enhanced image resolution with store/selector probe  
-  const imgSrc = currentFoodItem?.imageUrl ?? null;
-  console.debug('[IMG][STORE]', currentFoodItem?.name, { url: currentFoodItem?.imageUrl, attr: currentFoodItem?.imageAttribution });
-  console.debug('[IMG][CARD][BIND]', currentFoodItem?.name, { url: imgSrc });
+  // Hard-bind imgSrc in the header (derive once)
+  const imgSrc =
+    currentFoodItem?.imageUrl ??
+    null;
+  
+  console.debug('[IMG][CARD][BIND]', { name: currentFoodItem?.name, url: imgSrc });
+  console.debug('[CSP][IMG] ready', { src: imgSrc });
+  
+  // Store/selector proof
+  console.debug('[IMG][STORE]', currentFoodItem?.name, currentFoodItem?.imageUrl);
   
   // Add layout check and feature flag logging
   useEffect(() => {
     console.debug('[FLAG][MANUAL_CHEAP_ONLY]', FEAT_MANUAL_CHEAP_ONLY);
     console.debug('[IMG][LAYOUT]', { hasOverlay: !!document.querySelector('.image-overlay') });
     
-    // Console spot check helper
+    // Runtime self-test helper
     (window as any).__probe = () => {
+      const el = document.querySelector('[data-test="confirm-food-img"]');
+      console.log('[PROBE][IMG-ELEM]', !!el, el?.getAttribute('src'));
+      
       const s = (window as any).__stores?.nutrition?.getState?.() || {};
       console.log('[PROBE][STATE]', {
         current: s.currentFoodItem?.name,
@@ -1783,42 +1793,69 @@ const FoodConfirmationCard: React.FC<FoodConfirmationCardProps> = ({
               </div>
             )}
 
-            {/* Food Item Display */}
-            <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-              {imgSrc ? (
+            {/* Food Item Display with Hard-Bound Avatar */}
+            <div className="confirm-card-header flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-2xl" style={{ position: 'relative' }}>
+              <div className="confirm-avatar" style={{ position: 'relative', width: 64, height: 64, overflow: 'hidden' }}>
+                {imgSrc ? (
+                  <img
+                    src={imgSrc}
+                    alt={currentFoodItem?.name ?? 'food'}
+                    data-test="confirm-food-img"
+                    onLoad={(e) =>
+                      console.debug('[IMG][LOAD]', imgSrc, {
+                        w: e.currentTarget.naturalWidth,
+                        h: e.currentTarget.naturalHeight
+                      })
+                    }
+                    onError={(e) => {
+                      console.warn('[IMG][ERROR]', imgSrc, e);
+                      (e.currentTarget as HTMLImageElement).src = buildInitialsDataUrl(currentFoodItem?.name ?? 'food');
+                    }}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: 12,
+                      zIndex: 1
+                    }}
+                  />
+                ) : (
+                  <img
+                    src={buildInitialsDataUrl(displayName)}
+                    alt={displayName}
+                    data-test="confirm-food-fallback"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: 12,
+                      zIndex: 1
+                    }}
+                  />
+                )}
+
+                {/* Temporary: 24px control image to prove painting path */}
                 <img
-                  src={imgSrc}
-                  alt={displayName}
-                  loading="lazy"
-                  decoding="async"
-                  referrerPolicy="no-referrer"
-                  crossOrigin="anonymous"  
-                  className="h-16 w-16 flex-none rounded-xl object-cover bg-neutral-900 ring-1 ring-white/10"
-                  style={{ objectFit: 'cover', borderRadius: 12 }}
-                  data-img-probe
-                  onLoad={(e) => {
-                    console.debug('[IMG][LOAD]', imgSrc, { w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight });
-                  }}
-                  onError={(e) => {
-                    console.warn('[IMG][ERROR]', imgSrc);
-                    (e.currentTarget as HTMLImageElement).src = buildInitialsDataUrl(displayName);
-                  }}
+                  src="https://upload.wikimedia.org/wikipedia/commons/3/3f/Placeholder_view_vector.svg"
+                  alt="control"
+                  data-test="confirm-img-control"
+                  style={{ position: 'absolute', left: -9999, width: 24, height: 24 }}
+                  onLoad={() => console.debug('[IMG][HARD][LOAD] control ok')}
+                  onError={() => console.warn('[IMG][HARD][ERROR] control failed')}
                 />
-              ) : (
-                <img
-                  src={buildInitialsDataUrl(displayName)}
-                  alt={displayName}
-                  className="h-16 w-16 flex-none rounded-xl object-cover bg-neutral-900 ring-1 ring-white/10"
-                />
-              )}
-              
-              {/* Control image to rule out overlay/CSS issues (temporary) */}
-              <img
-                src="https://upload.wikimedia.org/wikipedia/commons/3/3f/Placeholder_view_vector.svg"
-                alt="control"
-                onLoad={(e) => console.debug('[IMG][HARD][LOAD]', { w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
-                style={{ width: 1, height: 1, opacity: 0, position: 'absolute', pointerEvents: 'none' }}
-              />
+
+                {/* Brand badge must NEVER block clicks or cover image */}
+                <div className="brand-badge" style={{ position: 'absolute', right: -6, top: -6, zIndex: 2, pointerEvents: 'none' }}>
+                  <DataSourceChip
+                    source={currentFoodItem?.enrichmentSource || currentFoodItem?.source || 'unknown'}
+                    confidence={currentFoodItem?.enrichmentConfidence || currentFoodItem?.confidence}
+                  />
+                </div>
+              </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg">

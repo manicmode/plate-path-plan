@@ -160,6 +160,13 @@ export function useManualFoodEnrichment() {
       if (data) {
         console.log(`[ENRICH][SUCCESS] Source: ${data.source}, Confidence: ${data.confidence}`);
         
+        // Preserve existing image fields during enrichment - never clobber
+        if (!data.imageUrl && selectedCandidate?.imageUrl) {
+          data.imageUrl = selectedCandidate.imageUrl;
+          data.imageAttribution = selectedCandidate.imageAttribution || 'unknown';
+          console.debug('[IMG][ENRICH]', data.name, { url: data.imageUrl, from: data.imageAttribution });
+        }
+        
         // NEW: Write-through to vault if enabled and from paid provider
         if (NV_WRITE_THROUGH && (data.source === 'EDAMAM' || data.source === 'NUTRITIONIX')) {
           try {
@@ -270,8 +277,11 @@ export function enrichedToFoodItem(enriched: EnrichedFood, portionGrams: number 
     enrichmentSource: enriched.source,
     ingredients: enriched.ingredients,
     
+    // Preserve image fields
+    imageUrl: enriched.imageUrl,
+    imageAttribution: enriched.imageAttribution,
+    
     // Compatibility fields
-    imageUrl: undefined,
     barcode: undefined,
     provider: enriched.source.toLowerCase()
   };

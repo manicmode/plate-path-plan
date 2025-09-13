@@ -1,0 +1,29 @@
+/* Confirm Card Avatar Styles - Prevent overlays/masks */
+.confirm-avatar { 
+  overflow: hidden; 
+}
+
+.confirm-avatar::before,
+.confirm-avatar::after { 
+  content: none !important; /* remove gradient masks */
+}
+
+.brand-badge { 
+  pointer-events: none; /* never intercept image */
+}
+
+.confirm-card-header { 
+  position: relative; 
+}
+
+/* Temporary debugging outline */
+[data-test="confirm-food-img"] { 
+  outline: 0px solid transparent; 
+  /* change to 2px solid magenta if needed for debugging */
+}
+
+/* Ensure no overlay covers the image */
+.image-overlay {
+  pointer-events: none;
+  z-index: 1;
+}
