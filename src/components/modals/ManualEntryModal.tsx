@@ -26,7 +26,13 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
   const [hintIndex, setHintIndex] = useState(0);
   const [showExamples, setShowExamples] = useState(false);
 
-  // Disable any periodic UI effects to avoid focus flicker
+  // Rotate hints every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHintIndex(prev => (prev + 1) % ROTATING_HINTS.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
 
   // Listen for confirm:mounted event to hide loader
@@ -90,7 +96,7 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
                   Add Food Manually
                 </DialogTitle>
                 <DialogDescription className="manual-subtitle">
-                  Search brand or restaurant items
+                  {ROTATING_HINTS[hintIndex]}
                 </DialogDescription>
               </div>
               <Button
@@ -123,7 +129,7 @@ export function ManualEntryModal({ isOpen, onClose, onFoodSelected }: ManualEntr
                 
                 {/* Static hint (no animations) */}
                 <div className="manual-hint-container">
-                  <p className="manual-hint">{ROTATING_HINTS[0]}</p>
+                  <p className="manual-hint">💡 Manual Entry is best for restaurant meals & branded items. Try brand names for best matches.</p>
                   <Button
                     type="button"
                     variant="ghost"
