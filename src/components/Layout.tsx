@@ -116,14 +116,10 @@ const Layout = ({ children }: LayoutProps) => {
     }, 150);
   }, [navigate, location.pathname, isNavigating, scrollToTop]);
 
-  // Reset navigation state when location changes and guard root redirect
+  // Reset navigation state when location changes
   useEffect(() => {
     setIsNavigating(false);
-    // Hard guard: if authenticated and somehow landed on '/', redirect to '/home'
-    if (location.pathname === '/' && isAuthenticated) {
-      navigate('/home', { replace: true });
-    }
-  }, [location.pathname, isAuthenticated, navigate]);
+  }, [location.pathname]);
 
   // Handle keyboard shortcut for microphone (m key)
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
