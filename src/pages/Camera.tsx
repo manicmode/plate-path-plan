@@ -383,8 +383,17 @@ const CameraPage = () => {
     // Check if items are fully enriched (route guard) - use normalized items
     const allEnriched = normalizedItems.every(i => i?.enrichmentSource && Array.isArray(i?.ingredientsList));
     if (!allEnriched && (sourceHint === 'manual' || sourceHint === 'speech')) {
-      console.warn('[ROUTE][BLOCKED]', 'Items not fully enriched');
-      return; // keep user on dialog
+      // Allow manual items to proceed if they have basic enrichment attempt
+      const manualWithAttempt = normalizedItems.every(i => 
+        i?.source === 'manual' && (i?.enriched === false || i?.enrichmentSource === 'manual')
+      );
+      
+      if (!manualWithAttempt) {
+        console.warn('[ROUTE][BLOCKED]', 'Items not fully enriched');
+        return; // keep user on dialog
+      } else {
+        console.log('[ROUTE][SOFT]', 'Allowing manual items with enrichment attempt');
+      }
     }
 
     // Determine the source type

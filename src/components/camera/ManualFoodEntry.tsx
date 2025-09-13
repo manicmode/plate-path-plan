@@ -12,9 +12,10 @@ import { useToast } from '@/hooks/use-toast';
 interface ManualFoodEntryProps {
   onFoodSelect: (food: any) => void;
   onClose: () => void;
+  enrichingId?: string | null;
 }
 
-export default function ManualFoodEntry({ onFoodSelect, onClose }: ManualFoodEntryProps) {
+export default function ManualFoodEntry({ onFoodSelect, onClose, enrichingId }: ManualFoodEntryProps) {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -121,6 +122,7 @@ export default function ManualFoodEntry({ onFoodSelect, onClose }: ManualFoodEnt
                     key={`${food.id || food.name}-${index}`}
                     food={food}
                     onSelect={() => handleFoodSelect(food)}
+                    isEnriching={enrichingId === (food.id || food.name)}
                   />
                 ))}
               </div>
@@ -158,9 +160,10 @@ export default function ManualFoodEntry({ onFoodSelect, onClose }: ManualFoodEnt
 interface FoodResultCardProps {
   food: any;
   onSelect: () => void;
+  isEnriching?: boolean;
 }
 
-function FoodResultCard({ food, onSelect }: FoodResultCardProps) {
+function FoodResultCard({ food, onSelect, isEnriching }: FoodResultCardProps) {
   const formatNutrition = (value: number | undefined, unit: string = 'g') => {
     if (value === undefined || value === null) return '0' + unit;
     return value.toFixed(unit === 'g' ? 1 : 0) + unit;
@@ -199,8 +202,17 @@ function FoodResultCard({ food, onSelect }: FoodResultCardProps) {
             )}
           </div>
           
-          <Button variant="ghost" size="sm" className="ml-2 flex-shrink-0">
-            <Plus className="h-4 w-4" />
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="ml-2 flex-shrink-0"
+            disabled={isEnriching}
+          >
+            {isEnriching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </CardContent>
